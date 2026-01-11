@@ -132,15 +132,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token: parsedUser.token || token // ✅ Đảm bảo user luôn có token
     };
     
+    // Tạm thời set User trước để UI không bị giật, nhưng sẽ verify ngầm
     setUser(userWithToken);
     setIsAuthenticated(true);
-    console.log('✅ User authenticated from localStorage');
+    
+    // 🔥 VERIFY TOKEN WITH BACKEND (FIX LỖI LOGIN ẢO)
+    fetch(`${API_URL}/api/users/profile`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    }).then(res => {
+      if (!res.ok) {
+        console.warn('⚠️ Token invalid or expired (System Reset), logging out...');
+        localStorage.clear(); // Xóa sạch LocalStorage
+        setUser(null);
+        setIsAuthenticated(false);
+        // Nếu đang ở trang profile thì đá về login
+        if (window.location.pathname.startsWith('/profile')) {
+          window.location.href = '/login';
+        }
+      } else {
+        console.log('✅ Token verified with server');
+      }
+    }).catch(err => {
+      console.error('❌ Token verification failed (network error?):', err);
+      // Giữ nguyên state nếu lỗi mạng, không logout vội để tránh UX tệ khi rớt mạng
+    }).finally(() => {
+      setIsLoading(false);
+    });
     
   } catch (error) {
     console.error('❌ Auth check error:', error);
     setUser(null);
     setIsAuthenticated(false);
-  } finally {
     setIsLoading(false);
   }
 };

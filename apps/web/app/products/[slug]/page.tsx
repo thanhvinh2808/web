@@ -4,7 +4,7 @@ import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Star, Heart, ShoppingCart, ChevronLeft, Truck, Shield, RefreshCw, Package, ChevronRight } from "lucide-react";
-import { useCart } from "../../contexts/CartContext";
+import { useCart } from "../../../contexts/CartContext";
 
 interface VariantOption {
   name: string;

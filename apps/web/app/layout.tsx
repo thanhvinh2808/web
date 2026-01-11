@@ -1,7 +1,7 @@
 // app/layout.tsx
 import { AuthProvider } from "./contexts/AuthContext";
-import { SocketProvider } from "./contexts/SocketContext";
-import { OrderProvider } from './contexts/OrderContext';
+import { SocketProvider } from "../contexts/SocketContext";
+import { OrderProvider } from '../contexts/OrderContext';
 import ConditionalLayout from "./admin/components/ConditionalLayout";
 import ClientProviders from "../components/ClientProviders"; // ✅ Import từ components/ (ngoài app)
 import { Toaster } from 'react-hot-toast';

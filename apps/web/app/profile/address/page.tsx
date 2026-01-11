@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../../contexts/AuthContext';
 import { Plus, MapPin, Trash2, CheckCircle2, ChevronDown, X } from 'lucide-react';
 
 // --- Reusable Component: Autocomplete Select (Copied from ProfilePage) ---

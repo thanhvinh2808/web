@@ -227,8 +227,8 @@ export default function HomePage() {
           
           {isCategoriesLoading ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="bg-gray-200 h-40 rounded-xl animate-pulse"></div>
+              {[...Array(8)].map((_id) => (
+                <div key={_id} className="bg-gray-200 h-40 rounded-xl animate-pulse"></div>
               ))}
             </div>
           ) : (

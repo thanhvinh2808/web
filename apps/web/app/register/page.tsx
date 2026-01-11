@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../../contexts/AuthContext";
 
 export default function RegisterPage() {
   const { register } = useAuth();

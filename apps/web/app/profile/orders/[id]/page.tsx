@@ -2,10 +2,10 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useOrders, Order } from "../../../contexts/OrderContext";
+import { useOrders, Order } from "../../../../contexts/OrderContext";
 import Link from "next/link";
-import { useCart } from '../../../../app/contexts/CartContext';
-import { useAuth } from '../../../../app/contexts/AuthContext';
+import { useCart } from '../../../../contexts/CartContext';
+import { useAuth } from '../../../../contexts/AuthContext';
 import io from 'socket.io-client';
 
 import { 

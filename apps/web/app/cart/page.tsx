@@ -2,7 +2,7 @@
 "use client";
 import { Trash2, Minus, Plus, ShoppingCart, ArrowLeft, Package, Truck } from "lucide-react";
 import Link from "next/link";
-import { useCart } from "../contexts/CartContext";
+import { useCart } from "../../contexts/CartContext";
 import { Voucher } from '../types/voucher';
 import { useState } from 'react';
 import { VoucherSelector } from "../../components/VoucherSelector";

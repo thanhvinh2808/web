@@ -1,0 +1,128 @@
+[{
+  "_id": {
+    "$oid": "6916dc60859a3de35c28ba0c"
+  },
+  "id": 1,
+  "name": "Điện thoại",
+  "slug": "smartphones",
+  "icon": "📱",
+  "description": "Smartphone cao cấp từ các thương hiệu hàng đầu"
+},
+{
+  "_id": {
+    "$oid": "6916dc60859a3de35c28ba0d"
+  },
+  "id": 2,
+  "name": "Laptop",
+  "slug": "laptops",
+  "icon": "💻",
+  "description": "Laptop cho công việc và giải trí"
+},
+{
+  "_id": {
+    "$oid": "6916dc60859a3de35c28ba0e"
+  },
+  "id": 3,
+  "name": "Máy tính bảng",
+  "slug": "tablets",
+  "icon": "📲",
+  "description": "Tablet tiện lợi cho mọi nhu cầu"
+},
+{
+  "_id": {
+    "$oid": "6916dc60859a3de35c28ba0f"
+  },
+  "id": 4,
+  "name": "Âm thanh",
+  "slug": "audio",
+  "icon": "🎧",
+  "description": "Tai nghe và loa chất lượng cao"
+},
+{
+  "_id": {
+    "$oid": "6916dc60859a3de35c28ba10"
+  },
+  "id": 5,
+  "name": "Đồng hồ thông minh",
+  "slug": "wearables",
+  "icon": "⌚",
+  "description": "Smartwatch theo dõi sức khỏe"
+},
+{
+  "_id": {
+    "$oid": "6916dc60859a3de35c28ba11"
+  },
+  "id": 6,
+  "name": "Camera",
+  "slug": "cameras",
+  "icon": "📷",
+  "description": "Camera và phụ kiện nhiếp ảnh"
+},
+{
+  "_id": {
+    "$oid": "6916dc60859a3de35c28ba12"
+  },
+  "id": 7,
+  "name": "Gaming",
+  "slug": "gaming",
+  "icon": "🎮",
+  "description": "Máy chơi game và phụ kiện"
+},
+{
+  "_id": {
+    "$oid": "6916dc60859a3de35c28ba13"
+  },
+  "id": 8,
+  "name": "Phụ kiện",
+  "slug": "accessories",
+  "icon": "⚡",
+  "description": "Phụ kiện công nghệ đa dạng"
+},
+{
+  "_id": {
+    "$oid": "6918a65c9687f9050aa5bd07"
+  },
+  "name": "test3",
+  "slug": "test3",
+  "description": "test3",
+  "icon": "",
+  "createdAt": {
+    "$date": "2025-11-15T16:12:12.174Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-23T14:43:32.918Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "69231d90f821863b27ef13d0"
+  },
+  "name": "test2",
+  "slug": "test2",
+  "description": "test2",
+  "icon": "",
+  "createdAt": {
+    "$date": "2025-11-23T14:43:28.977Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-23T14:43:28.977Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "69318dcf881daf9d1418722d"
+  },
+  "name": "test4",
+  "slug": "test4",
+  "description": "test4",
+  "icon": "",
+  "createdAt": {
+    "$date": "2025-12-04T13:34:07.525Z"
+  },
+  "updatedAt": {
+    "$date": "2025-12-04T13:34:07.525Z"
+  },
+  "__v": 0
+}]

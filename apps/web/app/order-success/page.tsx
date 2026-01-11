@@ -2,10 +2,10 @@
 "use client";
 
 import { useSearchParams } from 'next/navigation';
-import { useOrders } from '../contexts/OrderContext';
+import { useOrders } from '../../contexts/OrderContext';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Order } from '../contexts/OrderContext';
+import { Order } from '../../contexts/OrderContext';
 
 export default function OrderSuccessPage() {
   const searchParams = useSearchParams();
