@@ -21,6 +21,9 @@
       "@/*": [
         "./src/*"
       ],
+      "@app/*": [
+        "./app/*"
+      ],
       "@tech-store/types": [
         "../../packages/types/src"
       ],

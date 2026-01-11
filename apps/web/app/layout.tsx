@@ -1,5 +1,5 @@
 // app/layout.tsx
-import { AuthProvider } from "../app/contexts/AuthContext";
+import { AuthProvider } from "@app/contexts/AuthContext";
 import { SocketProvider } from "../app/contexts/SocketContext";
 import { OrderProvider } from '../app/contexts/OrderContext';
 import ConditionalLayout from "./admin/components/ConditionalLayout";

@@ -5,8 +5,8 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { Box, ShoppingCart, User, Menu, X, Home, Package, Info, BookOpen, Mail, HelpCircle, LogIn, LogOut } from "lucide-react";
 import { SearchBar } from "./SearchBar";
-import { useCart } from '../app/contexts/CartContext';
-import { useAuth } from '../app/contexts/AuthContext';
+import { useCart } from '@app/contexts/CartContext';
+import { useAuth } from '@app/contexts/AuthContext';
 
 interface HeaderProps {
   cartCount?: number;
