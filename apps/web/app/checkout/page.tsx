@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useCart } from '../../contexts/CartContext';
-import { useAuth } from '../../contexts/AuthContext';
-import { useOrders } from '../../contexts/OrderContext';
+import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useOrders } from '../contexts/OrderContext';
 import { ShoppingCart, CreditCard, Lock, User, Tag, CheckCircle, DiscAlbum, ChevronDown, X } from 'lucide-react';
 import { VoucherSelector } from "../../components/VoucherSelector";
 import { Voucher } from '../types/voucher';

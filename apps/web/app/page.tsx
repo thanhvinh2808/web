@@ -227,8 +227,8 @@ export default function HomePage() {
           
           {isCategoriesLoading ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {[...Array(8)].map((_id) => (
-                <div key={_id} className="bg-gray-200 h-40 rounded-xl animate-pulse"></div>
+              {[...Array(8)].map((_, i) => (
+                <div key={`cat-skeleton-${i}`} className="bg-gray-200 h-40 rounded-xl animate-pulse"></div>
               ))}
             </div>
           ) : (
@@ -236,7 +236,7 @@ export default function HomePage() {
               {categories.length > 0 ? (
                 categories.map((cat) => (
                   <div
-                    key={cat._id || cat.slug}
+                    key={cat._id}
                     onClick={() => router.push(`/products?category=${cat.slug}`)}
                     className="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-all text-center cursor-pointer group"
                   >
@@ -344,7 +344,7 @@ export default function HomePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {displayProducts.map(product => (
                   <div 
-                    key={product.id}
+                    key={product._id || product.id}
                     onClick={() => router.push(`/products/${product.slug}`)}
                     className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition cursor-pointer group h-full"
                   >

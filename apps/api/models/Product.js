@@ -146,11 +146,11 @@ const productSchema = new mongoose.Schema({
     default: 'active'
   }
 }, { 
-  timestamps: true 
+  timestamps: true,
+  suppressReservedKeysWarning: true // ✅ Tắt cảnh báo về field 'isNew'
 });
 
 // ===== INDEXES =====
-productSchema.index({ slug: 1 });
 productSchema.index({ categorySlug: 1 });
 productSchema.index({ name: 'text', description: 'text' });
 

@@ -24,9 +24,6 @@ const categorySchema = new mongoose.Schema({
   timestamps: true 
 });
 
-// Index để tìm kiếm nhanh
-categorySchema.index({ slug: 1 });
-
 // ✅ Helper function để tạo slug
 function generateSlug(text) {
   return text

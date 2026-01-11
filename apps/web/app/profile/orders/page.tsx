@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../../contexts/AuthContext';
-import { useOrders } from '../../../contexts/OrderContext';
-import { useCart } from '../../../contexts/CartContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useOrders } from '../../contexts/OrderContext';
+import { useCart } from '../../contexts/CartContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 

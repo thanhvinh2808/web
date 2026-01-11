@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { CreditCard, Plus, Trash2, Building } from 'lucide-react';
 
 export default function BankPage() {

@@ -137,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsAuthenticated(true);
     
     // 🔥 VERIFY TOKEN WITH BACKEND (FIX LỖI LOGIN ẢO)
-    fetch(`${API_URL}/api/users/profile`, {
+    fetch(`${API_URL}/api/user/me`, {
       headers: { 'Authorization': `Bearer ${token}` }
     }).then(res => {
       if (!res.ok) {
@@ -254,7 +254,7 @@ const login = async (email: string, password: string) => {
       setUser(null);
       setIsAuthenticated(false);
       
-      router.push('/api/login');
+      router.push('/login');
       console.log('👋 Logged out successfully');
     } catch (error) {
       console.error('❌ Logout error:', error);
@@ -313,7 +313,7 @@ const login = async (email: string, password: string) => {
         throw new Error('No authentication token');
       }
 
-      const response = await fetch(`${API_URL}/api/profile`, {
+      const response = await fetch(`${API_URL}/api/user/update`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
