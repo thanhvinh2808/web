@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { User } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../../app/contexts/AuthContext";
 import Link from "next/link";
 
 export default function LoginPage() {
