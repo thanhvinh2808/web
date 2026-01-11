@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { User } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../../contexts/AuthContext";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -16,10 +16,15 @@ export default function LoginPage() {
 
   // ✅ Nếu đã đăng nhập, redirect về trang chủ
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !isLoading) {
       router.push('/');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, isLoading, router]);
+
+  const handleForceLogout = () => {
+    localStorage.clear();
+    window.location.reload();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,17 +91,24 @@ export default function LoginPage() {
           )}
         </form>
 
-        <div className="mt-6 text-center">
-          <p className="text-gray-600">
-            Chưa có tài khoản?{' '}
-            <Link
-              href="/register"
-              className="text-blue-600 font-semibold hover:underline"
+          <div className="mt-6 text-center space-y-2">
+            <p className="text-gray-600">
+              Chưa có tài khoản?{' '}
+              <Link
+                href="/register"
+                className="text-blue-600 font-semibold hover:underline"
+              >
+                Đăng ký ngay
+              </Link>
+            </p>
+            <button
+              type="button"
+              onClick={handleForceLogout}
+              className="text-xs text-red-500 hover:underline opacity-60 hover:opacity-100"
             >
-              Đăng ký ngay
-            </Link>
-          </p>
-        </div>
+              Gặp lỗi đăng nhập? Xóa cache
+            </button>
+          </div>
       </div>
     </div>
   );
