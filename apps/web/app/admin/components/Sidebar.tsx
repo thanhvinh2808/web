@@ -52,9 +52,11 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, isOpen, onC
         
         {/* Brand Logo & Close Button */}
         <div className="h-20 flex items-center justify-between px-6 border-b border-gray-50">
-          <div className="flex items-center gap-2 text-blue-600">
-            <Store size={28} strokeWidth={2.5} />
-            <span className="text-xl font-black tracking-tight text-gray-900">Tech<span className="text-blue-600">Store</span></span>
+          <div className="flex flex-col">
+            <h1 className="text-2xl font-black italic tracking-tighter text-black leading-none">
+              FOOT<span className="text-blue-600">MARK</span>.
+            </h1>
+            <span className="text-[9px] font-bold tracking-[0.2em] text-gray-500 uppercase">Dashboard</span>
           </div>
           {/* Nút đóng chỉ hiện trên mobile */}
           <button onClick={onClose} className="md:hidden text-gray-400 hover:text-red-500">

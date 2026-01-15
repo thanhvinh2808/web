@@ -202,7 +202,7 @@ export const VoucherSelector = ({ totalAmount, onVoucherApply, selectedVoucher }
                           
                           <Tag size={24} className="mb-1" />
                           <span className="text-[10px] font-black uppercase text-center leading-tight">
-                            {voucher.discountType === 'percent' ? `GIẢM ${voucher.discountValue}%` : 'GIẢM TIỀN'}
+                            {(voucher.discountType as string) === 'percent' || (voucher.discountType as string) === 'percentage' ? `GIẢM ${voucher.discountValue}%` : 'GIẢM TIỀN'}
                           </span>
                         </div>
 
@@ -233,7 +233,7 @@ export const VoucherSelector = ({ totalAmount, onVoucherApply, selectedVoucher }
                             </div>
                           ) : (
                             <div className="mt-1 text-[10px] text-gray-400 font-medium">
-                              HSD: {new Date(voucher.endDate).toLocaleDateString('vi-VN')}
+                              HSD: {new Date((voucher as any).endDate).toLocaleDateString('vi-VN')}
                             </div>
                           )}
                         </div>

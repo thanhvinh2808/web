@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { User } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@app/contexts/AuthContext";
+import { useAuth } from "../contexts/AuthContext";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -42,36 +42,36 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 px-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 font-sans">
+      <div className="bg-white rounded-xl shadow-xl p-8 w-full max-w-md border border-gray-100">
         <div className="text-center mb-8">
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="bg-black w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
             <User className="text-white" size={32} />
           </div>
-          <h2 className="text-3xl font-bold">Đăng nhập</h2>
-          <p className="text-gray-600 mt-2">Chào mừng bạn trở lại!</p>
+          <h2 className="text-3xl font-black italic tracking-tighter">FOOT<span className="text-blue-600">MARK</span>.</h2>
+          <p className="text-gray-500 mt-2 font-medium">Đăng nhập để săn giày chất</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+            <label className="block text-sm font-bold text-gray-900 mb-2">Email</label>
             <input
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({...formData, email: e.target.value})}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent outline-none transition"
               placeholder="email@example.com"
               required
               disabled={isLoading}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Mật khẩu</label>
+            <label className="block text-sm font-bold text-gray-900 mb-2">Mật khẩu</label>
             <input
               type="password"
               value={formData.password}
               onChange={(e) => setFormData({...formData, password: e.target.value})}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent outline-none transition"
               placeholder="••••••••"
               required
               disabled={isLoading}
@@ -80,23 +80,23 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:shadow-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-black text-white py-4 rounded-lg font-bold uppercase tracking-wider hover:bg-stone-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+            {isLoading ? 'Đang xử lý...' : 'Đăng nhập'}
           </button>
           {message && (
-            <p className={`text-center ${message.includes('thành công') ? 'text-green-600' : 'text-red-600'}`}>
+            <p className={`text-center font-bold text-sm ${message.includes('thành công') ? 'text-green-600' : 'text-red-600'}`}>
               {message}
             </p>
           )}
         </form>
 
-          <div className="mt-6 text-center space-y-2">
+          <div className="mt-8 text-center space-y-3">
             <p className="text-gray-600">
               Chưa có tài khoản?{' '}
               <Link
                 href="/register"
-                className="text-blue-600 font-semibold hover:underline"
+                className="text-blue-600 font-bold hover:underline"
               >
                 Đăng ký ngay
               </Link>

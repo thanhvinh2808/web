@@ -2,8 +2,8 @@
 "use client";
 
 import { ReactNode } from 'react';
-import { CartProvider } from '@app/contexts/CartContext';
-import { useAuth } from '@app/contexts/AuthContext';
+import { CartProvider } from '../app/contexts/CartContext';
+import { useAuth } from '../app/contexts/AuthContext';
 
 export default function ClientProviders({ children }: { children: ReactNode }) {
   // ✅ useAuth() có thể dùng vì ClientProviders nằm BÊN TRONG AuthProvider (trong layout.tsx)

@@ -87,7 +87,7 @@ const HeroCarousel = () => {
     }
   }, [isPaused, mainBanners.length]);
 
-  const goToSlide = (index) => {
+  const goToSlide = (index: number) => {
     setCurrentSlide(index);
   };
 

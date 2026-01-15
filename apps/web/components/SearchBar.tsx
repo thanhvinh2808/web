@@ -92,7 +92,7 @@ export const SearchBar = () => {
         }
       } catch (error) {
         console.error('❌ Fetch Error:', error);
-        setApiError(`Lỗi kết nối: ${error.message}`);
+        setApiError(`Lỗi kết nối: ${(error as any).message}`);
       } finally {
         setIsProductsLoading(false);
         console.log('✅ API fetch completed');

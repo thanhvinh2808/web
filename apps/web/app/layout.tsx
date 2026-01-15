@@ -1,5 +1,5 @@
 // app/layout.tsx
-import { AuthProvider } from "@app/contexts/AuthContext";
+import { AuthProvider } from "./contexts/AuthContext";
 import { SocketProvider } from "../app/contexts/SocketContext";
 import { OrderProvider } from '../app/contexts/OrderContext';
 import ConditionalLayout from "./admin/components/ConditionalLayout";
@@ -9,8 +9,8 @@ import { Toaster } from 'react-hot-toast';
 import "./globals.css";
 
 export const metadata = {
-  title: "TechStore - Cửa hàng công nghệ hàng đầu",
-  description: "Sản phẩm công nghệ cao cấp",
+  title: "FootMark - Authentic Sneakers & Streetwear",
+  description: "Hệ thống bán lẻ giày chính hãng và 2hand uy tín hàng đầu.",
 };
 
 export default function RootLayout({

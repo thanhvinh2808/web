@@ -3,10 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { Box, ShoppingCart, User, Menu, X, Home, Package, Info, BookOpen, Mail, HelpCircle, LogIn, LogOut } from "lucide-react";
-import { SearchBar } from "./SearchBar";
-import { useCart } from '@app/contexts/CartContext';
-import { useAuth } from '@app/contexts/AuthContext';
+import { ShoppingCart, User, Menu, X, Heart, Search, LogOut, LogIn } from "lucide-react";
+import { useCart } from '../app/contexts/CartContext';
+import { useAuth } from '../app/contexts/AuthContext';
 
 interface HeaderProps {
   cartCount?: number;
@@ -27,34 +26,8 @@ export const Header = ({ cartCount = 0 }: HeaderProps) => {
 
   useEffect(() => {
     const user = localStorage.getItem('user');
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsAuthenticated(!!user);
   }, []);
-
-  const navigation = [
-    { name: 'Trang chủ', href: '/', icon: Home },
-    { name: 'Sản phẩm', href: '/products', icon: Package },
-    { name: 'Giới thiệu', href: '/about', icon: Info },
-    { name: 'Blog', href: '/blog', icon: BookOpen },
-    { name: 'Liên hệ', href: '/contact', icon: Mail },
-    { name: 'FAQ', href: '/faq', icon: HelpCircle },
-  ];
-
-  const categories = [
-    { name: 'Điện thoại', slug: 'smartphones', icon: '📱' },
-    { name: 'Laptop', slug: 'laptops', icon: '💻' },
-    { name: 'Máy tính bảng', slug: 'tablets', icon: '📲' },
-    { name: 'Âm thanh', slug: 'audio', icon: '🎧' },
-    { name: 'Đồng hồ', slug: 'wearables', icon: '⌚' },
-    { name: 'Camera', slug: 'cameras', icon: '📷' },
-    { name: 'Gaming', slug: 'gaming', icon: '🎮' },
-    { name: 'Phụ kiện', slug: 'accessories', icon: '⚡' },
-  ];
-
-  const isActive = (href: string) => {
-    if (href === '/') return pathname === '/';
-    return pathname?.startsWith(href);
-  };
 
   const handleUserIconClick = () => {
     if (user) {
@@ -66,152 +39,134 @@ export const Header = ({ cartCount = 0 }: HeaderProps) => {
 
   const handleLogout = async () => {
     try {
-      await logout(); // ✅ Dùng logout từ AuthContext
+      await logout();
       setIsMenuOpen(false);
+      router.push('/');
     } catch (error) {
       console.error('Logout error:', error);
     }
   };
 
   return (
-    <header className="bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg sticky top-0 z-50">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between py-4">
-          {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2 cursor-pointer">
-            <div className="bg-white p-2 rounded-lg">
-              <Box className="text-blue-600" size={24} />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">TechStore</h1>
-              <p className="text-xs text-blue-100">Công nghệ hàng đầu</p>
-            </div>
-          </Link>
+    <header className="border-b sticky top-0 bg-white/95 backdrop-blur-md z-50 shadow-sm text-gray-900 font-sans">
+      <div className="container mx-auto px-4 h-20 flex items-center justify-between">
+        
+        {/* Logo */}
+        <Link href="/" className="flex flex-col group">
+          <h1 className="text-2xl md:text-3xl font-black tracking-tighter text-black leading-none group-hover:opacity-80 transition">
+            FOOT<span className="text-blue-600">MARK</span>.
+          </h1>
+          <span className="text-[8px] md:text-[10px] font-bold tracking-[0.2em] text-gray-500 uppercase">Authentic Sneakers</span>
+        </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-1">
-            {navigation.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center space-x-1 px-4 py-2 rounded-lg transition-all ${
-                  isActive(item.href)
-                    ? 'bg-white text-blue-600 shadow-md'
-                    : 'hover:bg-white/10'
-                }`}
-              >
-                <item.icon size={18} />
-                <span>{item.name}</span>
-              </Link>
-            ))}
-          </nav>
-
-          {/* Action Buttons */}
-          <div className="flex items-center space-x-3">
-            {/* Search Component */}
-            <SearchBar />
-            
-            {/* Cart with Dynamic Badge */}
-            <Link 
-              href="/cart"
-              className="relative hover:bg-white/10 p-2 rounded-lg transition group"
-              id="cart-icon"
-            >
-              <ShoppingCart size={20} />
-              {dynamicCartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold animate-bounce group-hover:scale-110 transition-transform">
-                  {dynamicCartCount}
-                </span>
-              )}
-            </Link>
-            
-            <button 
-              onClick={handleUserIconClick}
-              className="hidden md:flex items-center gap-2 hover:bg-white/10 p-2 rounded-lg transition"
-              title={user ? 'Tài khoản của tôi' : 'Đăng nhập'}
-            >
-              <User size={20} />
-              <span className="text-sm">{user?.name || 'Đăng nhập'}</span>
-            </button>
-            
-            <button 
-              className="md:hidden hover:bg-white/10 p-2 rounded-lg transition"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-            >
-              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
-          </div>
+        {/* Search Bar (Hidden on mobile) */}
+        <div className="hidden md:flex flex-1 mx-8 lg:mx-12 max-w-lg relative group">
+           <input 
+              type="text" 
+              placeholder="Tìm kiếm: Jordan 1, 350 V2, Size 42..." 
+              className="w-full bg-gray-100 border-none rounded-full py-2.5 pl-12 pr-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all group-hover:bg-gray-50"
+           />
+           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-blue-500 transition" size={18}/>
         </div>
 
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <nav className="md:hidden py-4 border-t border-white/20">
-            {navigation.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsMenuOpen(false)}
-                className={`flex items-center space-x-3 w-full px-4 py-3 rounded-lg transition ${
-                  isActive(item.href)
-                    ? 'bg-white text-blue-600'
-                    : 'hover:bg-white/10'
-                }`}
-              >
-                <item.icon size={20} />
-                <span>{item.name}</span>
+        {/* Desktop Menu & Actions */}
+        <div className="flex items-center gap-6">
+           <nav className="hidden lg:flex gap-6 font-bold text-sm uppercase tracking-wide">
+              <Link href="/products?type=new" className="hover:text-blue-600 transition relative group">
+                Hàng Mới
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-600 transition-all group-hover:w-full"></span>
               </Link>
-            ))}
-            
-            <div className="mt-4 pt-4 border-t border-white/20">
-              <p className="px-4 py-2 text-sm font-semibold text-blue-100">Danh mục sản phẩm</p>
-              {categories.map((cat) => (
-                <Link
-                  key={cat.slug}
-                  href={`/categories/${cat.slug}`}
-                  onClick={() => setIsMenuOpen(false)}
-                  className="flex items-center space-x-3 w-full px-4 py-3 rounded-lg hover:bg-white/10 transition"
-                >
-                  <span className="text-xl">{cat.icon}</span>
-                  <span>{cat.name}</span>
-                </Link>
-              ))}
-            </div>
+              <Link href="/products?type=2hand" className="hover:text-red-600 transition text-red-600 relative group">
+                2Hand Deal
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-red-600 transition-all group-hover:w-full"></span>
+              </Link>
+              <Link href="/blog" className="hover:text-blue-600 transition">Blog</Link>
+           </nav>
 
-            {user ? (
-              <>
-                <button
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    router.push('/profile');
-                  }}
-                  className="flex items-center space-x-3 w-full px-4 py-3 rounded-lg hover:bg-white/10 transition mt-2"
-                >
-                  <User size={20} />
-                  <span>{user.name || 'Người dùng'}</span>
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center space-x-3 w-full px-4 py-3 rounded-lg hover:bg-red-500/20 transition text-red-200"
-                >
-                  <LogOut size={20} />
-                  <span>Đăng xuất</span>
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  router.push('/login');
-                }}
-                className="flex items-center space-x-3 w-full px-4 py-3 rounded-lg hover:bg-white/10 transition mt-2"
-              >
-                <LogIn size={20} />
-                <span>Đăng nhập</span>
+           <div className="flex items-center gap-2 md:gap-4 md:border-l md:pl-6">
+              <button className="relative group hidden md:block hover:bg-gray-100 p-2 rounded-full transition">
+                  <Heart size={24} className="group-hover:text-red-500 transition"/>
               </button>
-            )}
-          </nav>
-        )}
+              
+              <Link href="/cart" className="relative group hover:bg-gray-100 p-2 rounded-full transition">
+                 <ShoppingCart size={24} className="group-hover:text-blue-600 transition"/>
+                 {dynamicCartCount > 0 && (
+                   <span className="absolute top-0 right-0 bg-black text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold group-hover:bg-blue-600 transition">
+                     {dynamicCartCount}
+                   </span>
+                 )}
+              </Link>
+
+              {/* User Menu Desktop */}
+              <div className="hidden md:block relative">
+                 {user ? (
+                   <div className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1.5 pr-3 rounded-full transition" onClick={() => router.push('/profile')}>
+                      <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold">
+                        {user.name?.charAt(0).toUpperCase() || 'U'}
+                      </div>
+                      <span className="text-sm font-bold max-w-[100px] truncate">{user.name}</span>
+                   </div>
+                 ) : (
+                   <button onClick={() => router.push('/login')} className="flex items-center gap-2 text-sm font-bold hover:text-blue-600 transition">
+                      <User size={24}/>
+                   </button>
+                 )}
+              </div>
+
+              {/* Mobile Menu Button */}
+              <button 
+                className="lg:hidden hover:bg-gray-100 p-2 rounded-lg transition"
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+              >
+                {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
+           </div>
+        </div>
       </div>
+
+      {/* Mobile Menu Dropdown */}
+      {isMenuOpen && (
+        <div className="lg:hidden bg-white border-t border-gray-100 absolute w-full left-0 shadow-xl py-4 px-4 flex flex-col gap-4 animate-in slide-in-from-top-5 fade-in duration-200">
+           {/* Mobile Search */}
+           <div className="relative">
+              <input 
+                 type="text" 
+                 placeholder="Tìm kiếm..." 
+                 className="w-full bg-gray-100 border-none rounded-lg py-3 pl-10 pr-4 text-sm outline-none"
+              />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18}/>
+           </div>
+
+           <nav className="flex flex-col gap-4 font-bold text-sm uppercase">
+              <Link href="/products?type=new" onClick={() => setIsMenuOpen(false)} className="py-2 border-b border-gray-50 hover:text-blue-600">Hàng Mới</Link>
+              <Link href="/products?type=2hand" onClick={() => setIsMenuOpen(false)} className="py-2 border-b border-gray-50 text-red-600">2Hand Deal</Link>
+              <Link href="/blog" onClick={() => setIsMenuOpen(false)} className="py-2 border-b border-gray-50 hover:text-blue-600">Blog Kiến Thức</Link>
+              <Link href="/contact" onClick={() => setIsMenuOpen(false)} className="py-2 border-b border-gray-50 hover:text-blue-600">Liên Hệ</Link>
+           </nav>
+
+           <div className="pt-2">
+              {user ? (
+                <>
+                  <button onClick={() => {router.push('/profile'); setIsMenuOpen(false);}} className="flex items-center gap-3 w-full py-3 hover:bg-gray-50 rounded-lg">
+                    <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold">
+                        {user.name?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                    <span className="text-sm font-bold">{user.name}</span>
+                  </button>
+                  <button onClick={handleLogout} className="flex items-center gap-3 w-full py-3 text-red-500 hover:bg-red-50 rounded-lg mt-2">
+                    <LogOut size={20}/>
+                    <span>Đăng xuất</span>
+                  </button>
+                </>
+              ) : (
+                <button onClick={() => {router.push('/login'); setIsMenuOpen(false);}} className="flex items-center gap-3 w-full py-3 bg-black text-white justify-center rounded-lg font-bold uppercase text-sm">
+                  <LogIn size={18}/>
+                  <span>Đăng nhập / Đăng ký</span>
+                </button>
+              )}
+           </div>
+        </div>
+      )}
     </header>
   );
 };

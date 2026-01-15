@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { API_URL } from '../config/constants';
 import { Category } from '../types';
+import { FolderTree, Plus, Pencil, Trash2, X, Image as ImageIcon } from 'lucide-react';
 
 interface CategoriesTabProps {
   categories: Category[];
@@ -12,16 +13,15 @@ interface CategoriesTabProps {
 }
 
 export default function CategoriesTab({ categories, token, onRefresh, showMessage }: CategoriesTabProps) {
-  console.log('🎨 CategoriesTab rendered with', categories.length, 'categories');
-  
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [categoryForm, setCategoryForm] = useState({ name: '', description: '' });
+  const [categoryForm, setCategoryForm] = useState({ name: '', description: '', icon: '' });
   const [isLoading, setIsLoading] = useState(false);
+  const [uploadingIcon, setUploadingIcon] = useState(false);
 
   const handleAdd = () => {
     setEditingCategory(null);
-    setCategoryForm({ name: '', description: '' });
+    setCategoryForm({ name: '', description: '', icon: '' });
     setShowCategoryModal(true);
   };
 
@@ -29,22 +29,43 @@ export default function CategoriesTab({ categories, token, onRefresh, showMessag
     setEditingCategory(category);
     setCategoryForm({
       name: category.name || '',
-      description: category.description || ''
+      description: category.description || '',
+      icon: category.icon || ''
     });
     setShowCategoryModal(true);
   };
 
+  // ✅ XỬ LÝ UPLOAD ICON CHO DANH MỤC
+  const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingIcon(true);
+    try {
+      const uploadFormData = new FormData();
+      uploadFormData.append('image', file);
+      const BASE_URL = API_URL.replace('/api', ''); // Giả sử API_URL là .../api
+      const res = await fetch(`${BASE_URL}/upload/single`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: uploadFormData
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCategoryForm(prev => ({ ...prev, icon: `${BASE_URL}${data.data.url}` }));
+      }
+    } catch (error) {
+      console.error(error);
+      showMessage('Lỗi upload ảnh');
+    } finally {
+      setUploadingIcon(false);
+    }
+  };
+
   const handleSubmit = async () => {
-    // Validate form
     if (!categoryForm.name.trim()) {
       showMessage('Vui lòng nhập tên danh mục');
       return;
     }
-
-    console.log('=== CATEGORY SUBMIT ===');
-    console.log('Token available:', !!token);
-    console.log('Token length:', token?.length);
-    console.log('Is editing:', !!editingCategory);
 
     setIsLoading(true);
     try {
@@ -59,24 +80,18 @@ export default function CategoriesTab({ categories, token, onRefresh, showMessag
         .replace(/^-+|-+$/g, '')
         .trim();
 
-      // Đảm bảo description không undefined
       const categoryData = {
         name: categoryForm.name.trim(),
         description: categoryForm.description?.trim() || '',
+        icon: categoryForm.icon,
         slug
       };
-
-      console.log('Sending category data:', categoryData);
 
       const url = editingCategory
         ? `${API_URL}/admin/categories/${editingCategory.slug}`
         : `${API_URL}/admin/categories`;
       
       const method = editingCategory ? 'PUT' : 'POST';
-      
-      console.log('Request URL:', url);
-      console.log('Request method:', method);
-      console.log('Authorization header:', `Bearer ${token}`);
       
       const res = await fetch(url, {
         method,
@@ -87,128 +102,90 @@ export default function CategoriesTab({ categories, token, onRefresh, showMessag
         body: JSON.stringify(categoryData)
       });
       
-      // Đọc response text trước để debug
-      const responseText = await res.text();
-      console.log('Response status:', res.status);
-      console.log('Response body:', responseText);
+      const data = await res.json();
       
-      if (!res.ok) {
-        // Thử parse JSON để lấy error message
-        try {
-          const errorData = JSON.parse(responseText);
-          console.log('❌ Error from backend:', errorData);
-          
-          // Hiển thị error message chi tiết hơn
-          if (errorData.message === 'Danh mục này đã tồn tại') {
-            showMessage('⚠️ Danh mục này đã tồn tại! Vui lòng kiểm tra danh sách hoặc dùng tên khác.');
-          } else {
-            showMessage(errorData.message || `Lỗi ${res.status}: ${res.statusText}`);
-          }
-        } catch {
-          showMessage(`Lỗi ${res.status}: ${responseText || res.statusText}`);
-        }
-        return;
-      }
-      
-      const data = JSON.parse(responseText);
-      
-      if (data.success) {
-        showMessage(editingCategory ? 'Cập nhật danh mục thành công!' : 'Thêm danh mục thành công!');
+      if (res.ok) {
+        showMessage(editingCategory ? '✅ Đã cập nhật danh mục!' : '✅ Đã thêm danh mục mới!');
         setShowCategoryModal(false);
-        setEditingCategory(null);
-        setCategoryForm({ name: '', description: '' });
-        
-        console.log('✅ Category saved successfully, calling onRefresh...');
-        onRefresh(); // ⭐ Gọi refresh
-        
-        // Force re-render sau 100ms để đảm bảo
-        setTimeout(() => {
-          console.log('🔄 Delayed refresh...');
-          onRefresh();
-        }, 100);
+        onRefresh();
       } else {
-        showMessage(data.message || 'Có lỗi xảy ra');
+        showMessage(`❌ ${data.message || 'Có lỗi xảy ra'}`);
       }
     } catch (error) {
-      console.error('Error submitting category:', error);
-      showMessage('Lỗi kết nối server: ' + (error as Error).message);
+      showMessage('Lỗi kết nối server');
     } finally {
       setIsLoading(false);
     }
   };
 
   const deleteCategory = async (categorySlug: string) => {
-    if (!categorySlug) {
-      showMessage('Không tìm thấy slug của danh mục');
-      return;
-    }
-    
-    if (!window.confirm('Bạn có chắc muốn xóa danh mục này?')) return;
-    
+    if (!window.confirm('⚠️ Bạn có chắc muốn xóa danh mục này?')) return;
     try {
       const res = await fetch(`${API_URL}/admin/categories/${categorySlug}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-      
-      const data = await res.json();
-      if (data.success) {
-        showMessage('Xóa danh mục thành công!');
+      if (res.ok) {
+        showMessage('✅ Đã xóa danh mục');
         onRefresh();
-      } else {
-        showMessage(data.message || 'Không thể xóa danh mục');
       }
     } catch (error) {
-      console.error('Error deleting category:', error);
-      showMessage('Lỗi khi xóa danh mục');
+      showMessage('Lỗi khi xóa');
     }
   };
 
-  const handleCloseModal = () => {
-    setShowCategoryModal(false);
-    setEditingCategory(null);
-    setCategoryForm({ name: '', description: '' });
-  };
-
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">📁 Quản lý Categories</h2>
+    <div className="animate-fade-in">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h2 className="text-2xl font-black italic tracking-tighter text-black uppercase flex items-center gap-2">
+            <FolderTree /> Quản lý Danh mục
+          </h2>
+          <p className="text-gray-500 text-sm font-medium">Phân loại sản phẩm FootMark</p>
+        </div>
         <button
           onClick={handleAdd}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          className="bg-black text-white px-6 py-2.5 rounded-lg font-bold uppercase text-xs tracking-wider hover:bg-stone-800 transition flex items-center gap-2 shadow-lg"
         >
-          ➕ Thêm danh mục
+          <Plus size={18}/> Thêm danh mục
         </button>
       </div>
       
       {categories.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-500">Chưa có danh mục nào. Hãy thêm danh mục đầu tiên!</p>
+        <div className="text-center py-20 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+          <p className="text-gray-400 font-bold uppercase text-sm tracking-widest">Chưa có dữ liệu danh mục</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {categories.map((category) => (
-            <div key={category.id || category._id || category.slug} className="bg-white border rounded-lg p-6 hover:shadow-lg transition">
-              <h3 className="font-semibold text-xl mb-2">{category.name}</h3>
-              <p className="text-gray-600 mb-4 min-h-[3rem]">{category.description || 'Chưa có mô tả'}</p>
-              <div className="flex gap-2">
+            <div key={category.id || category._id} className="bg-white border border-gray-100 rounded-2xl p-6 hover:shadow-xl transition group relative overflow-hidden">
+              <div className="flex items-center gap-4 mb-4">
+                 <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-100 overflow-hidden">
+                    {category.icon ? (
+                       <img src={category.icon} alt="" className="w-full h-full object-cover"/>
+                    ) : (
+                       <FolderTree className="text-gray-300" size={20}/>
+                    )}
+                 </div>
+                 <div>
+                    <h3 className="font-bold text-gray-900 leading-tight">{category.name}</h3>
+                    <p className="text-[10px] text-gray-400 font-mono">/{category.slug}</p>
+                 </div>
+              </div>
+              <p className="text-gray-500 text-xs line-clamp-2 mb-6 h-8">{category.description || 'Không có mô tả'}</p>
+              
+              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                   onClick={() => handleEdit(category)}
-                  className="flex-1 px-3 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm transition"
+                  className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg hover:bg-black hover:text-white transition font-bold text-[10px] uppercase"
                 >
-                  ✏️ Sửa
+                  Sửa
                 </button>
                 <button
                   onClick={() => deleteCategory(category.slug)}
-                  className="flex-1 px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm transition"
-                  disabled={!category.slug}
+                  className="px-3 bg-red-50 text-red-500 py-2 rounded-lg hover:bg-red-500 hover:text-white transition font-bold"
                 >
-                  🗑️ Xóa
+                  <Trash2 size={14}/>
                 </button>
               </div>
             </div>
@@ -216,56 +193,73 @@ export default function CategoriesTab({ categories, token, onRefresh, showMessag
         </div>
       )}
 
+      {/* CATEGORY MODAL */}
       {showCategoryModal && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !isLoading) {
-              handleCloseModal();
-            }
-          }}
-        >
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-xl font-semibold mb-4">
-              {editingCategory ? '✏️ Sửa danh mục' : '➕ Thêm danh mục mới'}
-            </h3>
-            <div className="space-y-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-gray-50 flex justify-between items-center">
+               <h3 className="font-black italic text-xl uppercase tracking-tighter">
+                 {editingCategory ? 'Chỉnh sửa danh mục' : 'Thêm danh mục mới'}
+               </h3>
+               <button onClick={() => setShowCategoryModal(false)} className="text-gray-400 hover:text-black transition"><X size={20}/></button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Icon Upload */}
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  Tên danh mục <span className="text-red-500">*</span>
-                </label>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Ảnh đại diện / Logo</label>
+                <div className="flex items-center gap-4">
+                   <div className="w-16 h-16 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden relative group">
+                      {categoryForm.icon ? (
+                         <>
+                            <img src={categoryForm.icon} alt="" className="w-full h-full object-cover"/>
+                            <button onClick={() => setCategoryForm({...categoryForm, icon: ''})} className="absolute inset-0 bg-black/50 text-white opacity-0 group-hover:opacity-100 transition text-[8px] font-bold uppercase">Xóa</button>
+                         </>
+                      ) : (
+                         <ImageIcon className="text-gray-300" size={24}/>
+                      )}
+                   </div>
+                   <label className="cursor-pointer bg-gray-100 px-4 py-2 rounded-lg text-[10px] font-bold uppercase hover:bg-gray-200 transition">
+                      {uploadingIcon ? 'Đang tải...' : 'Chọn ảnh'}
+                      <input type="file" className="hidden" accept="image/*" onChange={handleIconUpload} disabled={uploadingIcon}/>
+                   </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Tên danh mục *</label>
                 <input
                   type="text"
                   value={categoryForm.name}
                   onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  placeholder="Smartphone, Laptop, ..."
+                  className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-black outline-none font-bold"
+                  placeholder="VD: Jordan, Lifestyle..."
                   disabled={isLoading}
                 />
               </div>
+
               <div>
-                <label className="block text-sm font-medium mb-2">Mô tả</label>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Mô tả</label>
                 <textarea
                   value={categoryForm.description}
                   onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
-                  rows={3}
-                  placeholder="Mô tả danh mục..."
+                  className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-black outline-none font-medium h-24 resize-none"
+                  placeholder="Mô tả ngắn gọn về danh mục này..."
                   disabled={isLoading}
                 />
               </div>
-              <div className="flex gap-3 pt-4">
+
+              <div className="flex gap-3 pt-2">
                 <button 
                   onClick={handleSubmit}
                   disabled={isLoading || !categoryForm.name.trim()}
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
+                  className="flex-1 bg-black text-white py-3 rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-stone-800 disabled:bg-gray-200 transition shadow-lg"
                 >
-                  {isLoading ? 'Đang xử lý...' : (editingCategory ? 'Cập nhật' : 'Thêm mới')}
+                  {isLoading ? 'Đang xử lý...' : (editingCategory ? 'Lưu thay đổi' : 'Tạo danh mục')}
                 </button>
                 <button 
-                  onClick={handleCloseModal}
-                  disabled={isLoading}
-                  className="flex-1 bg-gray-300 py-2 rounded-lg hover:bg-gray-400 disabled:bg-gray-200 disabled:cursor-not-allowed transition"
+                  onClick={() => setShowCategoryModal(false)}
+                  className="px-6 bg-gray-100 text-gray-500 py-3 rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-gray-200 transition"
                 >
                   Hủy
                 </button>

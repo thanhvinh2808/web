@@ -17,31 +17,33 @@ interface Variant {
 
 // --- TYPES ---
 interface Product {
-  _id: number;
-  id: number;
+  _id: string; // Đổi sang string cho chuẩn MongoDB
+  id?: string;
   name: string;
-  brand: string;
+  brand?: string;
   price: number;
-  originalPrice: number;
-  rating: number;
-  image: string;
-  description: string;
+  originalPrice?: number;
+  rating?: number;
+  image?: string;
+  images?: string[];
+  description?: string;
   category?: string;
   stock?: number;
   variants?: Variant[];
+  slug?: string;
 }
 
 interface CartItem {
   product: Product;
   quantity: number;
-  selectedVariant?: VariantOption; // ✅ Đã có
+  selectedVariant?: VariantOption;
 }
 
 interface CartContextType {
   cart: CartItem[];
-  addToCart: (product: Product, selectedVariant?: VariantOption, quantity?: number) => void; // ✅ Thêm selectedVariant
-  updateQuantity: (productId: number, variantSku: string | null, newQty: number) => void; // ✅ Thêm variantSku
-  removeItem: (productId: number, variantSku?: string | null) => void; // ✅ Thêm variantSku
+  addToCart: (product: Product, quantity?: number, selectedVariant?: VariantOption) => void;
+  updateQuantity: (productId: string, variantSku: string | null, newQty: number) => void;
+  removeItem: (productId: string, variantSku?: string | null) => void;
   totalItems: number;
   totalPrice: number;
   clearCart: () => void;
@@ -53,7 +55,7 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 // --- KEY PREFIX để lưu vào localStorage ---
-const CART_STORAGE_PREFIX = 'shopping_cart_user_';
+const CART_STORAGE_PREFIX = 'footmark_cart_user_'; // Đổi prefix
 
 // --- Provider ---
 export const CartProvider = ({ 
@@ -109,7 +111,7 @@ export const CartProvider = ({
     setCart([]);
   };
 
-  // ✅ Tính tổng tiền (dựa trên giá của variant hoặc product)
+  // ✅ Tính tổng tiền
   const getTotalPrice = () => {
     return cart.reduce((total, item) => {
       const price = item.selectedVariant?.price || item.product.price;
@@ -122,36 +124,34 @@ export const CartProvider = ({
     return cart.reduce((total, item) => total + item.quantity, 0);
   };
 
-  // ✅ Thêm sản phẩm vào giỏ (HỖ TRỢ VARIANT)
-  const addToCart = (product: Product, selectedVariant?: VariantOption, quantity: number = 1) => {
+  // ✅ Thêm sản phẩm vào giỏ
+  const addToCart = (product: Product, quantity: number = 1, selectedVariant?: VariantOption) => {
     setCart(prevCart => {
-      // Tìm item có cùng product ID VÀ cùng variant SKU
-      const existingItem = prevCart.find(item => 
-        item.product._id === product._id && 
-        item.selectedVariant?.sku === selectedVariant?.sku
-      );
+      // Tìm item trùng khớp (cùng ID và cùng Variant SKU)
+      const existingItemIndex = prevCart.findIndex(item => {
+        const sameProduct = item.product._id === product._id || item.product.id === product.id;
+        const sameVariant = (item.selectedVariant?.sku || null) === (selectedVariant?.sku || null);
+        return sameProduct && sameVariant;
+      });
 
-      if (existingItem) {
-        // Nếu đã tồn tại -> tăng số lượng
-        return prevCart.map(item =>
-          item.product._id === product._id && 
-          item.selectedVariant?.sku === selectedVariant?.sku
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
+      if (existingItemIndex > -1) {
+        // Tăng số lượng
+        const newCart = [...prevCart];
+        newCart[existingItemIndex].quantity += quantity;
+        return newCart;
       } else {
-        // Nếu chưa tồn tại -> thêm mới
+        // Thêm mới
         return [...prevCart, { 
           product, 
           quantity, 
-          selectedVariant: selectedVariant || undefined 
+          selectedVariant: selectedVariant 
         }];
       }
     });
   };
 
-  // ✅ Cập nhật số lượng (HỖ TRỢ VARIANT)
-  const updateQuantity = (productId: number, variantSku: string | null, newQty: number) => {
+  // ✅ Cập nhật số lượng
+  const updateQuantity = (productId: string, variantSku: string | null, newQty: number) => {
     if (newQty <= 0) {
       removeItem(productId, variantSku);
       return;
@@ -159,8 +159,10 @@ export const CartProvider = ({
     
     setCart(prevCart =>
       prevCart.map(item => {
+        const itemId = item.product._id || item.product.id;
         const itemSku = item.selectedVariant?.sku || null;
-        if (item.product._id === productId && itemSku === variantSku) {
+        
+        if (itemId === productId && itemSku === variantSku) {
           return { ...item, quantity: newQty };
         }
         return item;
@@ -168,20 +170,22 @@ export const CartProvider = ({
     );
   };
 
-  // ✅ Xóa sản phẩm khỏi giỏ (HỖ TRỢ VARIANT)
-  const removeItem = (productId: number, variantSku?: string | null) => {
+  // ✅ Xóa sản phẩm khỏi giỏ
+  const removeItem = (productId: string, variantSku?: string | null) => {
     setCart(prevCart => 
       prevCart.filter(item => {
+        const itemId = item.product._id || item.product.id;
         const itemSku = item.selectedVariant?.sku || null;
         const targetSku = variantSku || null;
         
-        // Nếu không có variantSku, chỉ so sánh productId
-        if (targetSku === null) {
-          return !(item.product._id === productId && itemSku === null);
-        }
+        // Nếu không trùng ID -> giữ lại
+        if (itemId !== productId) return true;
         
-        // Nếu có variantSku, so sánh cả productId và SKU
-        return !(item.product._id === productId && itemSku === targetSku);
+        // Nếu trùng ID -> kiểm tra SKU
+        if (itemSku !== targetSku) return true;
+        
+        // Trùng cả ID và SKU -> Xóa (return false)
+        return false;
       })
     );
   };

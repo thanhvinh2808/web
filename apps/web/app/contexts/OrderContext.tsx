@@ -12,6 +12,10 @@ export interface OrderItem {
   productBrand: string;
   price: number;
   quantity: number;
+  variant?: {
+    name: string;
+    sku: string;
+  };
 }
 
 export interface Order {
@@ -50,7 +54,7 @@ export interface Order {
 interface OrderContextType {
   orders: Order[];
   isLoading: boolean;
-  addOrder: (order: Omit<Order, 'id' | 'orderNumber' | 'createdAt'>) => Order;
+  addOrder: (order: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>) => Order;
   refreshOrders: () => Promise<void>;
   updateOrderStatus: (orderId: string, status: Order['status']) => void;
   updateOrderInContext: (orderId: string, updates: Partial<Order>) => void;
@@ -77,17 +81,14 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   // ✅ FETCH ORDERS TỪ BACKEND
   const fetchOrders = async () => {
   if (!user?.id) {
-    console.log('⚠️ No user ID, skipping order fetch');
-    setOrders([]); // ✅ CLEAR ORDERS KHI KHÔNG CÓ USER
+    setOrders([]); 
     return;
   }
 
   setIsLoading(true);
   try {
-    console.log(`📡 Fetching orders for user: ${user.id}`);
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     
-    // ✅ SỬA: Đổi từ /orders/user/${user.id} thành /user/orders
     const response = await fetch(`${API_URL}/api/user/orders`, {
       headers: token ? { 
         'Authorization': `Bearer ${token}`,
@@ -102,14 +103,9 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     }
     
     const data = await response.json();
-    console.log(`✅ Fetched orders from backend:`, data);
-    
-    // ✅ Backend trả về { success: true, data: [...], total: X }
     const ordersData = data.data || data || [];
-    console.log(`✅ Loaded ${ordersData.length} orders`);
     setOrders(ordersData);
     
-    // ✅ Sync với localStorage - CÓ KEY RIÊNG CHO USER
     if (typeof window !== 'undefined') {
       const ordersKey = `orders_${user.id}`;
       localStorage.setItem(ordersKey, JSON.stringify(ordersData));
@@ -117,16 +113,13 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   } catch (error) {
     console.error('❌ Error fetching orders:', error);
     
-    // ✅ Fallback: Load từ localStorage nếu fetch thất bại
     if (typeof window !== 'undefined') {
       const ordersKey = `orders_${user.id}`;
       const savedOrders = localStorage.getItem(ordersKey);
       if (savedOrders) {
         try {
           setOrders(JSON.parse(savedOrders));
-          console.log('📦 Loaded orders from localStorage (fallback)');
         } catch (e) {
-          console.error('Error parsing localStorage orders:', e);
           setOrders([]);
         }
       }
@@ -136,21 +129,18 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   }
 };
 
-  // ✅ FETCH ORDERS KHI USER THAY ĐỔI
   useEffect(() => {
     if (user?.id) {
       fetchOrders();
     } else {
-      setOrders([]); // ✅ CLEAR ORDERS KHI LOGOUT
+      setOrders([]); 
     }
   }, [user?.id]);
 
-  // ✅ REFRESH ORDERS (PUBLIC METHOD)
   const refreshOrders = async () => {
     await fetchOrders();
   };
 
-  // Generate order number
   const generateOrderNumber = () => {
     const date = new Date();
     const year = date.getFullYear().toString().slice(-2);
@@ -160,16 +150,17 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     return `ORD${year}${month}${day}${random}`;
   };
 
-  // ✅ Add new order
-  const addOrder = (orderData: Omit<Order, 'id' | 'orderNumber' | 'createdAt'>): Order => {
+  // ✅ Fix type error by casting prev to any
+  const addOrder = (orderData: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>): Order => {
     const newOrder: Order = {
       ...orderData,
       id: Date.now().toString(),
       orderNumber: generateOrderNumber(),
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
     
-    setOrders(prev => {
+    setOrders((prev: any) => {
       const updated = [newOrder, ...prev];
       if (typeof window !== 'undefined' && user?.id) {
         const ordersKey = `orders_${user.id}`;
@@ -181,10 +172,9 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     return newOrder;
   };
 
-  // Update order status
   const updateOrderStatus = (orderId: string, status: Order['status']) => {
-    setOrders(prev => {
-      const updated = prev.map(order => {
+    setOrders((prev: any) => {
+      const updated = prev.map((order: Order) => {
         const isMatch = order.id === orderId || order._id === orderId || order.orderNumber === orderId;
         if (isMatch) {
           return { ...order, status };
@@ -199,13 +189,11 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  // ✅ CẬP NHẬT ORDER TRONG CONTEXT (CHO REAL-TIME)
   const updateOrderInContext = (orderId: string, updates: Partial<Order>) => {
-    setOrders(prevOrders => {
-      const updated = prevOrders.map(order => {
+    setOrders((prevOrders: any) => {
+      const updated = prevOrders.map((order: Order) => {
         const isMatch = order.id === orderId || order._id === orderId || order.orderNumber === orderId;
         if (isMatch) {
-          console.log('📝 Updating order in context:', orderId, updates);
           return { ...order, ...updates };
         }
         return order;
@@ -218,10 +206,9 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  // Mark order as paid
   const markAsPaid = (orderId: string) => {
-    setOrders(prev => {
-      const updated = prev.map(order => {
+    setOrders((prev: any) => {
+      const updated = prev.map((order: Order) => {
         const isMatch = order.id === orderId || order._id === orderId || order.orderNumber === orderId;
         if (isMatch) {
           return {
@@ -242,10 +229,9 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  // Cancel order
   const cancelOrder = (orderId: string) => {
-    setOrders(prev => {
-      const updated = prev.map(order => {
+    setOrders((prev: any) => {
+      const updated = prev.map((order: Order) => {
         const isMatch = order.id === orderId || order._id === orderId || order.orderNumber === orderId;
         if (isMatch) {
           return { ...order, status: 'cancelled' };
@@ -260,7 +246,6 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  // Get order by ID
   const getOrderById = (orderId: string) => {
     return orders.find(order => 
       order.id === orderId || 
@@ -269,12 +254,10 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  // Get pending orders
   const getPendingOrders = () => {
     return orders.filter(order => order.status === 'pending');
   };
 
-  // Get paid orders
   const getPaidOrders = () => {
     return orders.filter(order => 
       order.isPaid === true || 
@@ -282,7 +265,6 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  // Get unpaid orders
   const getUnpaidOrders = () => {
     return orders.filter(order => 
       (order.isPaid !== true && order.paymentStatus !== 'paid') && 
@@ -312,7 +294,6 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// --- HOOK ---
 export function useOrders() {
   const context = useContext(OrderContext);
   if (!context) {

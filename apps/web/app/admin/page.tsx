@@ -116,7 +116,7 @@ export default function AdminDashboard() {
   const fetchCategories = async () => { 
       const res = await fetch(`${API_URL}/api/categories`);
       const data = await res.json();
-      if (Array.isArray(data)) setCategories(data);
+      if (Array.isArray(data)) setCategories(data as any);
   };
   const fetchContacts = async () => {
       const res = await fetch(`${API_URL}/api/admin/contacts`, { headers: { 'Authorization': `Bearer ${token}` } });
