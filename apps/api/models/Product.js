@@ -92,14 +92,14 @@ const productSchema = new mongoose.Schema({
     trim: true
   },
   
-  // Thông số kỹ thuật
+  // Thông số kỹ thuật (Cập nhật cho FootMark Sneaker)
   specs: {
-    screen: String,
-    chip: String,
-    ram: String,
-    storage: String,
-    camera: String,
-    battery: String
+    condition: { type: String, default: 'New' }, // New, 95%, 99%, Like New
+    accessories: { type: String, default: 'Fullbox' }, // Fullbox, No Box, Replacement Box
+    material: String, // Leather, Mesh, Suede...
+    styleCode: String, // SKU hãng (VD: DH0690-200)
+    colorway: String,
+    releaseDate: Date
   },
   
   // Đánh giá

@@ -2397,6 +2397,7 @@ app.get('/api/admin/faqs', authenticateToken, requireAdmin, async (req, res) => 
 // ============================================
 
 // Get user cart
+// giỏ hàng lưu ở local
 app.get('/api/cart', authenticateToken, async (req, res) => {
   try {
     const cart = await mongoose.connection.db.collection('carts').findOne({ userId: req.user.id });
@@ -2410,7 +2411,6 @@ app.get('/api/cart', authenticateToken, async (req, res) => {
         }
       });
     }
-    
     res.json({
       success: true,
       data: cart
