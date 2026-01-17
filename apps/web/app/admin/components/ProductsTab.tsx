@@ -1,6 +1,7 @@
 // app/admin/components/ProductsTab.tsx
 'use client';
 import React, { useState, useMemo, useEffect } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { API_URL } from '../config/constants';
 import ProductModal from './ProductModal';
 
@@ -499,11 +500,64 @@ export default function ProductsTab({
         </div>
       )}
 
-      {/* Phân trang - Giữ nguyên logic */}
-      {filteredProducts.length > itemsPerPage && (
-        <div className="mt-6 flex justify-center items-center gap-2">
-           {/* ... (Logic phân trang giữ nguyên) ... */}
-           <div className="text-sm text-gray-500">Phân trang...</div>
+      {/* Phân trang */}
+      {totalPages > 1 && (
+        <div className="mt-8 flex justify-center items-center gap-2">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className={`w-10 h-10 flex items-center justify-center rounded-lg font-bold transition ${
+              currentPage === 1 
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                : 'bg-white border border-gray-200 text-black hover:bg-black hover:text-white'
+            }`}
+          >
+            <ChevronLeft size={20} />
+          </button>
+          
+          <div className="flex gap-2">
+            {[...Array(totalPages)].map((_, i) => {
+              const pageNum = i + 1;
+              // Hiển thị tối đa 5 trang xung quanh trang hiện tại
+              if (
+                pageNum === 1 || 
+                pageNum === totalPages || 
+                (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+              ) {
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`w-10 h-10 rounded-lg font-bold text-xs transition ${
+                      currentPage === pageNum
+                        ? 'bg-black text-white shadow-lg scale-110'
+                        : 'bg-white border border-gray-200 text-black hover:bg-gray-100'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              } else if (
+                pageNum === currentPage - 2 || 
+                pageNum === currentPage + 2
+              ) {
+                return <span key={pageNum} className="flex items-end pb-2">...</span>;
+              }
+              return null;
+            })}
+          </div>
+
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className={`w-10 h-10 flex items-center justify-center rounded-lg font-bold transition ${
+              currentPage === totalPages 
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                : 'bg-white border border-gray-200 text-black hover:bg-black hover:text-white'
+            }`}
+          >
+            <ChevronRight size={20} />
+          </button>
         </div>
       )}
 

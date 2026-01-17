@@ -8,7 +8,8 @@ import {
   deleteUser,
   getAllOrders,
   updateOrderStatus,
-  resetUserPassword
+  resetUserPassword,
+  globalSearch
 } from '../controller/adminController.js';
 import {
   getAllVouchers,
@@ -27,6 +28,7 @@ router.use(isAdmin);
 
 // Dashboard
 router.get('/stats', getDashboardStats);
+router.get('/search', globalSearch);
 
 // Users Management
 router.get('/users', getAllUsers);

@@ -1,6 +1,8 @@
 import User from '../models/User.js';
 import Order from '../models/Order.js';
+import Product from '../models/Product.js';
 import bcrypt from 'bcrypt';
+import mongoose from 'mongoose';
 
 // 📊 Dashboard Statistics
 export const getDashboardStats = async (req, res) => {
@@ -243,6 +245,63 @@ export const resetUserPassword = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi reset password: ' + error.message
+    });
+  }
+};
+
+// 🔍 Global Search
+export const globalSearch = async (req, res) => {
+  try {
+    const { q } = req.query;
+
+    if (!q || q.trim().length === 0) {
+      return res.json({
+        success: true,
+        data: { products: [], users: [], orders: [] }
+      });
+    }
+
+    const searchRegex = new RegExp(q, 'i');
+    
+    // Xây dựng query cho Order
+    const orderQuery = {
+      $or: [
+        { 'customerInfo.fullName': { $regex: searchRegex } }
+      ]
+    };
+
+    // Chỉ tìm theo ID nếu q là ObjectId hợp lệ
+    if (mongoose.Types.ObjectId.isValid(q)) {
+       orderQuery.$or.push({ _id: q });
+    }
+
+    const [products, users, orders] = await Promise.all([
+      // Tìm sản phẩm
+      Product.find({ 
+        name: { $regex: searchRegex } 
+      }).select('name image price slug categorySlug').limit(5),
+
+      // Tìm user
+      User.find({
+        $or: [
+          { name: { $regex: searchRegex } },
+          { email: { $regex: searchRegex } }
+        ]
+      }).select('name email role').limit(5),
+
+      // Tìm đơn hàng
+      Order.find(orderQuery).select('_id totalAmount status userId createdAt customerInfo').limit(5)
+    ]);
+
+    res.json({
+      success: true,
+      data: { products, users, orders }
+    });
+  } catch (error) {
+    console.error('Global search error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi tìm kiếm: ' + error.message
     });
   }
 };

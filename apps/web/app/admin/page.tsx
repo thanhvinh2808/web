@@ -1,7 +1,7 @@
 // app/admin/page.tsx
 'use client';
-import React, { useState, useEffect } from 'react';
-import { Bell, Search, User, Menu } from 'lucide-react'; // Import Menu icon
+import React, { useState, useEffect, useRef } from 'react';
+import { Bell, Search, User, Menu, Package, ShoppingCart, Users } from 'lucide-react'; // Import icons
 import { API_URL } from './config/constants';
 import LoginForm from './components/LoginForm';
 import Sidebar from './components/Sidebar';
@@ -33,6 +33,13 @@ export default function AdminDashboard() {
   // ✅ STATE CHO MOBILE MENU
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // 🔍 GLOBAL SEARCH STATE
+  const [globalSearch, setGlobalSearch] = useState('');
+  const [searchResults, setSearchResults] = useState<{ products: any[], users: any[], orders: any[] } | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
   const showMessage = (msg: string) => {
     setMessage(msg);
     setTimeout(() => setMessage(''), 3000);
@@ -43,6 +50,45 @@ export default function AdminDashboard() {
     return () => {
       document.body.classList.remove('admin-mode');
     };
+  }, []);
+
+  // 🔍 DEBOUNCE GLOBAL SEARCH
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (!globalSearch.trim()) {
+        setSearchResults(null);
+        return;
+      }
+
+      setIsSearching(true);
+      try {
+        const res = await fetch(`${API_URL}/api/admin/search?q=${globalSearch}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+          setSearchResults(data.data);
+          setShowResults(true);
+        }
+      } catch (error) {
+        console.error('Search error:', error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [globalSearch, token]);
+
+  // Click outside to close search
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowResults(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // Check Auth Logic (Giữ nguyên)
@@ -207,13 +253,102 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex items-center gap-3 md:gap-6">
-            <div className="relative hidden md:block">
+            <div className="relative hidden md:block z-50" ref={searchRef}>
               <input 
                 type="text" 
-                placeholder="Tìm kiếm..." 
-                className="pl-10 pr-4 py-2 bg-gray-50 border-none rounded-full text-sm focus:ring-2 focus:ring-blue-100 w-64 transition-all"
+                placeholder="Tìm mọi thứ (SP, Đơn, User)..." 
+                value={globalSearch}
+                onChange={(e) => setGlobalSearch(e.target.value)}
+                onFocus={() => setShowResults(true)}
+                className="pl-10 pr-4 py-2 bg-gray-50 border-none rounded-full text-sm focus:ring-2 focus:ring-black w-72 transition-all font-medium"
               />
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              
+              {/* 🔍 SEARCH RESULTS DROPDOWN */}
+              {showResults && searchResults && (globalSearch.trim().length > 0) && (
+                <div className="absolute top-full mt-2 left-0 w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                  {isSearching ? (
+                    <div className="p-4 text-center text-gray-400 text-xs font-bold uppercase tracking-widest">Đang tìm kiếm...</div>
+                  ) : (
+                    <>
+                      {/* Products */}
+                      {searchResults.products.length > 0 && (
+                        <div className="p-2">
+                           <div className="px-2 py-1 text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1 flex items-center gap-2">
+                              <Package size={12}/> Sản Phẩm
+                           </div>
+                           {searchResults.products.map(p => (
+                             <div 
+                                key={p._id} 
+                                onClick={() => { setActiveTab('products'); setShowResults(false); }}
+                                className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition"
+                             >
+                               <img src={p.image || '/placeholder.png'} className="w-8 h-8 rounded border object-cover" />
+                               <div>
+                                 <div className="text-sm font-bold text-gray-800 line-clamp-1">{p.name}</div>
+                                 <div className="text-xs text-gray-500">{parseInt(p.price).toLocaleString()}₫</div>
+                               </div>
+                             </div>
+                           ))}
+                        </div>
+                      )}
+
+                      {/* Orders */}
+                      {searchResults.orders.length > 0 && (
+                        <div className="p-2 border-t border-gray-50">
+                           <div className="px-2 py-1 text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1 flex items-center gap-2">
+                              <ShoppingCart size={12}/> Đơn Hàng
+                           </div>
+                           {searchResults.orders.map(o => (
+                             <div 
+                                key={o._id} 
+                                onClick={() => { setActiveTab('orders'); setShowResults(false); }}
+                                className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition"
+                             >
+                               <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded flex items-center justify-center font-bold text-[10px]">#{o._id.slice(-4).toUpperCase()}</div>
+                               <div>
+                                 <div className="text-sm font-bold text-gray-800">{o.customerInfo?.fullName || 'Khách vãng lai'}</div>
+                                 <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                                    {parseInt(o.totalAmount).toLocaleString()}₫ • {o.status}
+                                 </div>
+                               </div>
+                             </div>
+                           ))}
+                        </div>
+                      )}
+
+                      {/* Users */}
+                      {searchResults.users.length > 0 && (
+                        <div className="p-2 border-t border-gray-50">
+                           <div className="px-2 py-1 text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1 flex items-center gap-2">
+                              <Users size={12}/> Người Dùng
+                           </div>
+                           {searchResults.users.map(u => (
+                             <div 
+                                key={u._id} 
+                                onClick={() => { setActiveTab('users'); setShowResults(false); }}
+                                className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition"
+                             >
+                               <div className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center font-bold text-xs">{u.name.charAt(0)}</div>
+                               <div>
+                                 <div className="text-sm font-bold text-gray-800">{u.name}</div>
+                                 <div className="text-xs text-gray-500">{u.email}</div>
+                               </div>
+                             </div>
+                           ))}
+                        </div>
+                      )}
+
+                      {/* No Results */}
+                      {searchResults.products.length === 0 && searchResults.orders.length === 0 && searchResults.users.length === 0 && (
+                        <div className="p-6 text-center text-gray-400 text-xs font-bold uppercase tracking-widest">
+                           Không tìm thấy kết quả nào
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
             
             <button className="relative p-2 text-gray-400 hover:text-blue-600 transition-colors">
