@@ -7,6 +7,7 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 
 // Models
 import User from './models/User.js';
@@ -366,6 +367,66 @@ app.post('/api/login', async (req, res) => {
       success: false,
       message: 'Server error: ' + error.message
     });
+  }
+});
+
+// ✅ FORGOT PASSWORD
+app.post('/api/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ success: false, message: 'Email required' });
+
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    // Generate random 6-digit OTP
+    const token = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Save to DB
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+    await user.save();
+
+    // In thực tế sẽ dùng nodemailer gửi email
+    // Ở đây chúng ta log ra console để test
+    console.log(`\n📧 [EMAIL SERVICE] Reset Password OTP for ${email}: ${token}\n`);
+
+    res.json({ success: true, message: 'OTP sent to your email' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ✅ RESET PASSWORD
+app.post('/api/reset-password', async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ success: false, message: 'All fields required' });
+    }
+
+    const user = await User.findOne({ 
+      email: email.trim().toLowerCase(),
+      resetPasswordToken: otp,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword.trim(), 10);
+    
+    user.password = hashedPassword;
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+    await user.save();
+
+    res.json({ success: true, message: 'Password reset successful' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

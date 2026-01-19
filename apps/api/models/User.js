@@ -83,6 +83,15 @@ const userSchema = new mongoose.Schema({
   avatar: {
     type: String,
     default: ''
+  },
+  // ✅ FORGOT PASSWORD FIELDS
+  resetPasswordToken: {
+    type: String,
+    default: null
+  },
+  resetPasswordExpires: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true
