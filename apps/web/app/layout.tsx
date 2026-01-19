@@ -1,12 +1,19 @@
 // app/layout.tsx
+import { Inter } from "next/font/google";
 import { AuthProvider } from "./contexts/AuthContext";
 import { SocketProvider } from "../app/contexts/SocketContext";
 import { OrderProvider } from '../app/contexts/OrderContext';
 import ConditionalLayout from "./admin/components/ConditionalLayout";
-import ClientProviders from "../components/ClientProviders"; // ✅ Import từ components/ (ngoài app)
+import ClientProviders from "../components/ClientProviders";
 import { Toaster } from 'react-hot-toast';
 
 import "./globals.css";
+
+const inter = Inter({ 
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 export const metadata = {
   title: "FootMark - Authentic Sneakers & Streetwear",
@@ -19,11 +26,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="vi">
-      <body className="min-h-screen bg-gray-50">
+    <html lang="vi" className={inter.variable}>
+      <body className="min-h-screen bg-gray-50 font-sans">
         <SocketProvider>
           <AuthProvider>
-            {/* ✅ ClientProviders nằm BÊN TRONG AuthProvider → có thể dùng useAuth() */}
             <ClientProviders>
               <OrderProvider>
                 <ConditionalLayout>

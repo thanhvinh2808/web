@@ -20,9 +20,7 @@ export default function ProfilePage() {
     avatar: ''
   });
 
-  // 1. Load User Data
   useEffect(() => {
-    // Ưu tiên lấy từ API hoặc localStorage mới nhất
     const fetchProfile = async () => {
       const token = localStorage.getItem('token');
       if (!token) return;
@@ -41,7 +39,6 @@ export default function ProfilePage() {
             dateOfBirth: userData.dateOfBirth || '',
             avatar: userData.avatar || ''
           });
-          // Đồng bộ lại localStorage
           localStorage.setItem('user', JSON.stringify(userData));
         }
       } catch (error) {
@@ -95,20 +92,15 @@ export default function ProfilePage() {
           gender: formData.gender,
           dateOfBirth: formData.dateOfBirth,
           avatar: formData.avatar
-          // Không gửi địa chỉ ở đây nữa
         })
       });
 
       const data = await res.json();
       if (res.ok) {
         setSuccessMessage('Lưu thông tin thành công!');
-        
-        // Cập nhật localStorage để các component khác (Header) hiển thị đúng ngay lập tức
         const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
         const updatedUser = { ...currentUser, ...formData };
         localStorage.setItem('user', JSON.stringify(updatedUser));
-        
-        // Tắt thông báo sau 3s
         setTimeout(() => setSuccessMessage(''), 3000);
       } else {
         alert(data.message || 'Lỗi cập nhật');
@@ -121,7 +113,6 @@ export default function ProfilePage() {
     }
   };
 
-  // Ẩn email để bảo mật (giống Shopee)
   const maskEmail = (email: string) => {
     if (!email) return '';
     const [name, domain] = email.split('@');
@@ -131,54 +122,48 @@ export default function ProfilePage() {
 
   return (
     <div>
-      {/* Header Section */}
       <div className="border-b border-gray-100 pb-4 mb-8">
-        <h1 className="text-xl font-medium text-gray-800">Hồ Sơ Của Tôi</h1>
+        <h1 className="text-xl font-medium text-gray-800 uppercase tracking-wide">Hồ Sơ Của Tôi</h1>
         <p className="text-sm text-gray-500 mt-1">Quản lý thông tin hồ sơ để bảo mật tài khoản</p>
       </div>
 
       {successMessage && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-6 flex items-center gap-2 text-sm shadow-sm">
-           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-none mb-6 flex items-center gap-2 text-sm shadow-sm">
+           <div className="w-2 h-2 bg-green-500 rounded-none"></div>
            {successMessage}
         </div>
       )}
 
       <div className="flex flex-col-reverse md:flex-row gap-12">
-        {/* LEFT: FORM */}
         <div className="flex-1 pr-0 md:pr-12 border-r-0 md:border-r border-gray-100">
           <form onSubmit={handleSubmit} className="space-y-6">
             
-            {/* Username (Read-only) */}
             <div className="flex items-center">
-              <label className="w-32 text-right text-sm text-gray-500 mr-6">Tên đăng nhập</label>
-              <div className="text-gray-800 font-medium">{user?.name}</div>
+              <label className="w-32 text-right text-sm text-gray-500 mr-6 font-bold uppercase tracking-wider text-[10px]">Tên đăng nhập</label>
+              <div className="text-gray-800 font-bold">{user?.name}</div>
             </div>
 
-            {/* Name */}
             <div className="flex items-center">
-              <label className="w-32 text-right text-sm text-gray-500 mr-6">Tên</label>
+              <label className="w-32 text-right text-sm text-gray-500 mr-6 font-bold uppercase tracking-wider text-[10px]">Tên</label>
               <input 
                 type="text" 
                 name="name" 
                 value={formData.name} 
                 onChange={handleChange}
-                className="flex-1 border border-gray-300 rounded-sm px-3 py-2 focus:outline-none focus:border-gray-500 shadow-sm transition text-sm"
+                className="flex-1 border border-gray-300 rounded-none px-3 py-2 focus:outline-none focus:border-primary shadow-sm transition text-sm font-medium"
               />
             </div>
 
-            {/* Email (Read-only view) */}
             <div className="flex items-center">
-              <label className="w-32 text-right text-sm text-gray-500 mr-6">Email</label>
+              <label className="w-32 text-right text-sm text-gray-500 mr-6 font-bold uppercase tracking-wider text-[10px]">Email</label>
               <div className="flex items-center gap-2">
-                <span className="text-gray-800 text-sm">{maskEmail(formData.email)}</span>
-                <span className="text-blue-600 text-xs underline cursor-pointer hover:text-blue-700">Thay đổi</span>
+                <span className="text-gray-800 text-sm font-medium">{maskEmail(formData.email)}</span>
+                <span className="text-primary text-xs underline cursor-pointer hover:text-primary-dark font-bold uppercase">Thay đổi</span>
               </div>
             </div>
 
-            {/* Phone */}
             <div className="flex items-center">
-              <label className="w-32 text-right text-sm text-gray-500 mr-6">Số điện thoại</label>
+              <label className="w-32 text-right text-sm text-gray-500 mr-6 font-bold uppercase tracking-wider text-[10px]">Số điện thoại</label>
               <div className="flex-1 flex items-center gap-2">
                  <input 
                   type="text" 
@@ -186,14 +171,13 @@ export default function ProfilePage() {
                   value={formData.phone}
                   onChange={handleChange}
                   placeholder="Thêm số điện thoại"
-                  className="flex-1 border border-gray-300 rounded-sm px-3 py-2 focus:outline-none focus:border-gray-500 shadow-sm transition text-sm"
+                  className="flex-1 border border-gray-300 rounded-none px-3 py-2 focus:outline-none focus:border-primary shadow-sm transition text-sm font-medium"
                 />
               </div>
             </div>
 
-            {/* Gender */}
             <div className="flex items-center">
-              <label className="w-32 text-right text-sm text-gray-500 mr-6">Giới tính</label>
+              <label className="w-32 text-right text-sm text-gray-500 mr-6 font-bold uppercase tracking-wider text-[10px]">Giới tính</label>
               <div className="flex gap-4">
                 {['male', 'female', 'other'].map((g) => (
                   <label key={g} className="flex items-center gap-2 cursor-pointer group">
@@ -203,11 +187,10 @@ export default function ProfilePage() {
                         name="gender" 
                         checked={formData.gender === g}
                         onChange={() => handleGenderChange(g)}
-                        className="peer h-4 w-4 cursor-pointer appearance-none rounded-full border border-gray-300 checked:border-blue-600 transition-all"
+                        className="peer h-4 w-4 cursor-pointer appearance-none rounded-none border border-gray-300 checked:border-primary transition-all checked:bg-primary"
                       />
-                      <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-blue-600 opacity-0 peer-checked:opacity-100 transition-opacity"></span>
                     </div>
-                    <span className="text-sm text-gray-700 capitalize group-hover:text-blue-600">
+                    <span className="text-sm text-gray-700 capitalize group-hover:text-primary font-medium">
                       {g === 'male' ? 'Nam' : g === 'female' ? 'Nữ' : 'Khác'}
                     </span>
                   </label>
@@ -215,37 +198,34 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Date of Birth */}
             <div className="flex items-center">
-              <label className="w-32 text-right text-sm text-gray-500 mr-6">Ngày sinh</label>
+              <label className="w-32 text-right text-sm text-gray-500 mr-6 font-bold uppercase tracking-wider text-[10px]">Ngày sinh</label>
               <input 
                 type="date"
                 name="dateOfBirth"
                 value={formData.dateOfBirth}
                 onChange={handleChange}
-                className="border border-gray-300 rounded-sm px-3 py-2 focus:outline-none focus:border-gray-500 shadow-sm transition text-sm"
+                className="border border-gray-300 rounded-none px-3 py-2 focus:outline-none focus:border-primary shadow-sm transition text-sm font-medium"
               />
             </div>
 
-            {/* Submit Button */}
             <div className="flex items-center pt-4">
               <div className="w-32 mr-6"></div>
               <button 
                 type="submit" 
                 disabled={isLoading}
-                className="px-8 py-2.5 bg-blue-600 text-white rounded-sm hover:bg-blue-700 transition shadow-sm disabled:opacity-70 flex items-center gap-2"
+                className="px-8 py-3 bg-primary text-white rounded-none hover:bg-primary-dark transition shadow-sm disabled:opacity-70 flex items-center gap-2 font-bold uppercase tracking-wider text-xs"
               >
                 {isLoading && <Loader2 size={16} className="animate-spin" />}
-                Lưu
+                Lưu Thay Đổi
               </button>
             </div>
           </form>
         </div>
 
-        {/* RIGHT: AVATAR */}
         <div className="w-full md:w-64 flex flex-col items-center pt-4">
           <div className="relative group">
-            <div className="w-28 h-28 rounded-full border border-gray-200 overflow-hidden mb-5 shadow-sm">
+            <div className="w-32 h-32 rounded-none border-2 border-gray-200 overflow-hidden mb-5 shadow-sm">
               {formData.avatar ? (
                   <img src={formData.avatar} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
@@ -257,7 +237,7 @@ export default function ProfilePage() {
           </div>
           
           <label className="cursor-pointer">
-            <span className="px-5 py-2 border border-gray-300 text-gray-600 text-sm rounded-sm hover:bg-gray-50 transition shadow-sm inline-block">
+            <span className="px-6 py-2 border border-gray-300 text-gray-600 text-xs font-bold uppercase tracking-wider rounded-none hover:bg-black hover:text-white hover:border-black transition shadow-sm inline-block">
               Chọn Ảnh
             </span>
             <input 
@@ -268,7 +248,7 @@ export default function ProfilePage() {
             />
           </label>
 
-          <div className="mt-4 text-xs text-gray-400 text-center space-y-1">
+          <div className="mt-4 text-[10px] text-gray-400 text-center space-y-1 font-medium uppercase tracking-wide">
             <p>Dụng lượng file tối đa 1 MB</p>
             <p>Định dạng: .JPEG, .PNG</p>
           </div>

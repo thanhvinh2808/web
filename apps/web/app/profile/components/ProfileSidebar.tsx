@@ -11,7 +11,9 @@ import {
   Edit,
   MapPin,
   Lock,
-  CreditCard
+  CreditCard,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -57,21 +59,21 @@ export default function ProfileSidebar() {
   return (
     <div className="w-full">
       {/* User Info Header */}
-      <div className="flex items-center gap-3 py-4 border-b border-gray-200 mb-4">
-        <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden border border-gray-300">
+      <div className="flex items-center gap-4 py-6 border-b border-gray-200 mb-6">
+        <div className="w-14 h-14 bg-gray-200 rounded-none overflow-hidden border border-gray-300">
           {user?.avatar ? (
             <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
-              <User size={24} />
+              <User size={28} />
             </div>
           )}
         </div>
         <div>
-          <h3 className="font-bold text-gray-800 truncate max-w-[150px]">
+          <h3 className="font-black text-gray-900 truncate max-w-[150px] uppercase tracking-tighter">
             {user?.name || 'Người dùng'}
           </h3>
-          <Link href="/profile" className="flex items-center gap-1 text-gray-500 text-sm hover:text-blue-600">
+          <Link href="/profile" className="flex items-center gap-1 text-gray-500 text-xs font-bold hover:text-primary uppercase tracking-wider mt-1">
             <Edit size={12} /> Sửa hồ sơ
           </Link>
         </div>
@@ -79,27 +81,31 @@ export default function ProfileSidebar() {
 
       {/* Menu */}
       <nav>
-        <ul className="space-y-4">
+        <ul className="space-y-1">
           {menuItems.map((item) => (
             <li key={item.id}>
               {item.hasSubmenu ? (
                 <div>
                   <button 
                     onClick={() => setIsAccountOpen(!isAccountOpen)}
-                    className="flex items-center gap-3 text-gray-800 font-medium hover:text-blue-600 transition w-full text-left"
+                    className="flex items-center justify-between w-full py-3 px-2 text-gray-800 font-bold hover:text-primary transition group"
                   >
-                    <span className="text-blue-600">{item.icon}</span>
-                    {item.label}
+                    <div className="flex items-center gap-3">
+                       <span className="text-gray-400 group-hover:text-primary transition">{item.icon}</span>
+                       <span className="uppercase text-sm tracking-wide">{item.label}</span>
+                    </div>
+                    {isAccountOpen ? <ChevronDown size={16}/> : <ChevronRight size={16}/>}
                   </button>
+                  
                   {isAccountOpen && (
-                    <ul className="mt-2 ml-8 space-y-2">
+                    <ul className="mt-1 ml-10 space-y-1 border-l-2 border-gray-100 pl-4">
                       {item.subItems?.map((sub) => {
                         const isActive = pathname === sub.href;
                         return (
                           <li key={sub.href}>
                             <Link 
                               href={sub.href}
-                              className={`block text-sm ${isActive ? 'text-blue-600 font-medium' : 'text-gray-500 hover:text-blue-600'}`}
+                              className={`block py-2 text-xs font-bold transition ${isActive ? 'text-primary uppercase tracking-wider' : 'text-gray-500 hover:text-black'}`}
                             >
                               {sub.label}
                             </Link>
@@ -112,12 +118,12 @@ export default function ProfileSidebar() {
               ) : (
                 <Link 
                   href={item.href}
-                  className={`flex items-center gap-3 font-medium transition ${pathname.startsWith(item.href) ? 'text-blue-600' : 'text-gray-800 hover:text-blue-600'}`}
+                  className={`flex items-center gap-3 py-3 px-2 font-bold transition group ${pathname.startsWith(item.href) ? 'text-primary' : 'text-gray-800 hover:text-primary'}`}
                 >
-                  <span className={pathname.startsWith(item.href) ? 'text-blue-600' : 'text-gray-500'}>
+                  <span className={pathname.startsWith(item.href) ? 'text-primary' : 'text-gray-400 group-hover:text-primary transition'}>
                     {item.icon}
                   </span>
-                  {item.label}
+                  <span className="uppercase text-sm tracking-wide">{item.label}</span>
                 </Link>
               )}
             </li>

@@ -1,74 +1,153 @@
 'use client';
-import React from 'react';
-import { SECONDHAND_DEALS } from './data';
-import { Clock, CheckCircle, ShoppingCart } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { Search, ChevronDown, Package, History } from 'lucide-react';
+import ProductCard from '../ProductCard';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+const BRANDS = ['Nike', 'Jordan', 'Adidas', 'New Balance', 'Yeezy', 'MLB'];
+const SIZES = ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
 
 export default function SecondHandZone() {
+  const [products, setProducts] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Filter States
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedBrand, setSelectedBrand] = useState('');
+  const [selectedSize, setSelectedSize] = useState('');
+
+  useEffect(() => {
+    const fetch2Hand = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch(`${API_URL}/api/products`);
+        const data = await res.json();
+        const allProds = Array.isArray(data) ? data : data.data || [];
+        // Lọc lấy hàng 2Hand (isNew === false)
+        const secondhand = allProds.filter((p: any) => p.isNew === false);
+        setProducts(secondhand);
+      } catch (error) {
+        console.error('Error fetching 2hand products:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetch2Hand();
+  }, []);
+
+  // Filter Logic
+  const filteredProducts = React.useMemo(() => {
+    return products.filter(p => {
+      const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchBrand = selectedBrand ? p.brand === selectedBrand : true;
+      
+      // Lọc theo size trong variants
+      const matchSize = selectedSize ? 
+        p.variants?.some((v: any) => v.options.some((opt: any) => opt.name === selectedSize)) : 
+        true;
+
+      return matchSearch && matchBrand && matchSize;
+    }).slice(0, 4); // Chỉ hiện 4 cái tiêu biểu ở trang chủ
+  }, [products, searchTerm, selectedBrand, selectedSize]);
+
   return (
-    <section className="py-20 bg-stone-100 relative overflow-hidden">
+    <section className="py-24 bg-stone-100 relative overflow-hidden font-sans">
       {/* Decorative BG Text */}
-      <div className="absolute top-0 right-0 text-[200px] font-black text-stone-200 leading-none select-none -z-0 opacity-50 pointer-events-none">
+      <div className="absolute top-0 right-0 text-[200px] font-black text-stone-200 leading-none select-none -z-0 opacity-40 pointer-events-none italic">
         2HAND
       </div>
 
       <div className="container mx-auto px-4 relative z-10">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <span className="bg-red-600 text-white px-3 py-1 font-bold text-xs uppercase rounded">Hot Deal</span>
-              <span className="text-red-600 font-bold flex items-center gap-1 animate-pulse"><Clock size={16}/> Sắp hết hàng</span>
-            </div>
-            <h3 className="text-4xl font-black text-gray-900 italic uppercase">Góc 2Hand Tuyển Chọn</h3>
-            <p className="text-stone-600 mt-2 max-w-xl">
-              Giày đã qua sử dụng, được spa sạch sẽ, check legit kỹ càng. Mô tả đúng tình trạng (98%, 95%...). Giá chỉ bằng 1/2 - 1/3 giá mới.
-            </p>
+        
+        {/* Header */}
+        <div className="mb-12">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="bg-red-600 text-white px-4 py-1 font-black text-[10px] uppercase tracking-[0.2em] rounded-none shadow-lg shadow-red-600/20">
+              Selected 2Hand
+            </span>
+            <div className="h-[1px] w-12 bg-red-600"></div>
+            <span className="text-red-600 font-black text-[10px] uppercase tracking-widest flex items-center gap-1 animate-pulse">
+               <History size={12}/> Hàng tuyển chọn - Đã vệ sinh
+            </span>
           </div>
-          <button className="bg-black text-white px-8 py-3 font-bold uppercase hover:bg-stone-800 transition">
-            Xem Kho 2Hand
-          </button>
+          <h3 className="text-5xl md:text-6xl font-black text-gray-900 italic uppercase tracking-tighter">SĂN DEAL SIÊU LƯỚT</h3>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {SECONDHAND_DEALS.map(item => (
-            <div key={item.id} className="bg-white p-4 rounded-xl shadow-sm border border-stone-200 hover:shadow-xl hover:border-stone-400 transition-all group">
-              {/* Header Card */}
-              <div className="flex justify-between items-start mb-3">
-                <div className="bg-stone-100 text-stone-600 text-xs font-bold px-2 py-1 rounded">
-                  Size {item.size}
-                </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-green-600 font-bold text-sm">Cond {item.condition}</span>
-                  <span className="text-[10px] text-gray-400">{item.accessories}</span>
-                </div>
-              </div>
+        {/* 🔍 QUICK FILTER BAR */}
+        <div className="bg-white p-2 border-2 border-black mb-12 flex flex-col lg:flex-row gap-2 rounded-none shadow-[10px_10px_0px_rgba(0,0,0,1)]">
+           {/* Search */}
+           <div className="relative flex-1 group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-primary transition" size={20} />
+              <input 
+                 type="text" 
+                 placeholder="Tên giày bạn đang tìm..." 
+                 value={searchTerm}
+                 onChange={(e) => setSearchTerm(e.target.value)}
+                 className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-none focus:ring-2 focus:ring-primary outline-none font-bold uppercase text-xs tracking-widest"
+              />
+           </div>
 
-              {/* Image */}
-              <div className="relative aspect-[4/3] mb-4 overflow-hidden rounded-lg">
-                <img 
-                    src={item.image} 
-                    alt={item.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              </div>
+           {/* Brand Select */}
+           <div className="relative lg:w-60 group border-l-0 lg:border-l border-gray-100">
+              <select 
+                 value={selectedBrand}
+                 onChange={(e) => setSelectedBrand(e.target.value)}
+                 className="w-full px-6 py-4 bg-gray-50 lg:bg-white border-none rounded-none focus:ring-2 focus:ring-primary outline-none font-black uppercase text-[10px] tracking-widest appearance-none cursor-pointer"
+              >
+                 <option value="">Tất cả thương hiệu</option>
+                 {BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
+              </select>
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+           </div>
 
-              {/* Info */}
-              <h4 className="font-bold text-gray-900 mb-1 line-clamp-1" title={item.name}>{item.name}</h4>
-              <p className="text-xs text-stone-500 mb-3 flex items-center gap-1">
-                <CheckCircle size={12} className="text-blue-500"/> {item.note}
-              </p>
+           {/* Size Select */}
+           <div className="relative lg:w-48 group border-l-0 lg:border-l border-gray-100">
+              <select 
+                 value={selectedSize}
+                 onChange={(e) => setSelectedSize(e.target.value)}
+                 className="w-full px-6 py-4 bg-gray-50 lg:bg-white border-none rounded-none focus:ring-2 focus:ring-primary outline-none font-black uppercase text-[10px] tracking-widest appearance-none cursor-pointer"
+              >
+                 <option value="">Chọn Size</option>
+                 {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+           </div>
 
-              <div className="border-t border-dashed border-gray-200 pt-3 flex items-center justify-between">
-                <div>
-                  <span className="block text-[10px] text-gray-400 line-through">Thị trường: {item.originalPrice.toLocaleString()}đ</span>
-                  <span className="text-lg font-black text-red-600">{item.price.toLocaleString()}đ</span>
-                </div>
-                <button className="bg-stone-900 text-white p-2 rounded-lg hover:bg-blue-600 transition">
-                  <ShoppingCart size={18}/>
-                </button>
-              </div>
-            </div>
-          ))}
+           {/* View Full Button */}
+           <Link 
+              href="/products?type=2hand"
+              className="bg-primary text-white px-8 py-4 font-black uppercase text-xs tracking-[0.2em] hover:bg-primary-dark transition rounded-none flex items-center justify-center gap-2"
+           >
+              Xem Kho 2Hand <Package size={18}/>
+           </Link>
         </div>
+
+        {/* Product Grid */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="aspect-square bg-white border border-gray-200 animate-pulse rounded-none"></div>
+            ))}
+          </div>
+        ) : (
+          <div>
+            {filteredProducts.length > 0 ? (
+               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                  {filteredProducts.map((product) => (
+                    <ProductCard key={product._id || product.id} product={product} />
+                  ))}
+               </div>
+            ) : (
+               <div className="bg-white py-20 text-center border-2 border-dashed border-gray-300">
+                  <p className="text-gray-400 font-black uppercase tracking-widest text-sm">Không tìm thấy deal nào khớp với bộ lọc</p>
+                  <button onClick={() => {setSearchTerm(''); setSelectedBrand(''); setSelectedSize('');}} className="mt-4 text-primary font-bold underline uppercase text-xs">Xóa bộ lọc</button>
+               </div>
+            )}
+          </div>
+        )}
+
       </div>
     </section>
   );

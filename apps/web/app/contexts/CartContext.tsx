@@ -42,8 +42,8 @@ interface CartItem {
 interface CartContextType {
   cart: CartItem[];
   addToCart: (product: Product, quantity?: number, selectedVariant?: VariantOption) => void;
-  updateQuantity: (productId: string, variantSku: string | null, newQty: number) => void;
-  removeItem: (productId: string, variantSku?: string | null) => void;
+  updateQuantity: (productId: string, variantKey: string | null, newQty: number) => void;
+  removeItem: (productId: string, variantKey?: string | null) => void;
   totalItems: number;
   totalPrice: number;
   clearCart: () => void;
@@ -51,13 +51,9 @@ interface CartContextType {
   getTotalItems: () => number;
 }
 
-// --- Tạo Context ---
 const CartContext = createContext<CartContextType | undefined>(undefined);
+const CART_STORAGE_PREFIX = 'footmark_cart_user_';
 
-// --- KEY PREFIX để lưu vào localStorage ---
-const CART_STORAGE_PREFIX = 'footmark_cart_user_'; // Đổi prefix
-
-// --- Provider ---
 export const CartProvider = ({ 
   children, 
   userId 
@@ -68,50 +64,50 @@ export const CartProvider = ({
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Tạo key dựa trên userId
   const getStorageKey = () => {
     if (!userId) return `${CART_STORAGE_PREFIX}guest`;
     return `${CART_STORAGE_PREFIX}${userId}`;
   };
 
-  // ✅ 1. KHÔI PHỤC giỏ hàng từ localStorage
+  // Helper: Tạo Unique Key cho Variant (Dùng Name làm chuẩn nếu ko có SKU)
+  const getVariantKey = (variant?: VariantOption | null): string | null => {
+    if (!variant) return null;
+    return variant.name; // Size 40, Size 41...
+  };
+
+  // 1. Load Cart
   useEffect(() => {
     setIsInitialized(false);
     try {
       const storageKey = getStorageKey();
       const savedCart = localStorage.getItem(storageKey);
       if (savedCart) {
-        const parsedCart = JSON.parse(savedCart);
-        setCart(parsedCart);
+        setCart(JSON.parse(savedCart));
       } else {
         setCart([]);
       }
     } catch (error) {
-      console.error('Lỗi khi đọc giỏ hàng từ localStorage:', error);
+      console.error('Lỗi load cart:', error);
       setCart([]);
     } finally {
       setIsInitialized(true);
     }
   }, [userId]);
 
-  // ✅ 2. TỰ ĐỘNG LƯU giỏ hàng vào localStorage
+  // 2. Save Cart
   useEffect(() => {
     if (isInitialized) {
       try {
         const storageKey = getStorageKey();
         localStorage.setItem(storageKey, JSON.stringify(cart));
       } catch (error) {
-        console.error('Lỗi khi lưu giỏ hàng vào localStorage:', error);
+        console.error('Lỗi save cart:', error);
       }
     }
   }, [cart, isInitialized, userId]);
 
-  // ✅ Xóa toàn bộ giỏ hàng
-  const clearCart = () => {
-    setCart([]);
-  };
+  const clearCart = () => setCart([]);
 
-  // ✅ Tính tổng tiền
   const getTotalPrice = () => {
     return cart.reduce((total, item) => {
       const price = item.selectedVariant?.price || item.product.price;
@@ -119,50 +115,47 @@ export const CartProvider = ({
     }, 0);
   };
 
-  // ✅ Tính tổng số lượng sản phẩm
   const getTotalItems = () => {
     return cart.reduce((total, item) => total + item.quantity, 0);
   };
 
-  // ✅ Thêm sản phẩm vào giỏ
+  // ✅ ADD TO CART (Logic mới)
   const addToCart = (product: Product, quantity: number = 1, selectedVariant?: VariantOption) => {
     setCart(prevCart => {
-      // Tìm item trùng khớp (cùng ID và cùng Variant SKU)
-      const existingItemIndex = prevCart.findIndex(item => {
-        const sameProduct = item.product._id === product._id || item.product.id === product.id;
-        const sameVariant = (item.selectedVariant?.sku || null) === (selectedVariant?.sku || null);
-        return sameProduct && sameVariant;
+      const productId = product._id || product.id;
+      const variantKey = getVariantKey(selectedVariant);
+
+      const existingIndex = prevCart.findIndex(item => {
+        const itemId = item.product._id || item.product.id;
+        const itemKey = getVariantKey(item.selectedVariant);
+        return itemId === productId && itemKey === variantKey;
       });
 
-      if (existingItemIndex > -1) {
-        // Tăng số lượng
+      if (existingIndex > -1) {
+        // Trùng ID và Size -> Tăng số lượng
         const newCart = [...prevCart];
-        newCart[existingItemIndex].quantity += quantity;
+        newCart[existingIndex].quantity += quantity;
         return newCart;
       } else {
-        // Thêm mới
-        return [...prevCart, { 
-          product, 
-          quantity, 
-          selectedVariant: selectedVariant 
-        }];
+        // Khác Size -> Thêm dòng mới
+        return [...prevCart, { product, quantity, selectedVariant }];
       }
     });
   };
 
-  // ✅ Cập nhật số lượng
-  const updateQuantity = (productId: string, variantSku: string | null, newQty: number) => {
+  // ✅ UPDATE QUANTITY
+  const updateQuantity = (productId: string, variantKey: string | null, newQty: number) => {
     if (newQty <= 0) {
-      removeItem(productId, variantSku);
+      removeItem(productId, variantKey);
       return;
     }
     
     setCart(prevCart =>
       prevCart.map(item => {
         const itemId = item.product._id || item.product.id;
-        const itemSku = item.selectedVariant?.sku || null;
+        const itemKey = getVariantKey(item.selectedVariant);
         
-        if (itemId === productId && itemSku === variantSku) {
+        if (itemId === productId && itemKey === variantKey) {
           return { ...item, quantity: newQty };
         }
         return item;
@@ -170,28 +163,23 @@ export const CartProvider = ({
     );
   };
 
-  // ✅ Xóa sản phẩm khỏi giỏ
-  const removeItem = (productId: string, variantSku?: string | null) => {
+  // ✅ REMOVE ITEM
+  const removeItem = (productId: string, variantKey?: string | null) => {
     setCart(prevCart => 
       prevCart.filter(item => {
         const itemId = item.product._id || item.product.id;
-        const itemSku = item.selectedVariant?.sku || null;
-        const targetSku = variantSku || null;
+        const itemKey = getVariantKey(item.selectedVariant);
         
-        // Nếu không trùng ID -> giữ lại
+        // Giữ lại nếu khác ID
         if (itemId !== productId) return true;
         
-        // Nếu trùng ID -> kiểm tra SKU
-        if (itemSku !== targetSku) return true;
+        // Giữ lại nếu cùng ID nhưng khác Size
+        if (itemKey !== (variantKey || null)) return true;
         
-        // Trùng cả ID và SKU -> Xóa (return false)
         return false;
       })
     );
   };
-
-  const totalItems = getTotalItems();
-  const totalPrice = getTotalPrice();
 
   return (
     <CartContext.Provider 
@@ -200,8 +188,8 @@ export const CartProvider = ({
         addToCart, 
         updateQuantity, 
         removeItem, 
-        totalItems, 
-        totalPrice, 
+        totalItems: getTotalItems(), 
+        totalPrice: getTotalPrice(), 
         clearCart, 
         getTotalPrice, 
         getTotalItems 
@@ -212,7 +200,6 @@ export const CartProvider = ({
   );
 };
 
-// --- Hook để sử dụng Cart ---
 export const useCart = () => {
   const context = useContext(CartContext);
   if (context === undefined) {

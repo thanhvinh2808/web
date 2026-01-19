@@ -1,144 +1,147 @@
+// app/register/page.tsx
 "use client";
 
 import { useState } from "react";
-import { UserPlus } from "lucide-react";
+import { User, Mail, Lock, ChevronRight, CheckCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../contexts/AuthContext";
+import Link from "next/link";
 
 export default function RegisterPage() {
-  const { register } = useAuth();
   const router = useRouter();
-  
-  const [formData, setFormData] = useState({ 
-    name: '', 
-    email: '', 
+  const { register } = useAuth();
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
     password: '',
-    confirmPassword: '' 
+    confirmPassword: ''
   });
   const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (formData.password !== formData.confirmPassword) {
-      setMessage('Mật khẩu xác nhận không khớp!');
+      setMessage('Mật khẩu không khớp!');
       return;
     }
 
+    setIsLoading(true);
+    setMessage('');
+
     try {
-      setLoading(true);
-      setMessage('');
-      
-      // ✅ SỬA: Truyền object thay vì 3 tham số riêng lẻ
-      await register({
-        name: formData.name,
-        email: formData.email,
-        password: formData.password
-      });
-      
-      // ✅ AuthContext sẽ tự redirect sau khi đăng ký thành công
+      await register(formData.name, formData.email, formData.password);
       setMessage('Đăng ký thành công!');
-      
-    } catch (error) {
-      console.error('❌ Register error:', error);
-      setMessage((error as any).message || 'Có lỗi xảy ra khi đăng ký!');
-    } finally {
-      setLoading(false);
+      setTimeout(() => router.push('/'), 2000);
+    } catch (error: any) {
+      setMessage(error.message || 'Đăng ký thất bại!');
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 font-sans">
-      <div className="bg-white rounded-xl shadow-xl p-8 w-full max-w-md border border-gray-100">
-        <div className="text-center mb-8">
-          <div className="bg-black w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <UserPlus className="text-white" size={32} />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 font-sans py-12">
+      <div className="bg-white rounded-none shadow-2xl p-8 w-full max-w-md border border-gray-100 relative">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-primary"></div>
+
+        <div className="text-center mb-10">
+          <div className="bg-primary w-16 h-16 rounded-none flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/20 transform -rotate-3">
+            <CheckCircle className="text-white" size={32} />
           </div>
-          <h2 className="text-3xl font-black italic tracking-tighter">FOOT<span className="text-blue-600">MARK</span>.</h2>
-          <p className="text-gray-500 mt-2 font-medium">Tạo tài khoản thành viên mới</p>
+          <h2 className="text-4xl font-black italic tracking-tighter uppercase italic uppercase">GIA NHẬP <span className="text-primary">FOOTMARK</span></h2>
+          <p className="text-gray-400 mt-2 font-bold uppercase tracking-widest text-[10px]">Trở thành thành viên để nhận ưu đãi</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2">Họ và tên</label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent outline-none transition"
-              placeholder="Nguyễn Văn A"
-              required
-              disabled={loading}
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2">Email</label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({...formData, email: e.target.value})}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent outline-none transition"
-              placeholder="email@example.com"
-              required
-              disabled={loading}
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2">Mật khẩu</label>
-            <input
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({...formData, password: e.target.value})}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent outline-none transition"
-              placeholder="••••••••"
-              required
-              minLength={6}
-              disabled={loading}
-            />
+          <div className="space-y-2">
+            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Full Name</label>
+            <div className="relative">
+               <input
+                 type="text"
+                 value={formData.name}
+                 onChange={(e) => setFormData({...formData, name: e.target.value})}
+                 className="w-full px-4 py-4 bg-gray-50 border-none rounded-none focus:ring-2 focus:ring-primary outline-none transition font-medium text-sm pl-12"
+                 placeholder="Nguyễn Văn A"
+                 required
+                 disabled={isLoading}
+               />
+               <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18}/>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2">Xác nhận mật khẩu</label>
-            <input
-              type="password"
-              value={formData.confirmPassword}
-              onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent outline-none transition"
-              placeholder="••••••••"
-              required
-              minLength={6}
-              disabled={loading}
-            />
+          <div className="space-y-2">
+            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Email Address</label>
+            <div className="relative">
+               <input
+                 type="email"
+                 value={formData.email}
+                 onChange={(e) => setFormData({...formData, email: e.target.value})}
+                 className="w-full px-4 py-4 bg-gray-50 border-none rounded-none focus:ring-2 focus:ring-primary outline-none transition font-medium text-sm pl-12"
+                 placeholder="email@example.com"
+                 required
+                 disabled={isLoading}
+               />
+               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18}/>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Password</label>
+            <div className="relative">
+               <input
+                 type="password"
+                 value={formData.password}
+                 onChange={(e) => setFormData({...formData, password: e.target.value})}
+                 className="w-full px-4 py-4 bg-gray-50 border-none rounded-none focus:ring-2 focus:ring-primary outline-none transition font-medium text-sm pl-12"
+                 placeholder="••••••••"
+                 required
+                 disabled={isLoading}
+               />
+               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18}/>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Confirm Password</label>
+            <div className="relative">
+               <input
+                 type="password"
+                 value={formData.confirmPassword}
+                 onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                 className="w-full px-4 py-4 bg-gray-50 border-none rounded-none focus:ring-2 focus:ring-primary outline-none transition font-medium text-sm pl-12"
+                 placeholder="••••••••"
+                 required
+                 disabled={isLoading}
+               />
+               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18}/>
+            </div>
           </div>
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-black text-white py-4 rounded-lg font-bold uppercase tracking-wider hover:bg-stone-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isLoading}
+            className="w-full bg-primary text-white py-5 rounded-none font-black uppercase tracking-[0.2em] hover:bg-primary-dark transition disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-primary/20 flex items-center justify-center gap-3 group mt-4"
           >
-            {loading ? 'Đang xử lý...' : 'ĐĂNG KÝ NGAY'}
+            {isLoading ? 'Đang xử lý...' : 'Đăng ký ngay'} <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform"/>
           </button>
-          
+
           {message && (
-            <p className={`text-center font-bold text-sm ${message.includes('thành công') ? 'text-green-600' : 'text-red-600'}`}>
+            <div className={`p-4 rounded-none text-center font-bold text-xs uppercase tracking-widest border ${
+               message.includes('thành công') 
+               ? 'bg-green-50 text-green-600 border-green-100' 
+               : 'bg-red-50 text-red-600 border-red-100'
+            }`}>
               {message}
-            </p>
+            </div>
           )}
         </form>
 
-        <div className="mt-8 text-center">
-          <p className="text-gray-600">
+        <div className="mt-10 text-center">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
             Đã có tài khoản?{' '}
-            <button
-              onClick={() => router.push('/login')}
-              className="text-blue-600 font-bold hover:underline"
-              disabled={loading}
-            >
-              Đăng nhập ngay
-            </button>
+            <Link href="/login" className="text-primary font-black hover:underline ml-1">
+              Đăng nhập tại đây
+            </Link>
           </p>
         </div>
       </div>

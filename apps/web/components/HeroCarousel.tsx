@@ -1,233 +1,160 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowRight, Star } from 'lucide-react';
 
-// Đã xóa các dòng import banner vì giờ chúng ta dùng đường dẫn trực tiếp từ thư mục public
+const SLIDES = [
+  {
+    id: 1,
+    image: "https://images.unsplash.com/photo-1607522370275-f14bc3a5d288?q=80&w=2940&auto=format&fit=crop",
+    title: "THE GRAIL IS BACK.",
+    subtitle: "SIÊU PHẨM THÁNG 1",
+    description: "Sự trở lại của huyền thoại Jordan 1 Chicago 'Lost & Found'. Phối màu Vintage độc bản, số lượng cực giới hạn.",
+    buttonText: "Săn Ngay Kẻo Lỡ",
+    link: "/products/jordan-1-chicago-lost-and-found",
+    align: "left", 
+    theme: "dark",
+    highlight: true
+  },
+  {
+    id: 2,
+    image: "https://images.unsplash.com/photo-1512374382149-233c42b6a83b?q=80&w=2235&auto=format&fit=crop",
+    title: "RUN THE CITY",
+    subtitle: "BỘ SƯU TẬP HÈ 2026",
+    description: "Năng động, thoáng khí và đầy màu sắc. Thiết kế mới nhất từ Nike & Adidas Running.",
+    buttonText: "Xem Bộ Sưu Tập",
+    link: "/products?category=nike",
+    align: "center",
+    theme: "dark"
+  },
+  {
+    id: 3,
+    image: "https://images.unsplash.com/photo-1539185441755-769473a23570?q=80&w=2071&auto=format&fit=crop",
+    title: "STREETWEAR ICONS",
+    subtitle: "PHONG CÁCH KHÁC BIỆT",
+    description: "Khám phá những mẫu giày 2hand tuyển chọn, độ mới 99% với mức giá không thể tốt hơn.",
+    buttonText: "Khám Phá 2Hand",
+    link: "/products?condition=99%",
+    align: "right",
+    theme: "dark"
+  }
+];
 
-const HeroCarousel = () => {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
+export default function HeroCarousel() {
+  const [current, setCurrent] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
 
-  // 1. Banner chính (lớn bên trái) - Main Slider
-  const mainBanners = [
-    {
-      id: 1,
-      image: '/images/banner1.png', // Thay đổi ở đây: Dùng đường dẫn chuỗi
-      alt: 'Siêu Sale Mùa Hè - Giảm đến 50%',
-      slug: 'sieu-sale-mua-he', 
-      link: '/products'
-    },
-    {
-      id: 2,
-      image: '/images/banner2.png', // Thay đổi ở đây
-      alt: 'Ra Mắt Hàng Mới 2025',
-      slug: 'hang-moi-2025',
-      link: '/products'
-    },
-    {
-      id: 3,
-      image: '/images/banner3.png', // Thay đổi ở đây
-      alt: 'Trả Góp 0% Cực Hấp Dẫn',
-      slug: 'tra-gop-0-phan-tram',
-      link: '/products'
-    }
-  ];
-
-  // 2. 2 Banner phụ (nhỏ bên phải) - Side Banners
-  const sideBanners = [
-    {
-      id: 4,
-      image: '/images/banner4.png', // Thay đổi ở đây
-      alt: 'Laptop Cao Cấp, Gaming và Đồ Họa',
-      slug: 'laptop',
-      link: '/categories/laptops'
-    },
-    {
-      id: 5,
-      image: '/images/banner5.png', // Thay đổi ở đây
-      alt: 'Smartphone Flagship',
-      slug: 'dien-thoai',
-      link: '/categories/smartphones'
-    }
-  ];
-
-  // 3. 3 Banner nhỏ ngang (hàng dưới) - Bottom Banners
-  const bottomBanners = [
-    {
-      id: 6,
-      image: '/images/banner6.png', // Thay đổi ở đây
-      alt: 'Phụ kiện chính hãng',
-      slug: 'phu-kien',
-      link: '/categories/accessories'
-    },
-    {
-      id: 7,
-      image: '/images/banner7.png', // Thay đổi ở đây
-      alt: 'Miễn Phí Giao Hàng Toàn Quốc',
-      slug: 'mien-phi-van-chuyen',
-      link: '/products'
-    },
-    {
-      id: 8,
-      image: '/images/banner8.png', // Thay đổi ở đây
-      alt: 'Khách hàng VIP',
-      slug: 'thanh-vien-vip',
-      link: '/products'
-    }
-  ];
-
-  // Auto-play carousel cho banner chính
   useEffect(() => {
-    if (!isPaused) {
-      const timer = setInterval(() => {
-        setCurrentSlide((prev) => (prev + 1) % mainBanners.length);
-      }, 4000);
-      return () => clearInterval(timer);
+    let interval: NodeJS.Timeout;
+    if (isAutoPlaying) {
+      interval = setInterval(() => {
+        nextSlide();
+      }, 6000);
     }
-  }, [isPaused, mainBanners.length]);
+    return () => clearInterval(interval);
+  }, [current, isAutoPlaying]);
 
-  const goToSlide = (index: number) => {
-    setCurrentSlide(index);
+  const nextSlide = () => {
+    setCurrent((prev) => (prev === SLIDES.length - 1 ? 0 : prev + 1));
   };
 
-  const goToPrevious = () => {
-    setCurrentSlide((prev) => (prev - 1 + mainBanners.length) % mainBanners.length);
+  const prevSlide = () => {
+    setCurrent((prev) => (prev === 0 ? SLIDES.length - 1 : prev - 1));
   };
 
-  const goToNext = () => {
-    setCurrentSlide((prev) => (prev + 1) % mainBanners.length);
-  };
-
-   
   return (
-    <section className="bg-white py-6 md:py-8 font-sans">
-      <div className="container mx-auto px-4 max-w-7xl">
-        
-        {/* Hàng trên: Banner lớn + 2 banner nhỏ */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
-          
-          {/* Banner chính - Lớn bên trái (2/3 width) */}
-          <div 
-            className="lg:col-span-2 relative group"
-            onMouseEnter={() => setIsPaused(true)}
-            onMouseLeave={() => setIsPaused(false)}
-          >
-            <div className="relative overflow-hidden rounded-xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
-              <div className="relative h-64 md:h-96 lg:h-[480px]">
-                {mainBanners.map((banner, index) => (
-                  <Link
-                    key={banner.id}
-                    href={banner.link}
-                    className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
-                      index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
-                    }`}
-                  >
-                    <Image
-                      src={banner.image}
-                      alt={banner.alt}
-                      fill
-                      className="object-cover"
-                      priority={index === 0}
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 66vw, 66vw"
-                    />
-                  </Link>
-                ))}
-              </div>
+    <div 
+      className="relative w-full h-[650px] md:h-[750px] overflow-hidden group bg-black"
+      onMouseEnter={() => setIsAutoPlaying(false)}
+      onMouseLeave={() => setIsAutoPlaying(true)}
+    >
+      <div 
+        className="flex transition-transform duration-700 ease-[cubic-bezier(0.25,0.1,0.25,1)] h-full"
+        style={{ transform: `translateX(-${current * 100}%)` }}
+      >
+        {SLIDES.map((slide) => (
+          <div key={slide.id} className="w-full h-full flex-shrink-0 relative">
+            <div className="absolute inset-0">
+               <img 
+                 src={slide.image} 
+                 alt={slide.title} 
+                 className="w-full h-full object-cover" 
+               />
+            </div>
+            
+            <div className={`absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-black/80 via-black/40 to-transparent`}></div>
 
-              {/* Nút Previous */}
-              <button
-                onClick={goToPrevious}
-                className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/30 backdrop-blur-sm text-white p-2 md:p-3 rounded-full transition-all opacity-0 group-hover:opacity-100 hover:bg-white/50 focus:outline-none focus:ring-4 focus:ring-white/50 z-20"
-                aria-label="Previous slide"
-              >
-                <ChevronLeft className="w-5 h-5 md:w-6 md:h-6 stroke-2 text-gray-800" />
-              </button>
+            <div className="absolute inset-0 container mx-auto px-6 md:px-12 flex flex-col justify-center h-full relative z-10">
+              <div className={`max-w-3xl animate-fade-in-up ${
+                slide.align === 'center' ? 'mx-auto text-center items-center' : 
+                slide.align === 'right' ? 'ml-auto text-right items-end' : 'text-left items-start'
+              } flex flex-col`}>
+                
+                {slide.highlight && (
+                   <div className="flex items-center gap-2 bg-red-600 text-white px-4 py-1.5 mb-6 font-black text-xs uppercase tracking-widest animate-pulse rounded-none">
+                      <Star size={12} fill="currentColor" /> Hàng Hiếm / Limited Stock
+                   </div>
+                )}
 
-              {/* Nút Next */}
-              <button
-                onClick={goToNext}
-                className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/30 backdrop-blur-sm text-white p-2 md:p-3 rounded-full transition-all opacity-0 group-hover:opacity-100 hover:bg-white/50 focus:outline-none focus:ring-4 focus:ring-white/50 z-20"
-                aria-label="Next slide"
-              >
-                <ChevronRight className="w-5 h-5 md:w-6 md:h-6 stroke-2 text-gray-800" />
-              </button>
+                {!slide.highlight && (
+                   <span className="inline-block px-3 py-1 mb-4 text-xs font-bold uppercase tracking-[0.3em] text-white/80 border border-white/30 rounded-none">
+                     {slide.subtitle}
+                   </span>
+                )}
 
-              {/* Dots navigation */}
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
-                {mainBanners.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => goToSlide(index)}
-                    className={`h-2 transition-all duration-300 ${
-                      index === currentSlide
-                        ? 'bg-red-500 w-8 rounded-full shadow-md'
-                        : 'bg-white/50 hover:bg-white w-2 rounded-full'
-                    }`}
-                    aria-label={`Go to slide ${index + 1}`}
-                  />
-                ))}
+                <h2 className="text-6xl md:text-8xl lg:text-9xl font-black italic tracking-tighter mb-6 leading-[0.85] text-white drop-shadow-2xl">
+                  {slide.title}
+                </h2>
+
+                <p className="text-lg md:text-2xl font-medium mb-10 max-w-xl text-gray-200 leading-relaxed drop-shadow-md">
+                  {slide.description}
+                </p>
+
+                <div className="flex gap-4">
+                   <Link 
+                     href={slide.link}
+                     className="bg-primary text-white px-10 py-5 font-black uppercase tracking-wider flex items-center gap-3 transition-all transform hover:scale-105 hover:bg-primary-dark shadow-lg shadow-primary/30 rounded-none"
+                   >
+                     {slide.buttonText} <ArrowRight size={24}/>
+                   </Link>
+                   {slide.highlight && (
+                      <button className="hidden md:flex items-center justify-center w-16 h-16 border-2 border-white/30 text-white hover:bg-white hover:text-black hover:border-white transition-all rounded-none">
+                         <Star size={24} />
+                      </button>
+                   )}
+                </div>
               </div>
             </div>
           </div>
-
-          {/* 2 Banner phụ - Nhỏ bên phải (1/3 width) */}
-          <div className="flex flex-col gap-4 md:gap-6">
-            {sideBanners.map((banner) => (
-              <Link
-                key={banner.id}
-                href={banner.link}
-                className="relative overflow-hidden rounded-xl shadow-lg cursor-pointer transform transition-transform duration-300 hover:scale-[1.03] hover:shadow-xl group"
-              >
-                <div className="relative h-32 md:h-44 lg:h-[230px]">
-                  <Image
-                    src={banner.image}
-                    alt={banner.alt}
-                    fill
-                    className="object-cover transition-opacity duration-500 group-hover:opacity-90"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                  />
-                </div>
-                {/* Overlay text */}
-                <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-all flex items-end p-4">
-                  <span className="text-white text-base font-semibold drop-shadow-lg">
-                    {banner.alt}
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* Hàng dưới: 3 banner nhỏ ngang */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-          {bottomBanners.map((banner) => (
-            <Link
-              key={banner.id}
-              href={banner.link}
-              className="relative overflow-hidden rounded-xl shadow-md cursor-pointer transform transition-transform duration-300 hover:scale-[1.02] hover:shadow-lg group"
-            >
-              <div className="relative h-32 md:h-40 lg:h-48">
-                <Image
-                  src={banner.image}
-                  alt={banner.alt}
-                  fill
-                  className="object-cover transition-opacity duration-500 group-hover:opacity-90"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                />
-              </div>
-              {/* Overlay text */}
-              <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-all flex items-end p-3">
-                <span className="text-white text-sm font-medium drop-shadow-lg">
-                  {banner.alt}
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
+        ))}
       </div>
-    </section>
-  );
-};
 
-export default HeroCarousel;
+      <button 
+        onClick={prevSlide}
+        className="absolute left-4 top-1/2 -translate-y-1/2 w-14 h-14 border border-white/20 bg-black/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white hover:text-black transition-all transform -translate-x-full group-hover:translate-x-0 rounded-none"
+      >
+        <ChevronLeft size={28} />
+      </button>
+
+      <button 
+        onClick={nextSlide}
+        className="absolute right-4 top-1/2 -translate-y-1/2 w-14 h-14 border border-white/20 bg-black/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white hover:text-black transition-all transform translate-x-full group-hover:translate-x-0 rounded-none"
+      >
+        <ChevronRight size={28} />
+      </button>
+
+      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-4">
+        {SLIDES.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => setCurrent(idx)}
+            className={`h-2 transition-all duration-500 ${
+              current === idx ? 'w-16 bg-white shadow-[0_0_10px_white]' : 'w-4 bg-white/30 hover:bg-white/60'
+            } rounded-none`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}

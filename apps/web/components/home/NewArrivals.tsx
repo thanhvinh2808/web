@@ -1,53 +1,173 @@
 'use client';
-import React from 'react';
-import { NEW_ARRIVALS } from './data';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import ProductCard from '../ProductCard';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const ITEMS_PER_PAGE = 4; // Số sản phẩm mỗi trang
 
 export default function NewArrivals() {
+  const [activeTab, setActiveTab] = useState<'new' | 'best'>('new');
+  const [products, setProducts] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1); // Trang hiện tại
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch(`${API_URL}/api/products`);
+        const data = await res.json();
+        const allProducts = Array.isArray(data) ? data : data.data || [];
+        setProducts(allProducts);
+      } catch (error) {
+        console.error('Error fetching products:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  // Reset về trang 1 khi đổi tab
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
+
+  // Logic lọc và sắp xếp
+  const sortedList = React.useMemo(() => {
+    let filtered = [...products];
+
+    if (activeTab === 'new') {
+      filtered = filtered.sort((a, b) => {
+        if (a.isNew && !b.isNew) return -1;
+        if (!a.isNew && b.isNew) return 1;
+        return (new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      });
+    } else {
+      filtered = filtered.sort((a, b) => {
+        const soldA = a.soldCount || 0;
+        const soldB = b.soldCount || 0;
+        return soldB - soldA;
+      });
+    }
+    return filtered;
+  }, [products, activeTab]);
+
+  // Logic phân trang
+  const totalPages = Math.ceil(sortedList.length / ITEMS_PER_PAGE);
+  const currentProducts = sortedList.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Tùy chọn: Scroll nhẹ lên đầu section nếu cần
+    // const section = document.getElementById('new-arrivals');
+    // if (section) section.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
-    <section className="py-20 bg-white">
+    <section id="new-arrivals" className="py-20 bg-white">
       <div className="container mx-auto px-4">
-        <div className="flex justify-between items-end mb-10">
-          <div>
-            <h3 className="text-4xl font-black text-gray-900 italic uppercase">Hàng Mới Về</h3>
-            <p className="text-gray-500 mt-2">Full box, tag, phụ kiện - Bảo hành chính hãng trọn đời</p>
+        
+        {/* Header & Tabs */}
+        <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
+          <div className="flex gap-8 border-b-2 border-gray-100 w-full md:w-auto">
+            <button 
+              onClick={() => setActiveTab('new')}
+              className={`pb-4 text-2xl md:text-4xl font-black italic uppercase tracking-tighter transition-all relative ${
+                activeTab === 'new' 
+                  ? 'text-black' 
+                  : 'text-gray-300 hover:text-gray-500'
+              }`}
+            >
+              Hàng Mới Về
+              {activeTab === 'new' && <span className="absolute bottom-[-2px] left-0 w-full h-1 bg-primary"></span>}
+            </button>
+            
+            <button 
+              onClick={() => setActiveTab('best')}
+              className={`pb-4 text-2xl md:text-4xl font-black italic uppercase tracking-tighter transition-all relative ${
+                activeTab === 'best' 
+                  ? 'text-black' 
+                  : 'text-gray-300 hover:text-gray-500'
+              }`}
+            >
+              Hàng Bán Chạy
+              {activeTab === 'best' && <span className="absolute bottom-[-2px] left-0 w-full h-1 bg-primary"></span>}
+            </button>
           </div>
-          <a href="#" className="hidden md:block border-b-2 border-black pb-1 font-bold hover:text-blue-600 hover:border-blue-600 transition">Xem tất cả</a>
+
+          <Link href="/products" className="hidden md:block text-sm font-bold uppercase tracking-widest text-gray-500 hover:text-primary transition mb-4">
+            Xem tất cả
+          </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {NEW_ARRIVALS.map(product => (
-            <div key={product.id} className="group cursor-pointer">
-              <div className="relative aspect-square bg-gray-100 rounded-xl overflow-hidden mb-4">
-                <span className="absolute top-3 left-3 bg-black text-white text-[10px] font-bold px-3 py-1 uppercase tracking-wider z-10">
-                  New
-                </span>
-                {product.tag && (
-                  <span className="absolute top-3 right-3 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded z-10">
-                    {product.tag}
-                  </span>
-                )}
-                <img 
-                    src={product.image} 
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+        {/* Product Grid */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="aspect-square bg-gray-100 animate-pulse rounded-none"></div>
+            ))}
+          </div>
+        ) : (
+          <div className="min-h-[400px]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {currentProducts.map((product) => (
+                <ProductCard 
+                  key={product._id || product.id} 
+                  product={product} 
+                  showSoldCount={activeTab === 'best'} 
                 />
-                <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                  <button className="w-full bg-white/90 backdrop-blur text-black font-bold py-3 rounded-lg shadow-lg hover:bg-blue-600 hover:text-white transition">
-                    Thêm vào giỏ
-                  </button>
-                </div>
-              </div>
-              <h4 className="font-bold text-lg mb-1 truncate">{product.name}</h4>
-              <p className="text-gray-500 text-sm mb-2">{product.brand}</p>
-              <div className="flex items-center gap-3">
-                <span className="font-bold text-lg">{product.price.toLocaleString()}đ</span>
-                {product.originalPrice > 0 && (
-                  <span className="text-gray-400 line-through text-sm">{product.originalPrice.toLocaleString()}đ</span>
-                )}
-              </div>
+              ))}
             </div>
-          ))}
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex justify-center mt-12 gap-2">
+            <button 
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="w-10 h-10 flex items-center justify-center border-2 border-gray-100 text-gray-400 hover:text-primary hover:border-primary disabled:opacity-30 disabled:hover:border-gray-100 transition rounded-none"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+              <button
+                key={page}
+                onClick={() => handlePageChange(page)}
+                className={`w-10 h-10 flex items-center justify-center font-bold text-xs transition rounded-none ${
+                  currentPage === page 
+                    ? 'bg-primary text-white border-2 border-primary' 
+                    : 'bg-white border-2 border-gray-100 text-gray-400 hover:border-primary hover:text-primary'
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+
+            <button 
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="w-10 h-10 flex items-center justify-center border-2 border-gray-100 text-gray-400 hover:text-primary hover:border-primary disabled:opacity-30 disabled:hover:border-gray-100 transition rounded-none"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        )}
+
+        <div className="mt-8 text-center md:hidden">
+           <Link href="/products" className="inline-block px-8 py-4 border-2 border-black text-black font-bold uppercase tracking-widest text-xs hover:bg-black hover:text-white transition rounded-none">
+              Xem tất cả sản phẩm
+           </Link>
         </div>
+
       </div>
     </section>
   );

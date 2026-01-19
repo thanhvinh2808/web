@@ -10,7 +10,7 @@ export const Footer = () => {
           <div>
               <Link href="/" className="flex flex-col mb-6 group">
                 <h2 className="text-3xl font-black italic text-white group-hover:opacity-80 transition">
-                  FOOT<span className="text-blue-600">MARK</span>.
+                  FOOT<span className="text-primary">MARK</span>.
                 </h2>
                 <span className="text-[10px] font-bold tracking-[0.2em] text-stone-600 uppercase">Authentic Sneakers</span>
               </Link>
@@ -21,13 +21,13 @@ export const Footer = () => {
               </p>
               
               <div className="flex gap-4">
-                  <div className="w-10 h-10 bg-stone-900 rounded-full flex items-center justify-center hover:bg-blue-600 hover:text-white transition cursor-pointer border border-stone-800 hover:border-blue-500">
+                  <div className="w-10 h-10 bg-stone-900 rounded-none flex items-center justify-center hover:bg-primary hover:text-white transition cursor-pointer border border-stone-800 hover:border-primary">
                     <span className="font-bold">F</span>
                   </div>
-                  <div className="w-10 h-10 bg-stone-900 rounded-full flex items-center justify-center hover:bg-pink-600 hover:text-white transition cursor-pointer border border-stone-800 hover:border-pink-500">
+                  <div className="w-10 h-10 bg-stone-900 rounded-none flex items-center justify-center hover:bg-pink-600 hover:text-white transition cursor-pointer border border-stone-800 hover:border-pink-500">
                     <span className="font-bold">I</span>
                   </div>
-                  <div className="w-10 h-10 bg-stone-900 rounded-full flex items-center justify-center hover:bg-white hover:text-black transition cursor-pointer border border-stone-800 hover:border-white">
+                  <div className="w-10 h-10 bg-stone-900 rounded-none flex items-center justify-center hover:bg-white hover:text-black transition cursor-pointer border border-stone-800 hover:border-white">
                     <span className="font-bold">T</span>
                   </div>
               </div>

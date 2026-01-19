@@ -93,7 +93,7 @@ const RelatedCarousel = ({ products }: { products: Product[] }) => {
       <div className="relative group">
          <button 
             onClick={() => scroll('left')}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 backdrop-blur p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition disabled:opacity-0"
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 backdrop-blur p-2 rounded-none shadow-lg opacity-0 group-hover:opacity-100 transition disabled:opacity-0"
          >
             <ChevronRight size={24} className="rotate-180"/>
          </button>
@@ -108,7 +108,7 @@ const RelatedCarousel = ({ products }: { products: Product[] }) => {
 
          <button 
             onClick={() => scroll('right')}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 backdrop-blur p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition"
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 backdrop-blur p-2 rounded-none shadow-lg opacity-0 group-hover:opacity-100 transition"
          >
             <ChevronRight size={24}/>
          </button>
@@ -232,7 +232,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-center px-4">
         <h1 className="text-4xl font-black mb-4">404</h1>
         <p className="text-gray-500 mb-8">Không tìm thấy sản phẩm này.</p>
-        <Link href="/products" className="bg-black text-white px-8 py-3 rounded font-bold uppercase hover:bg-stone-800">
+        <Link href="/products" className="bg-primary text-white px-8 py-3 rounded-none font-bold uppercase hover:bg-primary-dark">
            Quay lại cửa hàng
         </Link>
      </div>
@@ -257,7 +257,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             <div className="lg:col-span-8">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {images.map((img, idx) => (
-                     <div key={idx} className={`bg-gray-100 aspect-square rounded-xl overflow-hidden cursor-pointer ${idx === 0 ? 'md:col-span-2 md:aspect-[4/3]' : ''}`}>
+                     <div key={idx} className={`bg-gray-100 aspect-square rounded-none overflow-hidden cursor-pointer ${idx === 0 ? 'md:col-span-2 md:aspect-[4/3]' : ''}`}>
                         <img 
                            src={img} 
                            alt={`${product.name} - ${idx}`} 
@@ -275,7 +275,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                <div>
                   <div className="flex justify-between items-start mb-2">
                      <h1 className="text-3xl lg:text-4xl font-black italic leading-none tracking-tight">{product.name}</h1>
-                     <button onClick={() => setIsFavorite(!isFavorite)} className="p-2 hover:bg-gray-100 rounded-full transition">
+                     <button onClick={() => setIsFavorite(!isFavorite)} className="p-2 hover:bg-gray-100 rounded-none transition">
                         <Heart className={isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400'}/>
                      </button>
                   </div>
@@ -283,7 +283,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   <div className="flex items-center gap-4 mb-4">
                      <span className="text-sm font-bold text-gray-500 uppercase tracking-widest">{product.brand}</span>
                      {product.specs?.condition && (
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded border uppercase ${
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-none border uppercase ${
                            product.specs.condition === 'New' 
                               ? 'bg-black text-white border-black' 
                               : 'bg-white text-gray-600 border-gray-300'
@@ -306,7 +306,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   <div>
                      <div className="flex justify-between items-center mb-3">
                         <span className="font-bold text-sm">Chọn Size</span>
-                        <button className="text-xs text-gray-500 underline hover:text-black">Hướng dẫn chọn size</button>
+                        <button className="text-xs text-gray-500 underline hover:text-primary">Hướng dẫn chọn size</button>
                      </div>
                      <div className="grid grid-cols-4 gap-2">
                         {sizeOptions.map((opt, idx) => {
@@ -319,11 +319,11 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                                  disabled={!isAvailable}
                                  onClick={() => setSelectedSize(opt)}
                                  className={`
-                                    py-3 rounded border text-sm font-bold transition
+                                    py-3 rounded-none border text-sm font-bold transition
                                     ${isSelected 
-                                       ? 'border-black bg-black text-white' 
+                                       ? 'border-primary bg-primary text-white' 
                                        : isAvailable 
-                                          ? 'border-gray-200 hover:border-black text-gray-900' 
+                                          ? 'border-gray-200 hover:border-primary text-gray-900' 
                                           : 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed decoration-slice'
                                     }
                                  `}
@@ -334,7 +334,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                         })}
                      </div>
                      {selectedSize && (
-                        <p className="text-xs text-green-600 font-bold mt-2 flex items-center gap-1">
+                        <p className="text-xs text-primary font-bold mt-2 flex items-center gap-1">
                            <Check size={12}/> Còn {selectedSize.stock} sản phẩm
                         </p>
                      )}
@@ -347,14 +347,14 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                      id="add-to-cart-btn"
                      onClick={handleAddToCart}
                      disabled={currentStock === 0}
-                     className="w-full bg-black text-white py-4 rounded-full font-bold uppercase tracking-wider hover:bg-stone-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                     className="w-full bg-primary text-white py-4 rounded-none font-bold uppercase tracking-wider hover:bg-primary-dark transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/30"
                   >
                      {currentStock > 0 ? 'Thêm vào giỏ hàng' : 'Hết hàng'}
                   </button>
                   <button 
                      onClick={handleBuyNow}
                      disabled={currentStock === 0}
-                     className="w-full bg-white border border-gray-300 text-black py-4 rounded-full font-bold uppercase tracking-wider hover:border-black transition disabled:opacity-50 disabled:cursor-not-allowed"
+                     className="w-full bg-white border-2 border-primary text-primary py-4 rounded-none font-bold uppercase tracking-wider hover:bg-primary hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                      Mua ngay
                   </button>
@@ -369,7 +369,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   >
                      <p>{product.description}</p>
                      {product.specs && (
-                        <div className="mt-4 bg-gray-50 p-3 rounded text-xs space-y-1">
+                        <div className="mt-4 bg-gray-50 p-3 rounded-none text-xs space-y-1">
                            {product.specs.styleCode && <p><span className="font-bold">Style Code:</span> {product.specs.styleCode}</p>}
                            {product.specs.material && <p><span className="font-bold">Chất liệu:</span> {product.specs.material}</p>}
                            {product.specs.accessories && <p><span className="font-bold">Phụ kiện:</span> {product.specs.accessories}</p>}

@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { ShoppingCart, Heart } from 'lucide-react';
+import { ShoppingCart, Check, TrendingUp } from 'lucide-react';
 import { useCart } from '../app/contexts/CartContext';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 
 interface Product {
   id?: string;
@@ -23,32 +24,34 @@ interface Product {
   };
   variants?: {
     name: string;
-    options: { name: string; price: number; stock: number }[];
+    options: { name: string; price: number; stock: number; sku?: string }[];
   }[];
   isNew?: boolean;
   hasPromotion?: boolean;
   stock?: number;
+  soldCount?: number;
 }
 
 interface ProductCardProps {
   product: Product;
+  showSoldCount?: boolean; // Prop mới
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
+export default function ProductCard({ product, showSoldCount = false }: ProductCardProps) {
   const router = useRouter();
   const { addToCart } = useCart();
+  const [showSizes, setShowSizes] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
   
   const productId = product.id || product._id || '';
   const productSlug = product.slug || productId;
   
-  // Helper: Lấy URL ảnh
   const getImageUrl = (p: Product): string => {
     if (p.images && Array.isArray(p.images) && p.images.length > 0) return p.images[0];
     if (p.image) return p.image;
     return '/placeholder-product.jpg';
   };
 
-  // Helper: Tính giá thấp nhất (nếu có variants)
   const getLowestPrice = (p: Product): number => {
     if (!p.variants || p.variants.length === 0) return p.price;
     const variantPrices = p.variants.flatMap(v => v.options.map(opt => opt.price));
@@ -62,11 +65,33 @@ export default function ProductCard({ product }: ProductCardProps) {
     ? Math.round(((product.originalPrice! - lowestPrice) / product.originalPrice!) * 100)
     : 0;
 
-  const handleAddToCart = (e: React.MouseEvent) => {
-    e.preventDefault(); // Ngăn chặn navigation
+  const sizeOptions = React.useMemo(() => {
+    if (!product.variants) return [];
+    const sizeVar = product.variants.find(v => v.name.toLowerCase().includes('size')) || product.variants[0];
+    return sizeVar?.options || [];
+  }, [product]);
+
+  const handleAddToCartClick = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
+
+    if (sizeOptions.length > 0) {
+      setShowSizes(true);
+    } else {
+      handleAddItem(undefined);
+    }
+  };
+
+  const handleAddItem = (variantOption: any) => {
+    setIsAdding(true);
     // @ts-ignore
-    addToCart({ ...product, _id: product.id || product._id || '' }, 1);
+    addToCart({ ...product, _id: productId }, 1, variantOption);
+    toast.success('Đã thêm vào giỏ hàng!');
+    
+    setTimeout(() => {
+      setIsAdding(false);
+      setShowSizes(false);
+    }, 500);
   };
 
   const formatCurrency = (amount: number) => {
@@ -74,7 +99,10 @@ export default function ProductCard({ product }: ProductCardProps) {
   };
 
   return (
-    <div className="group relative bg-white rounded-xl overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300">
+    <div 
+      className="group relative bg-white rounded-none overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300"
+      onMouseLeave={() => setShowSizes(false)}
+    >
       <Link href={`/products/${productSlug}`} className="block relative aspect-square overflow-hidden bg-gray-50">
         <img
           src={getImageUrl(product)}
@@ -85,69 +113,92 @@ export default function ProductCard({ product }: ProductCardProps) {
           }}
         />
         
-        {/* Labels */}
+        <div className={`absolute inset-0 bg-white/95 backdrop-blur-sm z-20 flex flex-col justify-center items-center p-4 transition-opacity duration-300 ${showSizes ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}>
+           <p className="text-xs font-bold uppercase tracking-widest mb-4 text-gray-500">Chọn Size</p>
+           <div className="grid grid-cols-4 gap-2 w-full">
+              {sizeOptions.map((opt, idx) => (
+                 <button
+                    key={idx}
+                    disabled={opt.stock === 0}
+                    onClick={(e) => {
+                       e.preventDefault();
+                       e.stopPropagation();
+                       handleAddItem(opt);
+                    }}
+                    className={`py-2 text-xs font-bold border transition rounded-none ${
+                       opt.stock > 0 
+                       ? 'border-gray-300 hover:border-primary hover:bg-primary hover:text-white text-gray-800' 
+                       : 'border-gray-100 text-gray-300 bg-gray-50 cursor-not-allowed decoration-slice'
+                    }`}
+                 >
+                    {opt.name}
+                 </button>
+              ))}
+           </div>
+           <button 
+              onClick={(e) => {
+                 e.preventDefault();
+                 e.stopPropagation();
+                 setShowSizes(false);
+              }}
+              className="mt-4 text-[10px] font-bold text-gray-400 hover:text-black uppercase tracking-widest"
+           >
+              Đóng
+           </button>
+        </div>
+        
         <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
           {product.isNew && (
-            <span className="bg-black text-white text-[10px] font-bold px-2 py-1 uppercase tracking-wider">New</span>
+            <span className="bg-black text-white text-[10px] font-bold px-2 py-1 uppercase tracking-wider rounded-none">New</span>
           )}
           {product.specs?.condition && product.specs.condition !== 'New' && (
-            <span className="bg-white/90 backdrop-blur text-black text-[10px] font-bold px-2 py-1 border border-black uppercase tracking-wider">
+            <span className="bg-white/90 backdrop-blur text-black text-[10px] font-bold px-2 py-1 border border-black uppercase tracking-wider rounded-none">
               {product.specs.condition}
             </span>
           )}
         </div>
 
-        {/* Discount Badge */}
         {hasDiscount && (
-          <div className="absolute top-3 right-3 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">
+          <div className="absolute top-3 right-3 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-none">
             -{discountPercent}%
           </div>
         )}
 
-        {/* Quick Actions (Hover) */}
-        <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 flex gap-2">
-           <button 
-              onClick={handleAddToCart}
-              className="flex-1 bg-black text-white py-2.5 rounded font-bold text-xs uppercase tracking-wide hover:bg-stone-800 flex items-center justify-center gap-2"
-           >
-              <ShoppingCart size={16}/> Thêm vào giỏ
-           </button>
-        </div>
+        {!showSizes && (
+           <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 flex gap-2 z-10">
+              <button 
+                 onClick={handleAddToCartClick}
+                 className="flex-1 bg-primary text-white py-3 rounded-none font-bold text-xs uppercase tracking-wide hover:bg-primary-dark shadow-lg shadow-primary/30 flex items-center justify-center gap-2"
+              >
+                 {isAdding ? <Check size={16}/> : <ShoppingCart size={16}/>} 
+                 {isAdding ? 'Đã thêm' : 'Thêm vào giỏ'}
+              </button>
+           </div>
+        )}
       </Link>
 
       <div className="p-4">
-        {/* Brand & Stock Status */}
         <div className="flex justify-between items-start mb-2">
            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{product.brand || 'No Brand'}</span>
-           {/* {product.stock === 0 && <span className="text-[10px] font-bold text-red-500 uppercase">Hết hàng</span>} */}
+           
+           {/* Hiển thị số lượng đã bán nếu được yêu cầu */}
+           {showSoldCount && product.soldCount && product.soldCount > 0 && (
+              <div className="flex items-center gap-1 text-[10px] font-black text-primary uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-none">
+                 <TrendingUp size={10}/> Đã bán {product.soldCount >= 1000 ? `${(product.soldCount/1000).toFixed(1)}k` : product.soldCount}
+              </div>
+           )}
         </div>
 
-        {/* Name */}
         <Link href={`/products/${productSlug}`} className="block">
-          <h3 className="font-bold text-gray-900 mb-2 line-clamp-1 hover:text-blue-600 transition" title={product.name}>
+          <h3 className="font-bold text-gray-900 mb-2 line-clamp-1 hover:text-primary transition uppercase tracking-tighter italic" title={product.name}>
             {product.name}
           </h3>
         </Link>
 
-                      {/* Variants Preview */}
-                      {product.variants && product.variants.length > 0 && (
-                        <div className="mt-2 flex items-center gap-1 text-xs text-gray-500">
-                          {product.variants.slice(0, 2).map((variant, idx) => (
-                            <span key={idx} className="bg-gray-100 px-2 py-1 rounded">
-                              {variant.options?.length || 0} {variant.name}
-                            </span>
-                          ))}
-                          {product.variants.length > 2 && (
-                            <span className="text-gray-400">+{product.variants.length - 2}</span>
-                          )}
-                        </div>
-                      )}
-
-        {/* Price */}
-        <div className="flex items-end justify-between border-t border-dashed pt-3">
+        <div className="flex items-end justify-between border-t border-dashed border-gray-100 pt-3 mt-3">
            <div>
               <div className="flex items-center gap-2">
-                <span className="text-lg font-black text-black">
+                <span className="text-lg font-black text-black italic">
                   {formatCurrency(lowestPrice)}
                 </span>
                 {hasDiscount && (
@@ -156,7 +207,6 @@ export default function ProductCard({ product }: ProductCardProps) {
                   </span>
                 )}
               </div>
-              {/* {hasDiscount && <span className="text-[10px] text-red-500 font-bold">Tiết kiệm {formatCurrency(product.originalPrice! - lowestPrice)}</span>} */}
            </div>
         </div>
       </div>
