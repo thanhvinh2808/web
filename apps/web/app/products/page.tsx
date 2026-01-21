@@ -200,7 +200,7 @@ export default function ProductsPage() {
 
         <div className="flex gap-12">
           <aside className={`
-            fixed inset-0 z-[101] bg-white p-8 overflow-y-auto w-full transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 lg:w-72 lg:p-0 lg:block lg:shadow-none lg:bg-transparent lg:inset-auto lg:h-auto lg:overflow-visible
+            fixed inset-0 z-[50] bg-white p-8 overflow-y-auto w-full transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 lg:w-72 lg:p-0 lg:block lg:shadow-none lg:bg-transparent lg:inset-auto lg:h-auto lg:overflow-visible
             ${showMobileFilter ? 'translate-x-0' : '-translate-x-full'}
           `}>
             <div className="flex justify-between items-center mb-10 lg:hidden">
