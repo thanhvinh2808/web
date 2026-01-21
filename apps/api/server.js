@@ -8,6 +8,7 @@ import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import path from 'path';
 
 // Models
 import User from './models/User.js';
@@ -36,7 +37,7 @@ import {
 import adminRoutes from './routes/admin.js';
 
 // ✅ Load environment variables
-dotenv.config();
+dotenv.config({ path: path.resolve(process.cwd(), 'apps/api/.env') });
 
 // ✅ App setup
 const app = express();
@@ -1977,9 +1978,35 @@ app.put('/api/orders/:id/cancel', authenticateToken, async (req, res) => {
 // Use admin routes
 app.use('/api/admin', adminRoutes);
 
+// ============================================
+// BLOG ROUTES (PUBLIC)
+// ============================================
 
+// Get all blogs (public)
+app.get('/api/blogs', async (req, res) => {
+  try {
+    const blogs = await Blog.find({ published: true }).sort({ createdAt: -1 });
+    res.json(blogs);
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
-
+// Get blog by slug (public)
+app.get('/api/blogs/:slug', async (req, res) => {
+  try {
+    const blog = await Blog.findOne({ slug: req.params.slug, published: true });
+    if (blog) {
+      blog.views += 1;
+      await blog.save();
+      res.json(blog);
+    } else {
+      res.status(404).json({ success: false, message: 'Blog not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 // ============================================
 // ABOUT ROUTE (PUBLIC)

@@ -11,7 +11,10 @@ interface Blog {
   excerpt: string;
   image: string;
   category: string;
-  author: string;
+  author: {
+    name: string;
+    avatar?: string;
+  };
   date: string;
   readTime: string;
   content?: string;
@@ -60,8 +63,11 @@ export default function BlogPage() {
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold mb-4">Blog công nghệ</h1>
-        <p className="text-gray-600 mb-12">Cập nhật tin tức và đánh giá sản phẩm mới nhất</p>
+        <h1 className="text-4xl font-bold mb-4">
+          <span className="text-black">Foot</span>
+          <span className="text-primary">mark</span> Blog
+        </h1>
+        <p className="text-gray-600 mb-12">Khám phá thế giới giày qua những bài viết chuyên sâu</p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="bg-white rounded-xl shadow-md overflow-hidden animate-pulse">
@@ -86,8 +92,11 @@ export default function BlogPage() {
     <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-bold mb-4">Blog công nghệ</h1>
-        <p className="text-gray-600 text-lg">Cập nhật tin tức và đánh giá sản phẩm mới nhất</p>
+        <h1 className="text-4xl md:text-5xl font-bold mb-4">
+          <span className="text-black">Foot</span>
+          <span className="text-primary">mark</span> Blog
+        </h1>
+        <p className="text-gray-600 text-lg">Khám phá thế giới giày qua những bài viết chuyên sâu</p>
       </div>
 
       {/* Error Message */}
@@ -136,7 +145,7 @@ export default function BlogPage() {
                 <div className="flex items-center justify-between text-sm text-gray-500 mb-2">
                   <div className="flex items-center gap-1">
                     <User size={14} />
-                    <span>{blog.author || 'Admin'}</span>
+                    <span>{blog.author?.name || 'Admin'}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Clock size={14} />
@@ -162,9 +171,9 @@ export default function BlogPage() {
 
       {/* Newsletter Section */}
       <section className="mt-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 md:p-12 text-white text-center">
-        <h2 className="text-3xl font-bold mb-4">Đăng ký nhận tin tức</h2>
+        <h2 className="text-3xl font-bold mb-4">Đừng Bỏ Lỡ!</h2>
         <p className="text-blue-100 mb-6 max-w-2xl mx-auto">
-          Nhận những bài viết mới nhất và ưu đãi đặc biệt trực tiếp vào email của bạn
+          Nhận các bài viết về xu hướng, mẹo chăm sóc giày và các ưu đãi độc quyền.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
           <input

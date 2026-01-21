@@ -2,8 +2,13 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import Blog from './models/Blog.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const blogs = [
   {
@@ -68,12 +73,73 @@ Sau khi giày khô hoàn toàn, hãy xịt một lớp nano để chống thấm
     author: { name: "Vinh FootMark", avatar: "" },
     views: 1200,
     published: true
+  },
+  {
+    title: "Top 5 Mẫu Giày Sneaker Được Săn Đón Nhất Năm 2024",
+    slug: "top-5-mau-giay-sneaker-sao-don-2024",
+    excerpt: "Khám phá những đôi sneaker hot nhất và được yêu thích nhất trong năm nay mà bạn không thể bỏ qua.",
+    content: `
+# Top 5 Mẫu Giày Sneaker Được Săn Đón Nhất Năm 2024
+
+Năm 2024 chứng kiến sự bùng nổ của nhiều mẫu sneaker mới lạ và độc đáo. Dưới đây là 5 cái tên đang làm mưa làm gió trên thị trường:
+
+## 1. Nike Dunk Low "Panda"
+Không còn quá xa lạ, "Panda" vẫn giữ vững vị thế là một trong những đôi giày dễ phối đồ và được săn đón nhiều nhất.
+
+## 2. Adidas Samba OG
+Sự trở lại mạnh mẽ của phong cách retro đã đưa Adidas Samba trở thành "must-have" item cho mọi tín đồ thời trang.
+
+## 3. New Balance 2002R
+Với sự thoải mái vượt trội và thiết kế tinh tế, New Balance 2002R là lựa chọn hoàn hảo cho cả đi làm và đi chơi.
+
+## 4. Salomon XT-6
+Xu hướng Gorpcore đang thịnh hành, và Salomon XT-6 với vẻ ngoài hầm hố, khả năng chống chịu tốt là đại diện tiêu biểu.
+
+## 5. Asics Gel-Kayano 14
+Được yêu thích bởi sự kết hợp giữa hiệu suất và phong cách, Gel-Kayano 14 mang đến trải nghiệm êm ái cùng thiết kế ấn tượng.
+    `,
+    image: "https://images.unsplash.com/photo-1628172937746-d872c676d1e4?auto=format&fit=crop&q=80&w=800",
+    category: "Xu hướng",
+    tags: ["sneaker trends", "top sneakers", "2024 fashion"],
+    featured: true,
+    author: { name: "FootMark Editor", avatar: "" },
+    views: 4800,
+    published: true
+  },
+  {
+    title: "Lịch Sử Thương Hiệu Giày Nike Air Jordan: Từ Sân Bóng Rổ Đến Biểu Tượng Thời Trang",
+    slug: "lich-su-nike-air-jordan",
+    excerpt: "Hành trình huyền thoại của dòng giày Air Jordan và cách nó thay đổi văn hóa sneaker mãi mãi.",
+    content: `
+# Lịch Sử Thương Hiệu Giày Nike Air Jordan: Từ Sân Bóng Rổ Đến Biểu Tượng Thời Trang
+
+Air Jordan không chỉ là một dòng giày, đó là một hiện tượng văn hóa. Bắt đầu từ năm 1984, sự hợp tác giữa Nike và Michael Jordan đã tạo ra một đế chế.
+
+## Khởi đầu: Air Jordan 1
+
+Air Jordan 1 ra mắt vào năm 1985, nhanh chóng trở thành một biểu tượng. Với thiết kế táo bạo và câu chuyện "bị cấm" bởi NBA, nó đã thu hút sự chú ý toàn cầu.
+
+## Phát triển và Đổi mới
+
+Qua mỗi phiên bản, Air Jordan luôn tiên phong về công nghệ và thiết kế. Từ Air Jordan 3 với họa tiết elephant print đến Air Jordan 11 với chất liệu patent leather, mỗi đôi giày đều có một câu chuyện riêng.
+
+## Tầm ảnh hưởng Văn hóa
+
+Air Jordan không chỉ dừng lại ở sân bóng rổ. Nó đã vượt ra ngoài ranh giới thể thao, trở thành một phần không thể thiếu của thời trang đường phố, âm nhạc và nghệ thuật.
+    `,
+    image: "https://images.unsplash.com/photo-1579730538965-dbd8e174092b?auto=format&fit=crop&q=80&w=800",
+    category: "Thương hiệu",
+    tags: ["nike", "air jordan", "sneaker history", "michael jordan"],
+    featured: true,
+    author: { name: "FootMark History", avatar: "" },
+    views: 6000,
+    published: true
   }
 ];
 
 const seedData = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/techstore');
     await Blog.deleteMany({});
     await Blog.insertMany(blogs);
     console.log('Sneaker Blogs Seeded Successfully!');
@@ -85,3 +151,4 @@ const seedData = async () => {
 };
 
 seedData();
+
