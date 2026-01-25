@@ -52,12 +52,13 @@ export default function BlogDetailPage() {
         // Fetch related blogs (optional)
         if (data.category) {
           const relatedResponse = await fetch(
-            `${API_URL}/blog/${slug}`);
+            `${API_URL}/blog/${slug}`
+          );
           if (relatedResponse.ok) {
             const relatedData = await relatedResponse.json();
             // Filter out current blog and limit to 3
             setRelatedBlogs(
-              Array.isArray(relatedData) 
+              Array.isArray(relatedData)
                 ? relatedData.filter((b: Blog) => b.slug !== slug).slice(0, 3)
                 : []
             );
@@ -133,7 +134,7 @@ export default function BlogDetailPage() {
         {/* Back Button */}
         <button
           onClick={() => router.push('/blog')}
-          className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 mb-8 transition"
+          className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 mb-8 transition"    
         >
           <ArrowLeft size={20} />
           <span className="font-medium">Quay lại</span>
@@ -172,7 +173,7 @@ export default function BlogDetailPage() {
               </div>
               <button
                 onClick={handleShare}
-                className="flex items-center gap-2 ml-auto text-blue-600 hover:text-blue-700 transition"
+                className="flex items-center gap-2 ml-auto text-blue-600 hover:text-blue-700 transition"  
               >
                 <Share2 size={18} />
                 <span className="font-medium">Chia sẻ</span>

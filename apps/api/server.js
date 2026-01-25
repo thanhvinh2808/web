@@ -35,6 +35,7 @@ import {
 
 // Routes
 import adminRoutes from './routes/admin.js';
+import blogRoutes from './routes/blog.js';
 
 // ✅ Load environment variables
 dotenv.config({ path: path.resolve(process.cwd(), 'apps/api/.env') });
@@ -1978,35 +1979,8 @@ app.put('/api/orders/:id/cancel', authenticateToken, async (req, res) => {
 // Use admin routes
 app.use('/api/admin', adminRoutes);
 
-// ============================================
-// BLOG ROUTES (PUBLIC)
-// ============================================
-
-// Get all blogs (public)
-app.get('/api/blogs', async (req, res) => {
-  try {
-    const blogs = await Blog.find({ published: true }).sort({ createdAt: -1 });
-    res.json(blogs);
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// Get blog by slug (public)
-app.get('/api/blogs/:slug', async (req, res) => {
-  try {
-    const blog = await Blog.findOne({ slug: req.params.slug, published: true });
-    if (blog) {
-      blog.views += 1;
-      await blog.save();
-      res.json(blog);
-    } else {
-      res.status(404).json({ success: false, message: 'Blog not found' });
-    }
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+// Use blog routes
+app.use('/api/blogs', blogRoutes);
 
 // ============================================
 // ABOUT ROUTE (PUBLIC)
@@ -2027,96 +2001,9 @@ app.get('/api/about', (req, res) => {
   });
 });
 
-// ============================================
-// BLOG ROUTES (PUBLIC)
-// ============================================
 
-// Get all blogs (public)
-app.get('/api/blogs', async (req, res) => {
-  try {
-    const { page = 1, limit = 10, category, featured, search } = req.query;
-    
-    const query = { published: true };
-    
-    if (category) query.category = category;
-    if (featured === 'true') query.featured = true;
-    if (search) {
-      query.$text = { $search: search };
-    }
-    
-    const blogs = await Blog.find(query)
-      .sort({ publishedAt: -1 })
-      .limit(Number(limit))
-      .skip((Number(page) - 1) * Number(limit))
-      .lean();
-    
-    const total = await Blog.countDocuments(query);
-    
-    res.json({
-      success: true,
-      data: blogs,
-      pagination: {
-        total,
-        page: Number(page),
-        limit: Number(limit),
-        pages: Math.ceil(total / Number(limit))
-      }
-    });
-  } catch (error) {
-    console.error('❌ Error fetching blogs:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
 
-// Get blog by slug (public)
-app.get('/api/blogs/:slug', async (req, res) => {
-  try {
-    const blog = await Blog.findOne({ slug: req.params.slug, published: true });
-    
-    if (!blog) {
-      return res.status(404).json({
-        success: false,
-        message: 'Blog not found'
-      });
-    }
-    
-    // Increment views
-    blog.views += 1;
-    await blog.save();
-    
-    res.json({
-      success: true,
-      data: blog
-    });
-  } catch (error) {
-    console.error('❌ Error fetching blog:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
 
-// Get blog categories (public)
-app.get('/api/blogs/categories/all', async (req, res) => {
-  try {
-    const categories = await Blog.distinct('category');
-    
-    res.json({
-      success: true,
-      data: categories
-    });
-  } catch (error) {
-    console.error('❌ Error fetching categories:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
 
 // ============================================
 // ADMIN BLOG ROUTES

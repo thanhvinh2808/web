@@ -7,11 +7,11 @@ import {
   ShoppingCart, 
   Package, 
   FolderTree, 
-  MessageSquare, 
+  MessageSquare,
   Ticket,
   LogOut,
-  Store,
-  X
+  X,
+  Newspaper // Import icon
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -22,12 +22,13 @@ interface SidebarProps {
   onClose: () => void;    // Hàm đóng menu mobile
 }
 
-export default function Sidebar({ activeTab, setActiveTab, onLogout, isOpen, onClose }: SidebarProps) {
+export default function Sidebar({ activeTab, setActiveTab, onLogout, isOpen, onClose }: SidebarProps) {   
   const menuItems = [
     { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
     { id: 'users', label: 'Người dùng', icon: Users },
     { id: 'orders', label: 'Đơn hàng', icon: ShoppingCart },
     { id: 'products', label: 'Sản phẩm', icon: Package },
+    { id: 'blogs', label: 'Bài viết', icon: Newspaper }, // Changed to a tab
     { id: 'categories', label: 'Danh mục', icon: FolderTree },
     { id: 'vouchers', label: 'Khuyến mãi', icon: Ticket },
     { id: 'contacts', label: 'Liên hệ', icon: MessageSquare },
@@ -37,19 +38,19 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, isOpen, onC
     <>
       {/* Mobile Overlay (Lớp nền đen mờ khi mở menu) */}
       {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm transition-opacity"
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm transition-opacity"        
           onClick={onClose}
         ></div>
       )}
 
       {/* Sidebar Container */}
-      <aside 
+      <aside
         className={`fixed top-0 left-0 h-screen w-72 bg-white border-r border-gray-100 shadow-xl z-50 transition-transform duration-300 ease-in-out md:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        
+
         {/* Brand Logo & Close Button */}
         <div className="h-20 flex items-center justify-between px-6 border-b border-gray-50">
           <div className="flex flex-col">
@@ -70,7 +71,7 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, isOpen, onC
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
-            
+
             return (
               <button
                 key={item.id}
@@ -84,13 +85,13 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, isOpen, onC
                     : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <Icon 
-                  size={20} 
-                  className={`transition-colors ${isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}`} 
+                <Icon
+                  size={20}
+                  className={`transition-colors ${isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}`}
                   strokeWidth={isActive ? 2.5 : 2}
                 />
                 {item.label}
-                {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-600"></div>}
+                {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-600"></div>}        
               </button>
             );
           })}
