@@ -2,6 +2,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 
+
+
 // ✅ Cập nhật Specs cho Giày
 interface ProductSpecs {
   condition?: string;
@@ -208,7 +210,7 @@ export default function ProductModal({
 
         const data = await response.json();
         if (data.success) {
-          const imageUrl = `${API_URL}${data.data.url}`;
+          const imageUrl = getImageUrl(data.data.url);
           newImages.push(imageUrl);
         }
       }
@@ -312,7 +314,7 @@ export default function ProductModal({
       });
       const data = await response.json();
       if (data.success) {
-        const imageUrl = `${API_URL}${data.data.url}`;
+        const imageUrl = getImageUrl(data.data.url);
         updateVariantOption(optionIndex, 'image', imageUrl);
       }
     } catch (error) { console.error(error); }

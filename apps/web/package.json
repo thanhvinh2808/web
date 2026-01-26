@@ -10,11 +10,13 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@tailwindcss/typography": "^0.5.19",
     "@tech-store/constants": "*",
     "@tech-store/types": "*",
     "next": "14.0.0",
     "react": "^18",
     "react-dom": "^18",
+    "react-quill": "^2.0.0",
     "socket.io-client": "^4.8.1"
   },
   "devDependencies": {

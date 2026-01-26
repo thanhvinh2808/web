@@ -1,6 +1,7 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import { isAdmin } from '../middleware/isAdmin.js';
+import adminBlogRoutes from './adminBlog.js'; // Import new admin blog routes
 import {
   getDashboardStats,
   getAllUsers,
@@ -25,6 +26,8 @@ const router = express.Router();
 // 🔒 Tất cả routes dưới đây yêu cầu admin
 router.use(authenticateToken);
 router.use(isAdmin);
+
+router.use('/blogs', adminBlogRoutes); // Mount admin blog routes
 
 // Dashboard
 router.get('/stats', getDashboardStats);

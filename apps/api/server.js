@@ -36,6 +36,7 @@ import {
 // Routes
 import adminRoutes from './routes/admin.js';
 import tradeInRoutes from './routes/tradeIn.js';
+import blogRoutes from './routes/blog.js';
 
 // ✅ Load environment variables
 dotenv.config({ path: path.resolve(process.cwd(), 'apps/api/.env') });
@@ -59,6 +60,7 @@ app.use('/uploads', express.static('uploads'));
 
 // Routes
 app.use('/api/trade-in', tradeInRoutes);
+app.use('/api/blogs', blogRoutes);
 
 // ✅ Socket.io setup
 const io = new Server(server, {
@@ -112,7 +114,7 @@ function createSlug(text) {
   return text
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[̀-ͤ]/g, '')
     .replace(/đ/g, 'd')
     .replace(/Đ/g, 'd')
     .replace(/[^a-z0-9\s-]/g, '')
@@ -157,9 +159,9 @@ mongoose.connection.on('reconnected', () => {
   console.log('✅ MongoDB reconnected');
 });
 
-// ============================================
+// ============================================ 
 // MIDDLEWARE
-// ============================================
+// ============================================ 
 
 // ✅ Authenticate token
 const authenticateToken = (req, res, next) => {
@@ -209,13 +211,13 @@ const requireAdmin = async (req, res, next) => {
   }
 };
 
-// ============================================
+// ============================================ 
 // ROUTES
-// ============================================
+// ============================================ 
 
 // Health check
 app.get('/', (req, res) => {
-  res.json({ 
+  res.json({
     message: '🚀 Server is running!',
     socketConnected: io ? true : false 
   }); 
@@ -223,7 +225,7 @@ app.get('/', (req, res) => {
 
 // Admin verify
 app.get('/api/admin/verify', authenticateToken, requireAdmin, (req, res) => {
-  res.json({ 
+  res.json({
     success: true, 
     user: {
       id: req.user.id,
@@ -233,9 +235,9 @@ app.get('/api/admin/verify', authenticateToken, requireAdmin, (req, res) => {
   });
 });
 
-// ============================================
-// AUTH ROUTES
-// ============================================
+// ============================================ 
+// AUTHROUTES
+// ============================================ 
 
 // Register
 app.post('/api/register', async (req, res) => {
@@ -284,7 +286,7 @@ app.post('/api/register', async (req, res) => {
     });
 
     const token = jwt.sign(
-      { 
+      {
         id: newUser._id, 
         email: newUser.email,
         role: newUser.role 
@@ -346,7 +348,7 @@ app.post('/api/login', async (req, res) => {
     }
 
     const token = jwt.sign(
-      { 
+      {
         id: user._id, 
         email: user.email,
         role: user.role 
@@ -411,7 +413,7 @@ app.post('/api/reset-password', async (req, res) => {
       return res.status(400).json({ success: false, message: 'All fields required' });
     }
 
-    const user = await User.findOne({ 
+    const user = await User.findOne({
       email: email.trim().toLowerCase(),
       resetPasswordToken: otp,
       resetPasswordExpires: { $gt: Date.now() }
@@ -440,22 +442,22 @@ app.post('/api/logout', authenticateToken, async (req, res) => {
   try {
     console.log(`👋 User ${req.user.email} logged out`);
     
-    res.json({ 
+    res.json({
       success: true,
       message: 'Logout successful' 
     });
   } catch (error) {
     console.error('❌ Logout error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       message: 'Logout error: ' + error.message 
     });
   }
 });
 
-// ============================================
+// ============================================ 
 // USER ROUTES
-// ============================================
+// ============================================ 
 
 // Get current user
 app.get('/api/user/me', authenticateToken, async (req, res) => {
@@ -463,7 +465,7 @@ app.get('/api/user/me', authenticateToken, async (req, res) => {
     const user = await User.findById(req.user.id).select('-password');
     
     if (!user) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false, 
         message: 'User not found' 
       });
@@ -486,7 +488,7 @@ app.get('/api/user/me', authenticateToken, async (req, res) => {
     
   } catch (error) {
     console.error('❌ Error getting user:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false, 
       message: 'Server error' 
     });
@@ -615,7 +617,7 @@ app.post('/api/user/addresses', authenticateToken, async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    const newAddress = req.body; // { name, phone, city, district, ward, address, isDefault }
+    const newAddress = req.body; // { name, phone, city, district, ward, address, isDefault } 
     
     // Nếu là địa chỉ đầu tiên hoặc được set default -> Reset các default khác
     if (user.addresses.length === 0 || newAddress.isDefault) {
@@ -734,9 +736,9 @@ app.get('/api/user/orders', authenticateToken, async (req, res) => {
   }
 });
 
-// ============================================
+// ============================================ 
 // PRODUCT ROUTES (PUBLIC)
-// ============================================
+// ============================================ 
 
 // Get all products (public)
 app.get('/api/products', async (req, res) => {
@@ -745,13 +747,13 @@ app.get('/api/products', async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
     
-    res.json({ 
+    res.json({
       success: true, 
       data: products 
     });
   } catch (error) {
     console.error('❌ Error fetching products:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false, 
       message: error.message 
     });
@@ -774,9 +776,9 @@ app.get('/api/products/:slug', async (req, res) => {
   }
 });
 
-// ============================================
+// ============================================ 
 // ADMIN PRODUCT ROUTES
-// ============================================
+// ============================================ 
 
 // Get all products (admin)
 app.get('/api/admin/products', authenticateToken, requireAdmin, async (req, res) => {
@@ -785,14 +787,14 @@ app.get('/api/admin/products', authenticateToken, requireAdmin, async (req, res)
       .sort({ createdAt: -1 })
       .lean();
     
-    res.json({ 
+    res.json({
       success: true, 
       data: products,
       total: products.length
     });
   } catch (error) {
     console.error('❌ Error fetching products:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false, 
       message: error.message 
     });
@@ -870,7 +872,7 @@ app.post('/api/admin/products', authenticateToken, requireAdmin, async (req, res
     
     console.log('✅ Product created:', product.slug);
     
-    res.status(201).json({ 
+    res.status(201).json({
       success: true, 
       message: 'Product created successfully',
       data: product 
@@ -880,13 +882,13 @@ app.post('/api/admin/products', authenticateToken, requireAdmin, async (req, res
     console.error('❌ Error creating product:', error);
     
     if (error.code === 11000) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false, 
         message: 'Slug already exists' 
       });
     }
     
-    res.status(500).json({ 
+    res.status(500).json({
       success: false, 
       message: error.message 
     });
@@ -964,7 +966,7 @@ app.put('/api/admin/products/:slug', authenticateToken, requireAdmin, async (req
     );
     
     if (!product) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false, 
         message: 'Product not found' 
       });
@@ -972,7 +974,7 @@ app.put('/api/admin/products/:slug', authenticateToken, requireAdmin, async (req
     
     console.log('✅ Product updated:', product.slug);
     
-    res.json({ 
+    res.json({
       success: true,
       message: 'Product updated successfully',
       data: product 
@@ -980,7 +982,7 @@ app.put('/api/admin/products/:slug', authenticateToken, requireAdmin, async (req
     
   } catch (error) {
     console.error('❌ Error updating product:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false, 
       message: error.message 
     });
@@ -993,7 +995,7 @@ app.delete('/api/admin/products/:slug', authenticateToken, requireAdmin, async (
     const product = await Product.findOneAndDelete({ slug: req.params.slug });
     
     if (!product) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false, 
         message: 'Product not found' 
       });
@@ -1001,23 +1003,23 @@ app.delete('/api/admin/products/:slug', authenticateToken, requireAdmin, async (
     
     console.log('🗑️ Product deleted:', product.slug);
     
-    res.json({ 
+    res.json({
       success: true, 
       message: 'Product deleted successfully' 
     });
     
   } catch (error) {
     console.error('❌ Error deleting product:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false, 
       message: error.message 
     });
   }
 });
 
-// ============================================
+// ============================================ 
 // CATEGORY ROUTES (PUBLIC)
-// ============================================
+// ============================================ 
 
 // Get all categories (public)
 app.get('/api/categories', async (req, res) => {
@@ -1026,7 +1028,7 @@ app.get('/api/categories', async (req, res) => {
     res.json(categories);
   } catch (error) {
     console.error('❌ Error fetching categories:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false, 
       message: error.message 
     });
@@ -1039,7 +1041,7 @@ app.get('/api/categories/:slug', async (req, res) => {
     const category = await Category.findOne({ slug: req.params.slug });
     
     if (!category) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false, 
         error: 'Category not found'
       });
@@ -1052,16 +1054,16 @@ app.get('/api/categories/:slug', async (req, res) => {
     
   } catch (error) {
     console.error('❌ Error fetching category:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false, 
       message: error.message 
     });
   }
 });
 
-// ============================================
+// ============================================ 
 // ADMIN CATEGORY ROUTES
-// ============================================
+// ============================================ 
 
 // Create category (admin)
 app.post('/api/admin/categories', authenticateToken, requireAdmin, async (req, res) => {
@@ -1069,7 +1071,7 @@ app.post('/api/admin/categories', authenticateToken, requireAdmin, async (req, r
     const { name, slug, description } = req.body;
     
     if (!name || name.trim() === '') {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false, 
         message: 'Name required' 
       });
@@ -1080,13 +1082,13 @@ app.post('/api/admin/categories', authenticateToken, requireAdmin, async (req, r
     const existingCategory = await Category.findOne({ slug: categorySlug });
     
     if (existingCategory) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false, 
         message: 'Category already exists' 
       });
     }
     
-    const category = await Category.create({ 
+    const category = await Category.create({
       name: name.trim(), 
       slug: categorySlug,
       description: description?.trim() || '' 
@@ -1094,7 +1096,7 @@ app.post('/api/admin/categories', authenticateToken, requireAdmin, async (req, r
     
     console.log('✅ Category created:', category.slug);
     
-    res.status(201).json({ 
+    res.status(201).json({
       success: true, 
       message: 'Category created successfully',
       data: category 
@@ -1104,13 +1106,13 @@ app.post('/api/admin/categories', authenticateToken, requireAdmin, async (req, r
     console.error('❌ Error creating category:', error);
     
     if (error.code === 11000) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false, 
         message: 'Category already exists' 
       });
     }
     
-    res.status(500).json({ 
+    res.status(500).json({
       success: false, 
       message: error.message 
     });
@@ -1124,7 +1126,7 @@ app.put('/api/admin/categories/:slug', authenticateToken, requireAdmin, async (r
     const { name, description } = req.body;
     
     if (!name || name.trim() === '') {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false, 
         message: 'Name required' 
       });
@@ -1133,7 +1135,7 @@ app.put('/api/admin/categories/:slug', authenticateToken, requireAdmin, async (r
     const category = await Category.findOne({ slug });
     
     if (!category) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false, 
         message: 'Category not found' 
       });
@@ -1144,7 +1146,7 @@ app.put('/api/admin/categories/:slug', authenticateToken, requireAdmin, async (r
     if (newSlug !== slug) {
       const existingCategory = await Category.findOne({ slug: newSlug });
       if (existingCategory) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false, 
           message: 'Category name already exists' 
         });
@@ -1159,7 +1161,7 @@ app.put('/api/admin/categories/:slug', authenticateToken, requireAdmin, async (r
     
     console.log('✅ Category updated:', newSlug);
     
-    res.json({ 
+    res.json({
       success: true, 
       message: 'Category updated successfully',
       data: category 
@@ -1167,7 +1169,7 @@ app.put('/api/admin/categories/:slug', authenticateToken, requireAdmin, async (r
     
   } catch (error) {
     console.error('❌ Error updating category:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false, 
       message: error.message 
     });
@@ -1182,7 +1184,7 @@ app.delete('/api/admin/categories/:slug', authenticateToken, requireAdmin, async
     const result = await Category.deleteOne({ slug });
     
     if (result.deletedCount === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false, 
         message: 'Category not found' 
       });
@@ -1190,23 +1192,23 @@ app.delete('/api/admin/categories/:slug', authenticateToken, requireAdmin, async
     
     console.log('🗑️ Category deleted:', slug);
     
-    res.json({ 
+    res.json({
       success: true, 
       message: 'Category deleted successfully' 
     });
     
   } catch (error) {
     console.error('❌ Error deleting category:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false, 
       message: error.message 
     });
   }
 });
 
-// ============================================
-// UPLOAD ROUTES (ADMIN)
-// ============================================
+// ============================================ 
+// UPLOADROUTES (ADMIN)
+// ============================================ 
 
 // Upload single image
 app.post('/api/upload/single', authenticateToken, requireAdmin, uploadSingle, handleUploadError, (req, res) => {
@@ -1302,9 +1304,9 @@ app.delete('/api/upload/:filename', authenticateToken, requireAdmin, (req, res) 
   }
 });
 
-// ============================================
+// ============================================ 
 // ADMIN ORDER ROUTES
-// ============================================
+// ============================================ 
 
 // Get all orders (admin)
 app.get('/api/admin/orders', authenticateToken, requireAdmin, async (req, res) => {
@@ -1486,9 +1488,9 @@ app.delete('/api/admin/orders/:id', authenticateToken, requireAdmin, async (req,
   }
 });
 
-// ============================================
+// ============================================ 
 // ADMIN CONTACT ROUTES
-// ============================================
+// ============================================ 
 
 // Get all contacts (admin)
 app.get('/api/admin/contacts', authenticateToken, requireAdmin, async (req, res) => {
@@ -1521,7 +1523,7 @@ app.get('/api/admin/contacts', authenticateToken, requireAdmin, async (req, res)
 
   } catch (error) {
     console.error('❌ Error fetching contacts:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Server error' 
     });
@@ -1535,7 +1537,7 @@ app.patch('/api/admin/contacts/:id/status', authenticateToken, requireAdmin, asy
     const { status } = req.body;
 
     if (!['pending', 'replied', 'closed'].includes(status)) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
         error: 'Invalid status' 
       });
@@ -1548,13 +1550,13 @@ app.patch('/api/admin/contacts/:id/status', authenticateToken, requireAdmin, asy
     );
 
     if (!contact) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
         error: 'Contact not found' 
       });
     }
 
-    res.json({ 
+    res.json({
       success: true, 
       message: 'Status updated',
       data: contact 
@@ -1562,7 +1564,7 @@ app.patch('/api/admin/contacts/:id/status', authenticateToken, requireAdmin, asy
 
   } catch (error) {
     console.error('❌ Error updating contact:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Server error' 
     });
@@ -1576,7 +1578,7 @@ app.post('/api/admin/contacts/:id/reply', authenticateToken, requireAdmin, async
     const { replyMessage } = req.body;
 
     if (!replyMessage || replyMessage.trim() === '') {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
         error: 'Reply message required' 
       });
@@ -1585,7 +1587,7 @@ app.post('/api/admin/contacts/:id/reply', authenticateToken, requireAdmin, async
     const contact = await Contact.findById(id);
 
     if (!contact) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
         error: 'Contact not found' 
       });
@@ -1596,7 +1598,7 @@ app.post('/api/admin/contacts/:id/reply', authenticateToken, requireAdmin, async
       console.log(`📧 Reply email sent to ${contact.email}`);
     } catch (emailError) {
       console.error('⚠️ Email error:', emailError.message);
-      return res.status(500).json({ 
+      return res.status(500).json({
         success: false,
         error: 'Failed to send email: ' + emailError.message 
       });
@@ -1605,7 +1607,7 @@ app.post('/api/admin/contacts/:id/reply', authenticateToken, requireAdmin, async
     contact.status = 'replied';
     await contact.save();
 
-    res.json({ 
+    res.json({
       success: true, 
       message: 'Reply sent successfully',
       data: contact 
@@ -1613,7 +1615,7 @@ app.post('/api/admin/contacts/:id/reply', authenticateToken, requireAdmin, async
 
   } catch (error) {
     console.error('❌ Error sending reply:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Server error' 
     });
@@ -1628,13 +1630,13 @@ app.delete('/api/admin/contacts/:id', authenticateToken, requireAdmin, async (re
     const contact = await Contact.findByIdAndDelete(id);
 
     if (!contact) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
         error: 'Contact not found' 
       });
     }
 
-    res.json({ 
+    res.json({
       success: true, 
       message: 'Contact deleted',
       data: contact 
@@ -1642,16 +1644,16 @@ app.delete('/api/admin/contacts/:id', authenticateToken, requireAdmin, async (re
 
   } catch (error) {
     console.error('❌ Error deleting contact:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Server error' 
     });
   }
 });
 
-// ============================================
+// ============================================ 
 // ADMIN USER ROUTES
-// ============================================
+// ============================================ 
 
 // Get all users (admin)
 app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
@@ -1711,9 +1713,9 @@ app.patch('/api/admin/users/:id/role', authenticateToken, requireAdmin, async (r
   }
 });
 
-// ============================================
+// ============================================ 
 // CONTACT ROUTES (PUBLIC)
-// ============================================
+// ============================================ 
 
 // Submit contact (public)
 app.post('/api/contacts', async (req, res) => {
@@ -1721,7 +1723,7 @@ app.post('/api/contacts', async (req, res) => {
     const { name, email, message } = req.body;
 
     if (!name || !email || !message) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
         error: 'All fields required' 
       });
@@ -1729,7 +1731,7 @@ app.post('/api/contacts', async (req, res) => {
 
     const emailRegex = /^\S+@\S+\.\S+$/;
     if (!emailRegex.test(email)) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
         error: 'Invalid email' 
       });
@@ -1750,7 +1752,7 @@ app.post('/api/contacts', async (req, res) => {
       console.error('⚠️ Email error:', emailError.message);
     }
 
-    res.json({ 
+    res.json({
       success: true, 
       message: "Thank you for contacting us!",
       contactId: newContact._id
@@ -1758,16 +1760,16 @@ app.post('/api/contacts', async (req, res) => {
 
   } catch (error) {
     console.error("❌ Error saving contact:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Server error' 
     });
   }
 });
 
-// ============================================
-// VOUCHER ROUTES (PUBLIC)
-// ============================================
+// ============================================ 
+// VOUCHERROUTES (PUBLIC)
+// ============================================ 
 
 // Get active vouchers
 app.get('/api/vouchers', async (req, res) => {
@@ -1783,16 +1785,16 @@ app.get('/api/vouchers', async (req, res) => {
     res.json(vouchers);
   } catch (error) {
     console.error('❌ Error fetching vouchers:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false, 
       message: error.message 
     });
   }
 });
 
-// ============================================
-// ORDER ROUTES (PUBLIC/USER)
-// ============================================
+// ============================================ 
+// ORDERROUTES (PUBLIC/USER)
+// ============================================ 
 
 // Create order
 app.post('/api/orders', async (req, res) => {
@@ -1800,14 +1802,14 @@ app.post('/api/orders', async (req, res) => {
     const orderData = req.body;
 
     if (!orderData.items || orderData.items.length === 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false, 
         message: 'Order must have at least 1 item' 
       });
     }
 
     if (!orderData.customerInfo || !orderData.userId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false, 
         message: 'Missing customer info or userId' 
       });
@@ -1928,876 +1930,4 @@ app.put('/api/orders/:id/cancel', authenticateToken, async (req, res) => {
     if (!['pending', 'processing'].includes(order.status)) {
       return res.status(400).json({
         success: false,
-        message: `Cannot cancel order with status "${order.status}"`
-      });
-    }
-
-    order.status = 'cancelled';
-    order.cancelledAt = new Date();
-    order.cancelledBy = 'user';
-    order.cancelReason = cancelReason || 'No reason';
-
-    // Restore stock
-    for (const item of order.items) {
-      await Product.findByIdAndUpdate(
-        item.productId,
-        { $inc: { stock: item.quantity } }
-      );
-    }
-
-    await order.save();
-    
-    if (global.io) {
-      const updateData = {
-        orderId: order._id,
-        status: 'cancelled',
-        cancelledAt: order.cancelledAt,
-        cancelledBy: 'user',
-        cancelReason: order.cancelReason,
-        order: order
-      };
-
-      global.io.to(`user:${req.user.id}`).emit('orderStatusUpdated', updateData);
-      global.io.to('admin').emit('orderCancelled', {
-        ...updateData,
-        userName: order.userId.name
-      });
-    }
-    
-    res.json({
-      success: true,
-      message: 'Order cancelled',
-      order: order
-    });
-    
-  } catch (error) {
-    console.error('❌ Error cancelling order:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// Use admin routes
-app.use('/api/admin', adminRoutes);
-
-// ============================================
-// BLOG ROUTES (PUBLIC)
-// ============================================
-
-// Get all blogs (public)
-app.get('/api/blogs', async (req, res) => {
-  try {
-    const blogs = await Blog.find({ published: true }).sort({ createdAt: -1 });
-    res.json(blogs);
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// Get blog by slug (public)
-app.get('/api/blogs/:slug', async (req, res) => {
-  try {
-    const blog = await Blog.findOne({ slug: req.params.slug, published: true });
-    if (blog) {
-      blog.views += 1;
-      await blog.save();
-      res.json(blog);
-    } else {
-      res.status(404).json({ success: false, message: 'Blog not found' });
-    }
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// ============================================
-// ABOUT ROUTE (PUBLIC)
-// ============================================
-
-app.get('/api/about', (req, res) => {
-  res.json({
-    title: 'Về TechStore',
-    description: 'TechStore là cửa hàng công nghệ uy tín với hơn 10 năm kinh nghiệm trong ngành. Chúng tôi cung cấp các sản phẩm chất lượng cao với giá cả hợp lý.',
-    mission: 'Mang đến những sản phẩm công nghệ tốt nhất cho người tiêu dùng Việt Nam',
-    vision: 'Trở thành chuỗi cửa hàng công nghệ hàng đầu Đông Nam Á',
-    stats: {
-      customers: '50,000+',
-      products: '10,000+',
-      stores: '20+',
-      years: '10+'
-    }
-  });
-});
-
-// ============================================
-// BLOG ROUTES (PUBLIC)
-// ============================================
-
-// Get all blogs (public)
-app.get('/api/blogs', async (req, res) => {
-  try {
-    const { page = 1, limit = 10, category, featured, search } = req.query;
-    
-    const query = { published: true };
-    
-    if (category) query.category = category;
-    if (featured === 'true') query.featured = true;
-    if (search) {
-      query.$text = { $search: search };
-    }
-    
-    const blogs = await Blog.find(query)
-      .sort({ publishedAt: -1 })
-      .limit(Number(limit))
-      .skip((Number(page) - 1) * Number(limit))
-      .lean();
-    
-    const total = await Blog.countDocuments(query);
-    
-    res.json({
-      success: true,
-      data: blogs,
-      pagination: {
-        total,
-        page: Number(page),
-        limit: Number(limit),
-        pages: Math.ceil(total / Number(limit))
-      }
-    });
-  } catch (error) {
-    console.error('❌ Error fetching blogs:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// Get blog by slug (public)
-app.get('/api/blogs/:slug', async (req, res) => {
-  try {
-    const blog = await Blog.findOne({ slug: req.params.slug, published: true });
-    
-    if (!blog) {
-      return res.status(404).json({
-        success: false,
-        message: 'Blog not found'
-      });
-    }
-    
-    // Increment views
-    blog.views += 1;
-    await blog.save();
-    
-    res.json({
-      success: true,
-      data: blog
-    });
-  } catch (error) {
-    console.error('❌ Error fetching blog:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// Get blog categories (public)
-app.get('/api/blogs/categories/all', async (req, res) => {
-  try {
-    const categories = await Blog.distinct('category');
-    
-    res.json({
-      success: true,
-      data: categories
-    });
-  } catch (error) {
-    console.error('❌ Error fetching categories:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// ============================================
-// ADMIN BLOG ROUTES
-// ============================================
-
-// Get all blogs (admin)
-app.get('/api/admin/blogs', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const blogs = await Blog.find()
-      .sort({ createdAt: -1 })
-      .lean();
-    
-    res.json({
-      success: true,
-      data: blogs,
-      total: blogs.length
-    });
-  } catch (error) {
-    console.error('❌ Error fetching blogs:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// Create blog (admin)
-app.post('/api/admin/blogs', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const { title, slug, excerpt, content, image, category, tags, featured, published } = req.body;
-    
-    if (!title || !content || !slug) {
-      return res.status(400).json({
-        success: false,
-        message: 'Title, content, and slug are required'
-      });
-    }
-    
-    const existingBlog = await Blog.findOne({ slug });
-    if (existingBlog) {
-      return res.status(400).json({
-        success: false,
-        message: 'Slug already exists'
-      });
-    }
-    
-    const user = await User.findById(req.user.id);
-    
-    const newBlog = await Blog.create({
-      title,
-      slug,
-      excerpt: excerpt || content.substring(0, 200) + '...',
-      content,
-      image: image || '',
-      category: category || 'Technology',
-      tags: tags || [],
-      featured: featured || false,
-      published: published !== undefined ? published : true,
-      author: {
-        name: user?.name || 'Admin',
-        avatar: user?.avatar || ''
-      }
-    });
-    
-    console.log('✅ Blog created:', newBlog.slug);
-    
-    res.status(201).json({
-      success: true,
-      message: 'Blog created successfully',
-      data: newBlog
-    });
-  } catch (error) {
-    console.error('❌ Error creating blog:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// Update blog (admin)
-app.put('/api/admin/blogs/:slug', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const { title, slug, excerpt, content, image, category, tags, featured, published } = req.body;
-    
-    const updateData = {
-      title,
-      slug,
-      excerpt,
-      content,
-      image,
-      category,
-      tags,
-      featured,
-      published
-    };
-    
-    Object.keys(updateData).forEach(key => 
-      updateData[key] === undefined && delete updateData[key]
-    );
-    
-    const blog = await Blog.findOneAndUpdate(
-      { slug: req.params.slug },
-      updateData,
-      { new: true, runValidators: true }
-    );
-    
-    if (!blog) {
-      return res.status(404).json({
-        success: false,
-        message: 'Blog not found'
-      });
-    }
-    
-    console.log('✅ Blog updated:', blog.slug);
-    
-    res.json({
-      success: true,
-      message: 'Blog updated successfully',
-      data: blog
-    });
-  } catch (error) {
-    console.error('❌ Error updating blog:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// Delete blog (admin)
-app.delete('/api/admin/blogs/:slug', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const blog = await Blog.findOneAndDelete({ slug: req.params.slug });
-    
-    if (!blog) {
-      return res.status(404).json({
-        success: false,
-        message: 'Blog not found'
-      });
-    }
-    
-    console.log('🗑️ Blog deleted:', blog.slug);
-    
-    res.json({
-      success: true,
-      message: 'Blog deleted successfully'
-    });
-  } catch (error) {
-    console.error('❌ Error deleting blog:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// Toggle blog published status (admin)
-app.patch('/api/admin/blogs/:slug/toggle-publish', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const blog = await Blog.findOne({ slug: req.params.slug });
-    
-    if (!blog) {
-      return res.status(404).json({
-        success: false,
-        message: 'Blog not found'
-      });
-    }
-    
-    blog.published = !blog.published;
-    await blog.save();
-    
-    res.json({
-      success: true,
-      message: `Blog ${blog.published ? 'published' : 'unpublished'}`,
-      data: blog
-    });
-  } catch (error) {
-    console.error('❌ Error toggling publish:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// ============================================
-// FAQ ROUTES (PUBLIC)
-// ============================================
-
-// Get all FAQs (public)
-app.get('/api/faqs', async (req, res) => {
-  try {
-    const { category } = req.query;
-    
-    const query = {};
-    if (category) query.category = category;
-    
-    const faqs = await mongoose.connection.db.collection('faqs')
-      .find(query)
-      .sort({ order: 1, createdAt: -1 })
-      .toArray();
-    
-    res.json({
-      success: true,
-      data: faqs,
-      total: faqs.length
-    });
-  } catch (error) {
-    console.error('❌ Error fetching FAQs:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// ============================================
-// ADMIN FAQ ROUTES
-// ============================================
-
-// Create FAQ (admin)
-app.post('/api/admin/faqs', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const { question, answer, category, order } = req.body;
-    
-    if (!question || !answer) {
-      return res.status(400).json({
-        success: false,
-        message: 'Question and answer are required'
-      });
-    }
-    
-    const newFAQ = {
-      question,
-      answer,
-      category: category || 'General',
-      order: order || 0,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    const result = await mongoose.connection.db.collection('faqs').insertOne(newFAQ);
-    
-    res.status(201).json({
-      success: true,
-      message: 'FAQ created successfully',
-      data: { ...newFAQ, _id: result.insertedId }
-    });
-  } catch (error) {
-    console.error('❌ Error creating FAQ:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// Update FAQ (admin)
-app.put('/api/admin/faqs/:id', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const { question, answer, category, order } = req.body;
-    
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid FAQ ID'
-      });
-    }
-    
-    const updateData = {
-      question,
-      answer,
-      category,
-      order,
-      updatedAt: new Date()
-    };
-    
-    Object.keys(updateData).forEach(key => 
-      updateData[key] === undefined && delete updateData[key]
-    );
-    
-    const result = await mongoose.connection.db.collection('faqs').updateOne(
-      { _id: new mongoose.Types.ObjectId(req.params.id) },
-      { $set: updateData }
-    );
-    
-    if (result.matchedCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'FAQ not found'
-      });
-    }
-    
-    res.json({
-      success: true,
-      message: 'FAQ updated successfully'
-    });
-  } catch (error) {
-    console.error('❌ Error updating FAQ:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// Delete FAQ (admin)
-app.delete('/api/admin/faqs/:id', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid FAQ ID'
-      });
-    }
-    
-    const result = await mongoose.connection.db.collection('faqs').deleteOne({
-      _id: new mongoose.Types.ObjectId(req.params.id)
-    });
-    
-    if (result.deletedCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'FAQ not found'
-      });
-    }
-    
-    res.json({
-      success: true,
-      message: 'FAQ deleted successfully'
-    });
-  } catch (error) {
-    console.error('❌ Error deleting FAQ:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// Get all FAQs (admin)
-app.get('/api/admin/faqs', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const faqs = await mongoose.connection.db.collection('faqs')
-      .find()
-      .sort({ order: 1, createdAt: -1 })
-      .toArray();
-    
-    res.json({
-      success: true,
-      data: faqs,
-      total: faqs.length
-    });
-  } catch (error) {
-    console.error('❌ Error fetching FAQs:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// ============================================
-// CART ROUTES (USER)
-// ============================================
-
-// Get user cart
-// giỏ hàng lưu ở local
-app.get('/api/cart', authenticateToken, async (req, res) => {
-  try {
-    const cart = await mongoose.connection.db.collection('carts').findOne({ userId: req.user.id });
-    
-    if (!cart) {
-      return res.json({
-        success: true,
-        data: {
-          items: [],
-          total: 0
-        }
-      });
-    }
-    res.json({
-      success: true,
-      data: cart
-    });
-  } catch (error) {
-    console.error('❌ Error fetching cart:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// Add to cart
-app.post('/api/cart', authenticateToken, async (req, res) => {
-  try {
-    const { productId, quantity = 1 } = req.body;
-    
-    if (!productId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Product ID required'
-      });
-    }
-    
-    const product = await Product.findById(productId);
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found'
-      });
-    }
-    
-    let cart = await mongoose.connection.db.collection('carts').findOne({ userId: req.user.id });
-    
-    if (!cart) {
-      cart = {
-        userId: req.user.id,
-        items: [],
-        total: 0,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-    }
-    
-    const existingItemIndex = cart.items.findIndex(item => item.productId.toString() === productId);
-    
-    if (existingItemIndex > -1) {
-      cart.items[existingItemIndex].quantity += quantity;
-    } else {
-      cart.items.push({
-        productId: new mongoose.Types.ObjectId(productId),
-        name: product.name,
-        price: product.price,
-        image: product.image,
-        quantity
-      });
-    }
-    
-    cart.total = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    cart.updatedAt = new Date();
-    
-    await mongoose.connection.db.collection('carts').updateOne(
-      { userId: req.user.id },
-      { $set: cart },
-      { upsert: true }
-    );
-    
-    res.json({
-      success: true,
-      message: 'Added to cart',
-      data: cart
-    });
-  } catch (error) {
-    console.error('❌ Error adding to cart:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// Update cart item
-app.put('/api/cart/:productId', authenticateToken, async (req, res) => {
-  try {
-    const { productId } = req.params;
-    const { quantity } = req.body;
-    
-    if (!quantity || quantity < 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid quantity'
-      });
-    }
-    
-    const cart = await mongoose.connection.db.collection('carts').findOne({ userId: req.user.id });
-    
-    if (!cart) {
-      return res.status(404).json({
-        success: false,
-        message: 'Cart not found'
-      });
-    }
-    
-    const itemIndex = cart.items.findIndex(item => item.productId.toString() === productId);
-    
-    if (itemIndex === -1) {
-      return res.status(404).json({
-        success: false,
-        message: 'Item not found in cart'
-      });
-    }
-    
-    if (quantity === 0) {
-      cart.items.splice(itemIndex, 1);
-    } else {
-      cart.items[itemIndex].quantity = quantity;
-    }
-    
-    cart.total = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    cart.updatedAt = new Date();
-    
-    await mongoose.connection.db.collection('carts').updateOne(
-      { userId: req.user.id },
-      { $set: cart }
-    );
-    
-    res.json({
-      success: true,
-      message: 'Cart updated',
-      data: cart
-    });
-  } catch (error) {
-    console.error('❌ Error updating cart:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// Remove from cart
-app.delete('/api/cart/:productId', authenticateToken, async (req, res) => {
-  try {
-    const { productId } = req.params;
-    
-    const cart = await mongoose.connection.db.collection('carts').findOne({ userId: req.user.id });
-    
-    if (!cart) {
-      return res.status(404).json({
-        success: false,
-        message: 'Cart not found'
-      });
-    }
-    
-    cart.items = cart.items.filter(item => item.productId.toString() !== productId);
-    cart.total = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    cart.updatedAt = new Date();
-    
-    await mongoose.connection.db.collection('carts').updateOne(
-      { userId: req.user.id },
-      { $set: cart }
-    );
-    
-    res.json({
-      success: true,
-      message: 'Item removed from cart',
-      data: cart
-    });
-  } catch (error) {
-    console.error('❌ Error removing from cart:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// Clear cart
-app.delete('/api/cart', authenticateToken, async (req, res) => {
-  try {
-    await mongoose.connection.db.collection('carts').deleteOne({ userId: req.user.id });
-    
-    res.json({
-      success: true,
-      message: 'Cart cleared'
-    });
-  } catch (error) {
-    console.error('❌ Error clearing cart:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// ============================================
-// HOME/DATA ROUTES (PUBLIC)
-// ============================================
-
-// Get home page data (featured products, categories, etc.)
-app.get('/api/home', async (req, res) => {
-  try {
-    const [featuredProducts, categories, newProducts] = await Promise.all([
-      Product.find({ featured: true }).limit(8).lean(),
-      Category.find().limit(6).lean(),
-      Product.find().sort({ createdAt: -1 }).limit(8).lean()
-    ]);
-    
-    res.json({
-      success: true,
-      data: {
-        featuredProducts,
-        categories,
-        newProducts,
-        stats: {
-          totalProducts: await Product.countDocuments(),
-          totalCategories: await Category.countDocuments(),
-          totalOrders: await Order.countDocuments()
-        }
-      }
-    });
-  } catch (error) {
-    console.error('❌ Error fetching home data:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// ============================================
-// ADMIN DASHBOARD DATA
-// ============================================
-
-// Get dashboard stats (admin)
-app.get('/api/admin/dashboard', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const [
-      totalProducts,
-      totalOrders,
-      totalUsers,
-      totalRevenue,
-      pendingOrders,
-      recentOrders
-    ] = await Promise.all([
-      Product.countDocuments(),
-      Order.countDocuments(),
-      User.countDocuments(),
-      Order.aggregate([
-        { $match: { status: 'delivered' } },
-        { $group: { _id: null, total: { $sum: '$totalAmount' } } }
-      ]),
-      Order.countDocuments({ status: 'pending' }),
-      Order.find().sort({ createdAt: -1 }).limit(10).populate('userId', 'name email').lean()
-    ]);
-    
-    res.json({
-      success: true,
-      data: {
-        stats: {
-          totalProducts,
-          totalOrders,
-          totalUsers,
-          totalRevenue: totalRevenue[0]?.total || 0,
-          pendingOrders
-        },
-        recentOrders
-      }
-    });
-  } catch (error) {
-    console.error('❌ Error fetching dashboard data:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-// ============================================
-// ERROR HANDLING
-// ============================================
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
-});
-
-// ============================================
-// START SERVER - ONLY ONCE!
-// ============================================
-
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🔌 Socket.io ready at http://localhost:${PORT}`);
-  console.log(`📁 Static files served from /uploads`);
-});
-
-export default app;
+        message: `Cannot cancel order with status "${order.status}"

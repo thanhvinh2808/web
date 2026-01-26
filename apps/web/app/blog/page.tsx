@@ -35,13 +35,13 @@ export default function BlogPage() {
       try {
         setIsLoading(true);
         setError(null);
-        
+
         const response = await fetch(`${API_URL}/api/blogs`);
-        
+
         if (!response.ok) {
           throw new Error('Failed to fetch blogs');
         }
-        
+
         const data = await response.json();
         setBlogs(Array.isArray(data) ? data : []);
       } catch (err) {
@@ -67,7 +67,7 @@ export default function BlogPage() {
           <span className="text-black">Foot</span>
           <span className="text-primary">mark</span> Blog
         </h1>
-        <p className="text-gray-600 mb-12">Khám phá thế giới giày qua những bài viết chuyên sâu</p>
+        <p className="text-gray-600 mb-12">Khám phá thế giới giày qua những bài viết chuyên sâu</p>       
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="bg-white rounded-xl shadow-md overflow-hidden animate-pulse">
@@ -75,7 +75,7 @@ export default function BlogPage() {
               <div className="p-6">
                 <div className="h-6 bg-gray-200 rounded mb-3"></div>
                 <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded w-5/6"></div>
                 <div className="flex justify-between">
                   <div className="h-4 bg-gray-200 rounded w-20"></div>
                   <div className="h-4 bg-gray-200 rounded w-20"></div>
@@ -96,7 +96,7 @@ export default function BlogPage() {
           <span className="text-black">Foot</span>
           <span className="text-primary">mark</span> Blog
         </h1>
-        <p className="text-gray-600 text-lg">Khám phá thế giới giày qua những bài viết chuyên sâu</p>
+        <p className="text-gray-600 text-lg">Khám phá thế giới giày qua những bài viết chuyên sâu</p>     
       </div>
 
       {/* Error Message */}
@@ -110,8 +110,8 @@ export default function BlogPage() {
       {blogs.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {blogs.map(blog => (
-            <article 
-              key={blog.id} 
+            <article
+              key={blog.id}
               className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-2xl transition-all group cursor-pointer"
               onClick={() => handleBlogClick(blog)}
             >
@@ -134,7 +134,7 @@ export default function BlogPage() {
 
               {/* Blog Content */}
               <div className="p-6">
-                <h3 className="font-bold text-xl mb-3 line-clamp-2 group-hover:text-blue-600 transition">
+                <h3 className="font-bold text-xl mb-3 line-clamp-2 group-hover:text-blue-600 transition"> 
                   {blog.title}
                 </h3>
                 <p className="text-gray-600 mb-4 line-clamp-3 leading-relaxed">
@@ -152,7 +152,7 @@ export default function BlogPage() {
                     <span>{blog.readTime || '5 phút đọc'}</span>
                   </div>
                 </div>
-                
+
                 {blog.date && (
                   <div className="flex items-center gap-1 text-sm text-gray-400">
                     <Calendar size={14} />
