@@ -62,7 +62,7 @@ export default function LoginForm({ onLogin, message }: LoginFormProps) {
         <div className="mt-8 p-4 bg-stone-50 rounded-lg border border-stone-200 text-center">
           <p className="text-xs text-stone-500">
             <strong>Default Account:</strong><br />
-            admin@techstore.com / admin123456
+            admin@footmark.com / admin123456
           </p>
         </div>
       </div>

@@ -114,7 +114,7 @@ function createSlug(text) {
   return text
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͤ]/g, '')
+    .replace(/[̀-ͯ]/g, '')
     .replace(/đ/g, 'd')
     .replace(/Đ/g, 'd')
     .replace(/[^a-z0-9\s-]/g, '')
@@ -126,7 +126,7 @@ function createSlug(text) {
 // ✅ Create default admin
 const createDefaultAdmin = async () => {
   try {
-    const adminEmail = 'admin@techstore.com';
+    const adminEmail = 'admin@footmark.com';
     const existingAdmin = await User.findOne({ email: adminEmail });
     
     if (!existingAdmin) {
@@ -138,7 +138,7 @@ const createDefaultAdmin = async () => {
         role: 'admin'
       });
       console.log('✅ Default admin created');
-      console.log('📧 Email: admin@techstore.com');
+      console.log('📧 Email: admin@footmark.com');
       console.log('🔐 Password: admin123');
       console.log('⚠️  Change password after login!');
     }
@@ -252,7 +252,7 @@ app.post('/api/register', async (req, res) => {
     }
 
     const trimmedEmail = email.trim().toLowerCase();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^S@]+S[^S@]+S.[^S@]+$/;
     
     if (!emailRegex.test(trimmedEmail)) {
       return res.status(400).json({
@@ -1845,6 +1845,12 @@ app.post('/api/orders', async (req, res) => {
     const newOrder = new Order(orderData);
     const savedOrder = await newOrder.save();
 
+    // ✅ Thông báo Socket cho Admin
+    if (global.io) {
+      global.io.to('admin').emit('newOrder', savedOrder);
+      console.log('🚀 Socket: New order notification sent to admin');
+    }
+
     try {
       await sendNewOrderEmail(savedOrder);
       console.log('📧 Order email sent to admin');
@@ -1930,4 +1936,80 @@ app.put('/api/orders/:id/cancel', authenticateToken, async (req, res) => {
     if (!['pending', 'processing'].includes(order.status)) {
       return res.status(400).json({
         success: false,
-        message: `Cannot cancel order with status "${order.status}"
+        message: `Cannot cancel order with status "${order.status}"`
+      });
+    }
+
+    order.status = 'cancelled';
+    order.cancelledAt = new Date();
+    order.cancelledBy = 'user';
+    order.cancelReason = cancelReason || 'No reason';
+
+    // Restore stock
+    for (const item of order.items) {
+      await Product.findByIdAndUpdate(
+        item.productId,
+        { $inc: { stock: item.quantity } }
+      );
+    }
+
+    await order.save();
+    
+    if (global.io) {
+      const updateData = {
+        orderId: order._id,
+        status: 'cancelled',
+        cancelledAt: order.cancelledAt,
+        cancelledBy: 'user',
+        cancelReason: order.cancelReason,
+        order: order
+      };
+
+      global.io.to(`user:${req.user.id}`).emit('orderStatusUpdated', updateData);
+      global.io.to('admin').emit('orderCancelled', {
+        ...updateData,
+        userName: order.userId.name
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Order cancelled',
+      order: order
+    });
+    
+  } catch (error) {
+    console.error('❌ Error cancelling order:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error: ' + error.message
+    });
+  }
+});
+
+// Use admin routes
+app.use('/api/admin', adminRoutes);
+
+// Use blog routes
+app.use('/api/blogs', blogRoutes);
+
+// ============================================ 
+// ABOUT ROUTE (PUBLIC)
+// ============================================ 
+
+app.get('/api/about', (req, res) => {
+  res.json({
+    title: 'Về TechStore',
+    description: 'TechStore là cửa hàng công nghệ uy tín với hơn 10 năm kinh nghiệm trong ngành. Chúng tôi cung cấp các sản phẩm chất lượng cao với giá cả hợp lý.',
+    mission: 'Mang đến những sản phẩm công nghệ tốt nhất cho người tiêu dùng Việt Nam'
+  });
+});
+
+// ✅ Start server
+server.listen(PORT, () => {
+  console.log(`\n🚀 Server is running on port ${PORT}`);
+  console.log(`🔗 API URL: http://localhost:${PORT}`);
+  console.log(`🔌 Socket.io is ready\n`);
+});
+
+export default app;

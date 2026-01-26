@@ -5,7 +5,7 @@ import { useOrders, Order } from "../../../contexts/OrderContext";
 import Link from "next/link";
 import { useCart } from '../../../contexts/CartContext';
 import { useAuth } from '../../../contexts/AuthContext';
-import io from 'socket.io-client';
+import { useSocket } from '../../../contexts/SocketContext';
 
 import { 
   ArrowLeft, 
@@ -24,11 +24,10 @@ import {
   Loader2,
   Copy
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -36,6 +35,7 @@ export default function OrderDetailPage() {
   const { user } = useAuth();
   const { getOrderById, updateOrderInContext } = useOrders();
   const { addToCart } = useCart();
+  const { socket, isConnected } = useSocket();
   
   const orderId = params.id as string;
   const [order, setOrder] = useState<Order | null>(null);
@@ -43,7 +43,6 @@ export default function OrderDetailPage() {
   const [isCancelling, setIsCancelling] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
-  const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     const cachedOrder = getOrderById(orderId);
@@ -57,35 +56,38 @@ export default function OrderDetailPage() {
           });
           if (res.ok) {
              const data = await res.json();
-             setOrder(data);
+             // API return format is { success: true, order: ... }
+             if (data.success && data.order) {
+                setOrder(data.order);
+             } else {
+                setOrder(data); // fallback
+             }
           }
        } catch (error) {
           console.error("Failed to fetch order:", error);
        }
     };
     fetchFreshOrder();
-  }, [orderId, user?.token]);
+  }, [orderId, user?.token, getOrderById]);
 
   useEffect(() => {
-    if (!user?.id || !orderId) return;
+    if (!socket || !isConnected || !orderId) return;
 
-    const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
-
-    socket.on('connect', () => {
-      setIsConnected(true);
-      socket.emit('joinUserRoom', user.id);
-    });
-
-    socket.on('orderStatusUpdated', (data) => {
+    const handleStatusUpdate = (data: any) => {
       if (data.orderId === orderId) {
+        console.log('⚡ Order status update received:', data);
         setOrder(prev => prev ? { ...prev, status: data.status, paymentStatus: data.paymentStatus } : null);
         updateOrderInContext(orderId, { status: data.status, paymentStatus: data.paymentStatus });
-        toast.success(`Trạng thái đơn hàng đã cập nhật: ${data.status}`);
+        toast.success(`Trạng thái đơn hàng: ${data.status}`);
       }
-    });
+    };
 
-    return () => { socket.disconnect(); };
-  }, [user?.id, orderId]);
+    socket.on('orderStatusUpdated', handleStatusUpdate);
+
+    return () => {
+      socket.off('orderStatusUpdated', handleStatusUpdate);
+    };
+  }, [socket, isConnected, orderId, updateOrderInContext]);
 
   const handleCancelOrder = async () => {
     if (!order || !cancelReason.trim()) return;

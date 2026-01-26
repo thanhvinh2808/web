@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Search, User, Menu, Package, ShoppingCart, Users } from 'lucide-react'; // Import icons
 import { API_URL } from './config/constants';
+import { useSocket } from '../contexts/SocketContext';
 import LoginForm from './components/LoginForm';
 import Sidebar from './components/Sidebar';
 import DashboardTab from './components/DashboardTab';
@@ -16,6 +17,7 @@ import TradeInTab from './components/TradeInTab';
 import BlogsTab from './components/BlogsTab';
 
 export default function AdminDashboard() {
+  const { socket, isConnected } = useSocket();
   const [token, setToken] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState(null);
@@ -31,6 +33,36 @@ export default function AdminDashboard() {
     email: string;
     role: string;
   } | null>(null);
+
+  // ✅ SOCKET LISTENERS
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleNewOrder = (order: any) => {
+      console.log('🔔 New order received via socket:', order);
+      showMessage(`🆕 Có đơn hàng mới #${order._id.slice(-6).toUpperCase()}`);
+      
+      // Refresh data
+      fetchStats(token);
+      if (activeTab === 'orders') fetchOrders();
+      if (activeTab === 'dashboard') fetchStats(token);
+    };
+
+    const handleStatusUpdate = (data: any) => {
+      console.log('📝 Order status updated via socket:', data);
+      if (activeTab === 'orders') fetchOrders();
+    };
+
+    socket.on('newOrder', handleNewOrder);
+    socket.on('orderStatusUpdated', handleStatusUpdate);
+    socket.on('orderCancelled', handleNewOrder); // Dùng chung logic thông báo
+
+    return () => {
+      socket.off('newOrder', handleNewOrder);
+      socket.off('orderStatusUpdated', handleStatusUpdate);
+      socket.off('orderCancelled', handleNewOrder);
+    };
+  }, [socket, isConnected, token, activeTab]);
   
   // ✅ STATE CHO MOBILE MENU
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
