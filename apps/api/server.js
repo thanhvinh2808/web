@@ -33,6 +33,8 @@ import {
   sendReplyEmail 
 } from './services/emailService.js';
 
+import { createNotification } from './controller/adminController.js';
+
 // Routes
 import adminRoutes from './routes/admin.js';
 import tradeInRoutes from './routes/tradeIn.js';
@@ -252,7 +254,7 @@ app.post('/api/register', async (req, res) => {
     }
 
     const trimmedEmail = email.trim().toLowerCase();
-    const emailRegex = /^[^S@]+S[^S@]+S.[^S@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     
     if (!emailRegex.test(trimmedEmail)) {
       return res.status(400).json({
@@ -284,6 +286,17 @@ app.post('/api/register', async (req, res) => {
       password: hashedPassword,
       role: 'user'
     });
+
+    // 🔔 Notify Admin
+    try {
+      if (typeof createNotification === 'function') {
+        await createNotification('user', `Người dùng mới: ${newUser.name}`, newUser._id, 'User');
+      } else {
+        console.error('⚠️ createNotification is not a function');
+      }
+    } catch (notiError) {
+      console.error('⚠️ Notification error:', notiError);
+    }
 
     const token = jwt.sign(
       {
@@ -1745,6 +1758,9 @@ app.post('/api/contacts', async (req, res) => {
 
     await newContact.save();
 
+    // 🔔 Notify Admin
+    await createNotification('contact', `Liên hệ mới từ ${newContact.fullname}`, newContact._id, 'Contact');
+
     try {
       await sendNewContactEmail(newContact);
       console.log('📧 Contact email sent to admin');
@@ -1845,11 +1861,8 @@ app.post('/api/orders', async (req, res) => {
     const newOrder = new Order(orderData);
     const savedOrder = await newOrder.save();
 
-    // ✅ Thông báo Socket cho Admin
-    if (global.io) {
-      global.io.to('admin').emit('newOrder', savedOrder);
-      console.log('🚀 Socket: New order notification sent to admin');
-    }
+    // 🔔 Notify Admin
+    await createNotification('order', `Đơn hàng mới #${savedOrder._id.toString().slice(-6).toUpperCase()}`, savedOrder._id, 'Order');
 
     try {
       await sendNewOrderEmail(savedOrder);

@@ -273,6 +273,14 @@ const login = async (email: string, password: string) => {
       body: JSON.stringify(userData)
     });
 
+    // Debug: Check response type
+    const contentType = response.headers.get("content-type");
+    if (!contentType || contentType.indexOf("application/json") === -1) {
+       const text = await response.text();
+       console.error('❌ API Error (Not JSON):', text.substring(0, 200)); // Log first 200 chars
+       throw new Error('Server connection error (See console)');
+    }
+
     const data = await response.json();
     console.log('📥 Register response:', data);
 

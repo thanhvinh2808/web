@@ -15,6 +15,7 @@ import ContactsTab from './components/ContactsTab';
 import VouchersTab from './components/VouchersTab';
 import TradeInTab from './components/TradeInTab';
 import BlogsTab from './components/BlogsTab';
+import NotificationMenu from './components/NotificationMenu';
 
 export default function AdminDashboard() {
   const { socket, isConnected } = useSocket();
@@ -387,10 +388,7 @@ export default function AdminDashboard() {
               )}
             </div>
             
-            <button className="relative p-2 text-gray-400 hover:text-blue-600 transition-colors">
-              <Bell size={20} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-            </button>
+            <NotificationMenu />
 
             <div className="flex items-center gap-3 pl-3 md:pl-6 border-l border-gray-100">
               <div className="text-right hidden md:block">
