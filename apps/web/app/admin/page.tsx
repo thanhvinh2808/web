@@ -12,6 +12,7 @@ import ProductsTab from './components/ProductsTab';
 import CategoriesTab from './components/CategoriesTab';
 import ContactsTab from './components/ContactsTab';
 import VouchersTab from './components/VouchersTab';
+import TradeInTab from './components/TradeInTab';
 
 export default function AdminDashboard() {
   const [token, setToken] = useState('');
@@ -216,6 +217,7 @@ export default function AdminDashboard() {
       case 'products': return 'Sản Phẩm';
       case 'categories': return 'Danh Mục';
       case 'vouchers': return 'Mã Giảm Giá';
+      case 'trade-in': return 'Thu Cũ Đổi Mới';
       case 'contacts': return 'Liên Hệ';
       default: return 'Dashboard';
     }
@@ -387,6 +389,7 @@ export default function AdminDashboard() {
             {activeTab === 'products' && <ProductsTab products={products} categories={categories} token={token} onRefresh={fetchProducts} showMessage={showMessage} />}
             {activeTab === 'categories' && <CategoriesTab categories={categories} token={token} onRefresh={fetchCategories} showMessage={showMessage} />}
             {activeTab === 'vouchers' && <VouchersTab token={token} showMessage={showMessage} />}
+            {activeTab === 'trade-in' && <TradeInTab token={token} showMessage={showMessage} />}
             {activeTab === 'contacts' && <ContactsTab contacts={contacts} token={token} onRefresh={fetchContacts} showMessage={showMessage} />}
           </div>
         </div>

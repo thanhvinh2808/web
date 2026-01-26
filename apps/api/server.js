@@ -35,6 +35,7 @@ import {
 
 // Routes
 import adminRoutes from './routes/admin.js';
+import tradeInRoutes from './routes/tradeIn.js';
 
 // ✅ Load environment variables
 dotenv.config({ path: path.resolve(process.cwd(), 'apps/api/.env') });
@@ -55,6 +56,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static('uploads'));
+
+// Routes
+app.use('/api/trade-in', tradeInRoutes);
 
 // ✅ Socket.io setup
 const io = new Server(server, {

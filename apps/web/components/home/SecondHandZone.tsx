@@ -76,7 +76,7 @@ export default function SecondHandZone() {
         </div>
 
         {/* 🔍 QUICK FILTER BAR */}
-        <div className="bg-white p-2 border-2 border-black mb-12 flex flex-col lg:flex-row gap-2 rounded-none shadow-[10px_10px_0px_rgba(0,0,0,1)]">
+        <div className="bg-white p-2   mb-12 flex flex-col lg:flex-row gap-2 rounded-none ">
            {/* Search */}
            <div className="relative flex-1 group">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-primary transition" size={20} />

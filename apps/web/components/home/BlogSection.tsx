@@ -11,7 +11,7 @@ export default function BlogSection() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {BLOGS.map(blog => (
             <article key={blog.id} className="group cursor-pointer">
-              <div className="overflow-hidden rounded-xl mb-4 aspect-video">
+              <div className="overflow-hidden  mb-4 aspect-video">
                 <img 
                   src={blog.image} 
                   alt={blog.title}

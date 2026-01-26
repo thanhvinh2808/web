@@ -11,7 +11,8 @@ import {
   Ticket,
   LogOut,
   Store,
-  X
+  X,
+  RefreshCw
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -30,6 +31,7 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, isOpen, onC
     { id: 'products', label: 'Sản phẩm', icon: Package },
     { id: 'categories', label: 'Danh mục', icon: FolderTree },
     { id: 'vouchers', label: 'Khuyến mãi', icon: Ticket },
+    { id: 'trade-in', label: 'Thu cũ đổi mới', icon: RefreshCw },
     { id: 'contacts', label: 'Liên hệ', icon: MessageSquare },
   ];
 
