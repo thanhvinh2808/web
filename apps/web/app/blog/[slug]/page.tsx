@@ -5,20 +5,23 @@ import { ArrowLeft, Clock, User, Calendar, Share2 } from "lucide-react";
 
 // --- TYPES ---
 interface Blog {
-  id: number;
+  _id: string;
   slug: string;
   title: string;
   excerpt: string;
   image: string;
   category: string;
-  author: string;
+  author: {
+    name: string;
+    avatar?: string;
+  };
   date: string;
   readTime: string;
   content: string;
 }
 
 // --- API URL ---
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 // --- BLOG DETAIL PAGE COMPONENT ---
 export default function BlogDetailPage() {
@@ -39,8 +42,7 @@ export default function BlogDetailPage() {
         setIsLoading(true);
         setError(null);
 
-        // Sửa endpoint: Bỏ /blog/ ở giữa
-        const response = await fetch(`${API_URL}/blog/${slug}`);
+        const response = await fetch(`${API_URL}/api/blogs/${slug}`);
 
         if (!response.ok) {
           throw new Error('Blog not found');
@@ -49,10 +51,10 @@ export default function BlogDetailPage() {
         const data = await response.json();
         setBlog(data);
 
-        // Fetch related blogs (optional)
+        // Fetch related blogs
         if (data.category) {
           const relatedResponse = await fetch(
-            `${API_URL}/blog/${slug}`
+            `${API_URL}/api/blogs?category=${data.category}`
           );
           if (relatedResponse.ok) {
             const relatedData = await relatedResponse.json();
@@ -119,7 +121,7 @@ export default function BlogDetailPage() {
         </div>
         <button
           onClick={() => router.push('/blog')}
-          className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+          className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition"
         >
           <ArrowLeft size={20} />
           Quay lại trang blog
@@ -134,7 +136,7 @@ export default function BlogDetailPage() {
         {/* Back Button */}
         <button
           onClick={() => router.push('/blog')}
-          className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 mb-8 transition"    
+          className="inline-flex items-center gap-2 text-gray-600 hover:text-primary mb-8 transition"    
         >
           <ArrowLeft size={20} />
           <span className="font-medium">Quay lại</span>
@@ -145,7 +147,7 @@ export default function BlogDetailPage() {
           {/* Category Badge */}
           {blog.category && (
             <div className="px-8 pt-8">
-              <span className="inline-block bg-blue-100 text-blue-600 px-4 py-2 rounded-full text-sm font-semibold">
+              <span className="inline-block bg-primary text-white px-4 py-2 rounded-full text-sm font-semibold">
                 {blog.category}
               </span>
             </div>
@@ -161,11 +163,11 @@ export default function BlogDetailPage() {
             <div className="flex flex-wrap items-center gap-6 text-gray-600 pb-6 border-b">
               <div className="flex items-center gap-2">
                 <User size={18} />
-                <span>{blog.author}</span>
+                <span>{blog.author.name}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Calendar size={18} />
-                <span>{blog.date}</span>
+                <span>{new Date(blog.date).toLocaleDateString()}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Clock size={18} />
@@ -173,7 +175,7 @@ export default function BlogDetailPage() {
               </div>
               <button
                 onClick={handleShare}
-                className="flex items-center gap-2 ml-auto text-blue-600 hover:text-blue-700 transition"  
+                className="flex items-center gap-2 ml-auto text-primary hover:text-primary-dark transition"  
               >
                 <Share2 size={18} />
                 <span className="font-medium">Chia sẻ</span>
@@ -203,11 +205,16 @@ export default function BlogDetailPage() {
               </p>
 
               {/* Main Content */}
-              <div className="text-gray-700 leading-relaxed space-y-4">
-                {blog.content.split('\n\n').map((paragraph, index) => (
-                  <p key={index} className="mb-4">{paragraph}</p>
-                ))}
-              </div>
+              {/* 
+                WARNING: Using dangerouslySetInnerHTML without sanitizing the HTML content 
+                can expose your application to cross-site scripting (XSS) attacks.
+                Ensure the content fetched from the API is trusted or sanitized 
+                using a library like DOMPurify before rendering.
+              */}
+              <div 
+                className="text-gray-700 leading-relaxed space-y-4"
+                dangerouslySetInnerHTML={{ __html: blog.content }} 
+              />
             </div>
 
             {/* Tags/Categories */}
@@ -231,7 +238,7 @@ export default function BlogDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {relatedBlogs.map((relatedBlog) => (
                 <article
-                  key={relatedBlog.id}
+                  key={relatedBlog._id}
                   onClick={() => router.push(`/blog/${relatedBlog.slug}`)}
                   className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all cursor-pointer group"
                 >
@@ -243,7 +250,7 @@ export default function BlogDetailPage() {
                     />
                   </div>
                   <div className="p-5">
-                    <h3 className="font-bold text-lg mb-2 line-clamp-2 group-hover:text-blue-600 transition">
+                    <h3 className="font-bold text-lg mb-2 line-clamp-2 group-hover:text-primary transition">
                       {relatedBlog.title}
                     </h3>
                     <p className="text-gray-600 text-sm line-clamp-2">

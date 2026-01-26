@@ -57,7 +57,7 @@ export default function BlogPage() {
 
   const handleBlogClick = (blog: Blog) => {
     // Sử dụng slug thay vì id để navigate
-    router.push(`/api/blogs/${blog.slug}`);
+    router.push(`/blog/${blog.slug}`);
   };
 
   if (isLoading) {
@@ -126,7 +126,7 @@ export default function BlogPage() {
                   }}
                 />
                 {blog.category && (
-                  <div className="absolute top-3 left-3 bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+                  <div className="absolute top-3 left-3 bg-primary text-white px-3 py-1 rounded-full text-sm font-medium">
                     {blog.category}
                   </div>
                 )}
@@ -134,7 +134,7 @@ export default function BlogPage() {
 
               {/* Blog Content */}
               <div className="p-6">
-                <h3 className="font-bold text-xl mb-3 line-clamp-2 group-hover:text-blue-600 transition"> 
+                <h3 className="font-bold text-xl mb-3 line-clamp-2 group-hover:text-primary transition"> 
                   {blog.title}
                 </h3>
                 <p className="text-gray-600 mb-4 line-clamp-3 leading-relaxed">
@@ -170,7 +170,7 @@ export default function BlogPage() {
       )}
 
       {/* Newsletter Section */}
-      <section className="mt-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 md:p-12 text-white text-center">
+      <section className="mt-16 bg-gradient-to-r from-primary to-secondary rounded-2xl p-8 md:p-12 text-white text-center">
         <h2 className="text-3xl font-bold mb-4">Đừng Bỏ Lỡ!</h2>
         <p className="text-blue-100 mb-6 max-w-2xl mx-auto">
           Nhận các bài viết về xu hướng, mẹo chăm sóc giày và các ưu đãi độc quyền.
@@ -181,7 +181,7 @@ export default function BlogPage() {
             placeholder="Nhập email của bạn"
             className="flex-1 px-4 py-3 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-white"
           />
-          <button className="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:shadow-xl transition">
+          <button className="bg-white text-primary px-6 py-3 rounded-lg font-semibold hover:shadow-xl transition">
             Đăng ký
           </button>
         </div>
