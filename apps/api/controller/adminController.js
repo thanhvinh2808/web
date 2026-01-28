@@ -1,8 +1,71 @@
 import User from '../models/User.js';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
+import Notification from '../models/Notification.js';
 import bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
+
+// 🔔 Create Notification (Helper for internal use)
+export const createNotification = async (type, message, referenceId, referenceModel) => {
+  try {
+    const notification = await Notification.create({
+      type,
+      message,
+      referenceId,
+      referenceModel
+    });
+
+    // Realtime Socket emit
+    if (global.io) {
+      global.io.to('admin').emit('newNotification', notification);
+    }
+    
+    return notification;
+  } catch (error) {
+    console.error('Create notification error:', error);
+  }
+};
+
+// 🔔 Get Notifications
+export const getNotifications = async (req, res) => {
+  try {
+    const { limit = 20 } = req.query;
+    const notifications = await Notification.find()
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit));
+      
+    const unreadCount = await Notification.countDocuments({ isRead: false });
+
+    res.json({
+      success: true,
+      data: notifications,
+      unreadCount
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// 🔔 Mark Notification as Read
+export const markNotificationRead = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await Notification.findByIdAndUpdate(id, { isRead: true });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// 🔔 Mark All as Read
+export const markAllNotificationsRead = async (req, res) => {
+  try {
+    await Notification.updateMany({ isRead: false }, { isRead: true });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 // 📊 Dashboard Statistics
 export const getDashboardStats = async (req, res) => {
@@ -302,6 +365,100 @@ export const globalSearch = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi tìm kiếm: ' + error.message
+    });
+  }
+};
+
+// 💰 Get Revenue Stats (Advanced)
+export const getRevenueStats = async (req, res) => {
+  try {
+    let { startDate, endDate } = req.query;
+
+    // Default: Last 7 days if not provided
+    if (!startDate || !endDate) {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - 6); // 7 days inclusive
+      
+      startDate = start.toISOString().split('T')[0];
+      endDate = end.toISOString().split('T')[0];
+    }
+
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    // 1. Calculate All-time Revenue
+    const totalRevenueResult = await Order.aggregate([
+      { $match: { status: { $in: ['delivered', 'completed'] } } },
+      { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+    ]);
+    const totalAllTime = totalRevenueResult[0]?.total || 0;
+
+    // 2. Calculate Revenue in Range (Group by Date)
+    const revenueByDate = await Order.aggregate([
+      { 
+        $match: { 
+          status: { $in: ['delivered', 'completed'] },
+          createdAt: { $gte: start, $lte: end }
+        } 
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          total: { $sum: '$totalAmount' },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // 3. Fill missing dates with 0
+    const filledData = [];
+    let currentDate = new Date(start);
+
+    while (currentDate <= end) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const existingData = revenueByDate.find(item => item._id === dateStr);
+
+      if (existingData) {
+        filledData.push({
+          name: dateStr.split('-').reverse().slice(0, 2).join('/'), // DD/MM
+          fullDate: dateStr,
+          total: existingData.total,
+          orders: existingData.count
+        });
+      } else {
+        filledData.push({
+          name: dateStr.split('-').reverse().slice(0, 2).join('/'), // DD/MM
+          fullDate: dateStr,
+          total: 0,
+          orders: 0
+        });
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // 4. Calculate total for the selected range
+    const totalInRange = filledData.reduce((acc, cur) => acc + cur.total, 0);
+
+    res.json({
+      success: true,
+      data: {
+        totalAllTime,
+        totalInRange,
+        chartData: filledData,
+        range: { startDate, endDate }
+      }
+    });
+
+  } catch (error) {
+    console.error('Revenue stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi thống kê doanh thu: ' + error.message
     });
   }
 };

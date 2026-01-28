@@ -10,7 +10,8 @@ import {
   RotateCcw, 
   Minus, 
   Plus,
-  Check
+  Check,
+  XCircle
 } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import ProductCard from '../../../components/ProductCard';
@@ -299,6 +300,15 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                         <span className="text-gray-400 line-through text-sm">{product.originalPrice.toLocaleString()}₫</span>
                      )}
                   </div>
+                  
+                  {/* 🚫 OUT OF STOCK ALERT */}
+                  {product.stock <= 0 && (
+                    <div className="mt-4 p-3 bg-red-50 border-l-4 border-red-500 text-red-700">
+                       <p className="text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                          <XCircle size={16}/> Sản phẩm này hiện đã hết hàng
+                       </p>
+                    </div>
+                  )}
                </div>
 
                {/* Size Selector */}

@@ -10,7 +10,11 @@ import {
   getAllOrders,
   updateOrderStatus,
   resetUserPassword,
-  globalSearch
+  globalSearch,
+  getRevenueStats,
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead
 } from '../controller/adminController.js';
 import {
   getAllVouchers,
@@ -31,6 +35,7 @@ router.use('/blogs', adminBlogRoutes); // Mount admin blog routes
 
 // Dashboard
 router.get('/stats', getDashboardStats);
+router.get('/revenue', getRevenueStats);
 router.get('/search', globalSearch);
 
 // Users Management
@@ -48,5 +53,10 @@ router.get('/vouchers', getAllVouchers);
 router.post('/vouchers', createVoucher);
 router.put('/vouchers/:id', updateVoucher);
 router.delete('/vouchers/:id', deleteVoucher);
+
+// 🔔 Notifications
+router.get('/notifications', getNotifications);
+router.put('/notifications/read-all', markAllNotificationsRead);
+router.put('/notifications/:id/read', markNotificationRead);
 
 export default router;

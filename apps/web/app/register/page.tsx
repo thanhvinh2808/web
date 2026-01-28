@@ -30,7 +30,11 @@ export default function RegisterPage() {
     setMessage('');
 
     try {
-      await register(formData.name, formData.email, formData.password);
+      await register({
+        name: formData.name, 
+        email: formData.email, 
+        password: formData.password
+      });
       setMessage('Đăng ký thành công!');
       setTimeout(() => router.push('/'), 2000);
     } catch (error: any) {

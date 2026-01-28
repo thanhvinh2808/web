@@ -64,6 +64,9 @@ export default function ProductCard({ product, showSoldCount = false }: ProductC
   const discountPercent = hasDiscount 
     ? Math.round(((product.originalPrice! - lowestPrice) / product.originalPrice!) * 100)
     : 0;
+  
+  // ✅ Check Stock
+  const isOutOfStock = product.stock !== undefined && product.stock <= 0;
 
   const sizeOptions = React.useMemo(() => {
     if (!product.variants) return [];
@@ -74,6 +77,8 @@ export default function ProductCard({ product, showSoldCount = false }: ProductC
   const handleAddToCartClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (isOutOfStock) return; // Prevent click
 
     if (sizeOptions.length > 0) {
       setShowSizes(true);
@@ -100,7 +105,7 @@ export default function ProductCard({ product, showSoldCount = false }: ProductC
 
   return (
     <div 
-      className="group relative bg-white rounded-none overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300"
+      className={`group relative bg-white rounded-none overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 ${isOutOfStock ? 'opacity-75 grayscale-[0.5]' : ''}`}
       onMouseLeave={() => setShowSizes(false)}
     >
       <Link href={`/products/${productSlug}`} className="block relative aspect-square overflow-hidden bg-gray-50">
@@ -112,6 +117,15 @@ export default function ProductCard({ product, showSoldCount = false }: ProductC
             e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI2YzZjRmNiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNjQiIGZpbGw9IiNkMWQ1ZGIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7wn5O3PC90ZXh0Pjwvc3ZnPg==';
           }}
         />
+        
+        {/* 🚫 OUT OF STOCK OVERLAY */}
+        {isOutOfStock && (
+          <div className="absolute inset-0 bg-white/50 z-30 flex items-center justify-center pointer-events-none">
+             <div className="bg-black text-white text-xs font-black px-4 py-2 uppercase tracking-[0.2em] border-2 border-white transform -rotate-12 shadow-xl">
+                Hết hàng
+             </div>
+          </div>
+        )}
         
         <div className={`absolute inset-0 bg-white/95 backdrop-blur-sm z-20 flex flex-col justify-center items-center p-4 transition-opacity duration-300 ${showSizes ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}>
            <p className="text-xs font-bold uppercase tracking-widest mb-4 text-gray-500">Chọn Size</p>
@@ -164,7 +178,7 @@ export default function ProductCard({ product, showSoldCount = false }: ProductC
           </div>
         )}
 
-        {!showSizes && (
+        {!showSizes && !isOutOfStock && (
            <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 flex gap-2 z-10">
               <button 
                  onClick={handleAddToCartClick}

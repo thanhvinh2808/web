@@ -344,24 +344,37 @@ export default function CheckoutPage() {
 
      setIsProcessing(true);
      try {
+        if (!user || !user.id) {
+           toast.error('Vui lòng đăng nhập lại');
+           return;
+        }
+
         const provinceName = provinces.find(p => p.code == +selectedProvince)?.name || '';
         const wardName = wards.find(w => w.code == +selectedWard)?.name || '';
         const fullAddress = `${streetAddress}, ${wardName}, ${provinceName}`;
 
+        // Validate items
+        const validItems = cart.map(item => ({
+           productId: item.product._id || item.product.id,
+           productName: item.product.name,
+           productBrand: item.product.brand || 'N/A',
+           productImage: item.product.image || '',
+           price: item.selectedVariant?.price || item.product.price,
+           quantity: item.quantity,
+           variant: item.selectedVariant ? {
+              name: item.selectedVariant.name,
+              sku: item.selectedVariant.sku
+           } : undefined
+        })).filter(item => item.productId); // Filter out invalid items
+
+        if (validItems.length === 0) {
+           toast.error('Giỏ hàng lỗi: Sản phẩm không hợp lệ');
+           return;
+        }
+
         const orderData = {
-           userId: user?.id,
-           items: cart.map(item => ({
-              productId: item.product._id || item.product.id || '',
-              productName: item.product.name,
-              productBrand: item.product.brand || 'N/A',
-              productImage: item.product.image || '',
-              price: item.selectedVariant?.price || item.product.price,
-              quantity: item.quantity,
-              variant: item.selectedVariant ? {
-                 name: item.selectedVariant.name,
-                 sku: item.selectedVariant.sku
-              } : undefined
-           })),
+           userId: user.id, // Ensure ID exists
+           items: validItems,
            customerInfo: {
               ...customerInfo,
               address: fullAddress,
@@ -390,9 +403,13 @@ export default function CheckoutPage() {
               body: JSON.stringify(orderData)
            });
            
-           if (!res.ok) throw new Error('Đặt hàng thất bại');
            const data = await res.json();
-           const orderId = data._id || data.id;
+           
+           if (!res.ok) {
+              throw new Error(data.message || 'Đặt hàng thất bại');
+           }
+           
+           const orderId = data.order?._id || data.order?.id || data._id || data.id;
            
            clearCart();
            router.push(`/order-success?orderId=${orderId}`);
@@ -403,7 +420,7 @@ export default function CheckoutPage() {
         }
 
      } catch (error: any) {
-        console.error(error);
+        console.error("Order Error:", error);
         toast.error(error.message || 'Có lỗi xảy ra');
      } finally {
         setIsProcessing(false);
