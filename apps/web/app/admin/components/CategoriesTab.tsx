@@ -43,15 +43,19 @@ export default function CategoriesTab({ categories, token, onRefresh, showMessag
     try {
       const uploadFormData = new FormData();
       uploadFormData.append('image', file);
-      const BASE_URL = API_URL.replace('/api', ''); // Giả sử API_URL là .../api
-      const res = await fetch(`${BASE_URL}/upload/single`, {
+      
+      const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace('/api', '');
+      
+      const res = await fetch(`${BASE_URL}/api/upload/single`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: uploadFormData
       });
       const data = await res.json();
       if (data.success) {
-        setCategoryForm(prev => ({ ...prev, icon: `${BASE_URL}${data.data.url}` }));
+        // Trích xuất URL chuẩn xác từ object trả về
+        const iconUrl = typeof data.data === 'string' ? data.data : (data.data.url || '');
+        setCategoryForm(prev => ({ ...prev, icon: iconUrl }));
       }
     } catch (error) {
       console.error(error);
@@ -88,8 +92,8 @@ export default function CategoriesTab({ categories, token, onRefresh, showMessag
       };
 
       const url = editingCategory
-        ? `${API_URL}/admin/categories/${editingCategory.slug}`
-        : `${API_URL}/admin/categories`;
+        ? `${API_URL}/api/admin/categories/${editingCategory.slug}`
+        : `${API_URL}/api/admin/categories`;
       
       const method = editingCategory ? 'PUT' : 'POST';
       
@@ -121,7 +125,7 @@ export default function CategoriesTab({ categories, token, onRefresh, showMessag
   const deleteCategory = async (categorySlug: string) => {
     if (!window.confirm('⚠️ Bạn có chắc muốn xóa danh mục này?')) return;
     try {
-      const res = await fetch(`${API_URL}/admin/categories/${categorySlug}`, {
+      const res = await fetch(`${API_URL}/api/admin/categories/${categorySlug}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

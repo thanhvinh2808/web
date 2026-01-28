@@ -181,7 +181,7 @@ export const SearchBar = () => {
 
   const handleProductClick = (slug: string | undefined) => {
     if (slug) {
-      router.push(`/api/products/${slug}`);
+      router.push(`/products/${slug}`);
       handleCloseSearch();
     }
   };
@@ -189,9 +189,19 @@ export const SearchBar = () => {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      router.push(`/api/products?search=${encodeURIComponent(searchQuery)}`);
+      router.push(`/products?search=${encodeURIComponent(searchQuery)}`);
       handleCloseSearch();
     }
+  };
+
+  // ✅ Helper function để lấy URL ảnh đầy đủ
+  const getImageUrl = (imgData: any): string => {
+    if (!imgData) return '/placeholder-product.jpg';
+    const url = typeof imgData === 'string' ? imgData : (imgData.url || '');
+    if (!url || url.includes('[object')) return '/placeholder-product.jpg';
+    if (url.startsWith('http') || url.startsWith('data:')) return url;
+    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace('/api', '');
+    return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
   const formatCurrency = (amount: number) => {
@@ -301,7 +311,7 @@ export const SearchBar = () => {
                       {/* Product Image */}
                       <div className="w-16 h-16 flex-shrink-0 bg-gray-50 rounded-lg overflow-hidden border border-gray-100">
                         <img
-                          src={product.image}
+                          src={getImageUrl(product.image)}
                           alt={product.name}
                           className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300"
                         />
@@ -340,7 +350,7 @@ export const SearchBar = () => {
                     <div className="px-4 py-3 border-t border-gray-100">
                       <button
                         onClick={() => {
-                          router.push(`/api/products?search=${encodeURIComponent(searchQuery)}`);
+                          router.push(`/products?search=${encodeURIComponent(searchQuery)}`);
                           handleCloseSearch();
                         }}
                         className="w-full py-2 text-blue-600 hover:text-blue-700 font-medium text-sm transition"

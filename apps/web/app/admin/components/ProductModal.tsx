@@ -105,6 +105,14 @@ export default function ProductModal({
     options: [{ name: '', price: 0, stock: 0, sku: '', image: '' }]
   });
 
+  // ✅ Hàm hỗ trợ lấy URL ảnh đầy đủ
+  const getImageUrl = (url: string) => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
   useEffect(() => {
     if (product) {
       setFormData({
@@ -202,7 +210,7 @@ export default function ProductModal({
         const uploadFormData = new FormData();
         uploadFormData.append('image', file);
 
-        const response = await fetch(`${API_URL}/upload/single`, {
+        const response = await fetch(`${API_URL}/api/upload/single`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` },
           body: uploadFormData
@@ -248,18 +256,25 @@ export default function ProductModal({
     setFormData(prev => ({ ...prev, images: newImages }));
   };
 
-  // --- Variant Handling (Giữ nguyên) ---
+  // --- Variant Handling ---
+  const updateAllVariants = (newVariants: Variant[]) => {
+    setVariants(newVariants);
+    setFormData(prev => ({ ...prev, variants: newVariants }));
+  };
+
   const addVariantOption = () => {
     setVariantFormData({
       ...variantFormData,
       options: [...variantFormData.options, { name: '', price: 0, stock: 0, sku: '', image: '' }]
     });
   };
+
   const updateVariantOption = (index: number, field: keyof VariantOption, value: string | number) => {
     const newOptions = [...variantFormData.options];
     newOptions[index] = { ...newOptions[index], [field]: value };
     setVariantFormData({ ...variantFormData, options: newOptions });
   };
+
   const removeVariantOption = (index: number) => {
     if (variantFormData.options.length > 1) {
       setVariantFormData({
@@ -268,38 +283,60 @@ export default function ProductModal({
       });
     }
   };
+
   const saveVariant = () => {
-    if (!variantFormData.name.trim()) {
+    const variantName = variantFormData.name.trim();
+    if (!variantName) {
       alert('Vui lòng nhập tên biến thể (VD: Size)');
       return;
     }
-    const validOptions = variantFormData.options.filter(opt => opt.name.trim());
+
+    const validOptions = variantFormData.options
+      .filter(opt => opt.name && String(opt.name).trim() !== '')
+      .map(opt => ({
+        ...opt,
+        price: Number(opt.price) || 0,
+        stock: Number(opt.stock) || 0
+      }));
+
     if (validOptions.length === 0) {
-      alert('Vui lòng thêm ít nhất 1 tùy chọn');
+      alert('Vui lòng thêm ít nhất 1 tùy chọn có tên');
       return;
     }
-    const newVariant = { ...variantFormData, options: validOptions };
+
+    const newVariant = { name: variantName, options: validOptions };
+    let updatedVariants = [];
+    
     if (editingVariantIndex >= 0) {
-      const updatedVariants = [...variants];
+      updatedVariants = [...variants];
       updatedVariants[editingVariantIndex] = newVariant;
-      setVariants(updatedVariants);
     } else {
-      setVariants([...variants, newVariant]);
+      updatedVariants = [...variants, newVariant];
     }
+    
+    updateAllVariants(updatedVariants);
+    
+    // Reset form
     setVariantFormData({ name: '', options: [{ name: '', price: 0, stock: 0, sku: '', image: '' }] });
     setEditingVariantIndex(-1);
   };
-  const removeVariant = (index: number) => setVariants(variants.filter((_, i) => i !== index));
+
+  const removeVariant = (index: number) => {
+    const updated = variants.filter((_, i) => i !== index);
+    updateAllVariants(updated);
+  };
+
   const editVariant = (index: number) => {
     setVariantFormData(variants[index]);
     setEditingVariantIndex(index);
   };
+
   const cancelEditVariant = () => {
     setVariantFormData({ name: '', options: [{ name: '', price: 0, stock: 0, sku: '', image: '' }] });
     setEditingVariantIndex(-1);
   };
 
-  // Variant Image Upload (Giữ nguyên)
+  // Variant Image Upload
   const handleVariantImageUpload = async (optionIndex: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -307,7 +344,7 @@ export default function ProductModal({
       const uploadFormData = new FormData();
       uploadFormData.append('image', file);
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const response = await fetch(`${API_URL}/upload/single`, {
+      const response = await fetch(`${API_URL}/api/upload/single`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: uploadFormData
@@ -323,7 +360,12 @@ export default function ProductModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
-    await onSubmit({ ...formData, variants: variants });
+    
+    // Đảm bảo dữ liệu cuối cùng có variants chính xác
+    const finalData = { ...formData, variants: variants };
+    console.log('🚀 Final product data to submit:', finalData);
+    
+    await onSubmit(finalData);
   };
 
   const handleChange = (field: keyof Product, value: any) => {
@@ -535,102 +577,124 @@ export default function ProductModal({
             </div>
           </section>
 
-          {/* 4. Variants (Size/Màu) - Logic Giữ nguyên */}
+          {/* 4. Quản lý Size & Giá bán */}
           <section>
             <div className="flex justify-between items-center mb-4 border-b pb-2">
-               <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Phân loại hàng (Variants)</h4>
+               <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Quản lý Size & Kho hàng</h4>
                <button 
                   type="button"
                   onClick={() => {
-                    setEditingVariantIndex(-1);
-                    setVariantFormData({ name: '', options: [{ name: '', price: 0, stock: 0, sku: '', image: '' }] });
+                    const newSize = {
+                      name: '',
+                      price: formData.price || 0,
+                      stock: 1,
+                      sku: '',
+                      image: ''
+                    };
+                    // Nếu chưa có variant nào, tạo mới nhóm "Size"
+                    if (variants.length === 0) {
+                      updateAllVariants([{ name: 'Size', options: [newSize] }]);
+                    } else {
+                      // Nếu đã có, thêm option vào nhóm đầu tiên
+                      const updated = [...variants];
+                      updated[0].options.push(newSize);
+                      updateAllVariants(updated);
+                    }
                   }}
-                  className="bg-black text-white text-xs font-bold uppercase px-4 py-2 rounded hover:bg-gray-800 transition"
+                  className="bg-black text-white text-xs font-bold uppercase px-4 py-2 rounded hover:bg-stone-800 transition"
                >
-                  + Thêm Size/Màu
+                  + Thêm Size mới
                </button>
             </div>
 
-            {/* List Variants */}
-            {variants.length > 0 && (
-               <div className="grid gap-4 mb-6">
-                  {variants.map((v, i) => (
-                     <div key={i} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex justify-between items-center mb-3">
-                           <span className="font-bold uppercase text-sm">{v.name}</span>
-                           <div className="space-x-2">
-                              <button type="button" onClick={() => editVariant(i)} className="text-blue-600 text-xs font-bold uppercase hover:underline">Sửa</button>
-                              <button type="button" onClick={() => removeVariant(i)} className="text-red-600 text-xs font-bold uppercase hover:underline">Xóa</button>
-                           </div>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                           {v.options.map((opt, j) => (
-                              <div key={j} className="bg-gray-100 px-3 py-2 rounded text-xs">
-                                 <span className="font-bold">{opt.name}</span> - {opt.price.toLocaleString()}đ (Kho: {opt.stock})
-                              </div>
-                           ))}
-                        </div>
-                     </div>
-                  ))}
+            {variants.length > 0 ? (
+               <div className="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
+                  <table className="w-full text-sm">
+                     <thead className="bg-gray-100 border-b border-gray-200">
+                        <tr>
+                           <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Kích thước (Size)</th>
+                           <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Giá bán (VNĐ)</th>
+                           <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Tồn kho</th>
+                           <th className="px-4 py-3 text-center text-[10px] font-bold text-gray-500 uppercase">Thao tác</th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y divide-gray-200">
+                        {variants[0].options.map((opt, idx) => (
+                           <tr key={idx} className="bg-white hover:bg-gray-50 transition">
+                              <td className="px-4 py-3">
+                                 <input 
+                                    type="text" 
+                                    value={opt.name}
+                                    onChange={(e) => {
+                                       const updated = [...variants];
+                                       updated[0].options[idx].name = e.target.value;
+                                       updateAllVariants(updated);
+                                    }}
+                                    placeholder="VD: 42"
+                                    className="w-full bg-transparent border-none focus:ring-0 font-bold"
+                                 />
+                              </td>
+                              <td className="px-4 py-3">
+                                 <input 
+                                    type="number" 
+                                    value={opt.price}
+                                    onChange={(e) => {
+                                       const updated = [...variants];
+                                       updated[0].options[idx].price = Number(e.target.value);
+                                       updateAllVariants(updated);
+                                    }}
+                                    className="w-full bg-transparent border-none focus:ring-0 font-medium"
+                                 />
+                              </td>
+                              <td className="px-4 py-3">
+                                 <input 
+                                    type="number" 
+                                    value={opt.stock}
+                                    onChange={(e) => {
+                                       const updated = [...variants];
+                                       updated[0].options[idx].stock = Number(e.target.value);
+                                       updateAllVariants(updated);
+                                    }}
+                                    className="w-full bg-transparent border-none focus:ring-0"
+                                 />
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                 <button 
+                                    type="button"
+                                    onClick={() => {
+                                       const updated = [...variants];
+                                       updated[0].options.splice(idx, 1);
+                                       if (updated[0].options.length === 0) {
+                                          updateAllVariants([]);
+                                       } else {
+                                          updateAllVariants(updated);
+                                       }
+                                    }}
+                                    className="text-red-500 hover:text-red-700 p-2"
+                                 >
+                                    ✕
+                                 </button>
+                              </td>
+                           </tr>
+                        ))}
+                     </tbody>
+                  </table>
+               </div>
+            ) : (
+               <div className="text-center py-10 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                  <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Chưa có thông tin Size</p>
+                  <button 
+                     type="button"
+                     onClick={() => updateAllVariants([{ name: 'Size', options: [{ name: '42', price: formData.price || 0, stock: 1, sku: '', image: '' }] }])}
+                     className="mt-4 text-blue-600 text-xs font-bold uppercase hover:underline"
+                  >
+                     Tạo nhanh bảng Size
+                  </button>
                </div>
             )}
-
-            {/* Form Edit Variant */}
-            {(editingVariantIndex >= 0 || variantFormData.name !== '' || variants.length === 0) && (
-               <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-                  <div className="mb-4">
-                     <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Tên nhóm biến thể</label>
-                     <input
-                        type="text"
-                        value={variantFormData.name}
-                        onChange={(e) => setVariantFormData({...variantFormData, name: e.target.value})}
-                        className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-black outline-none"
-                        placeholder="VD: Size, Màu sắc..."
-                     />
-                  </div>
-                  
-                  <div className="space-y-3">
-                     {variantFormData.options.map((opt, idx) => (
-                        <div key={idx} className="flex gap-3 items-end">
-                           <div className="flex-1">
-                              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Tên (VD: 42, Đỏ)</label>
-                              <input 
-                                 type="text" 
-                                 value={opt.name} 
-                                 onChange={(e) => updateVariantOption(idx, 'name', e.target.value)}
-                                 className="w-full px-3 py-2 bg-white border border-gray-200 rounded outline-none text-sm"
-                              />
-                           </div>
-                           <div className="w-32">
-                              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Giá thêm</label>
-                              <input 
-                                 type="number" 
-                                 value={opt.price} 
-                                 onChange={(e) => updateVariantOption(idx, 'price', Number(e.target.value))}
-                                 className="w-full px-3 py-2 bg-white border border-gray-200 rounded outline-none text-sm"
-                              />
-                           </div>
-                           <div className="w-24">
-                              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Kho</label>
-                              <input 
-                                 type="number" 
-                                 value={opt.stock} 
-                                 onChange={(e) => updateVariantOption(idx, 'stock', Number(e.target.value))}
-                                 className="w-full px-3 py-2 bg-white border border-gray-200 rounded outline-none text-sm"
-                              />
-                           </div>
-                           <button type="button" onClick={() => removeVariantOption(idx)} className="pb-2 text-red-500 hover:text-red-700 font-bold">×</button>
-                        </div>
-                     ))}
-                     <button type="button" onClick={addVariantOption} className="text-xs font-bold text-blue-600 uppercase hover:underline">+ Thêm tùy chọn</button>
-                  </div>
-
-                  <div className="mt-4 flex gap-3">
-                     <button type="button" onClick={saveVariant} className="bg-black text-white px-6 py-2 rounded font-bold text-xs uppercase hover:bg-stone-800">Lưu Biến Thể</button>
-                     <button type="button" onClick={cancelEditVariant} className="bg-white border border-gray-300 text-black px-6 py-2 rounded font-bold text-xs uppercase hover:bg-gray-100">Hủy</button>
-                  </div>
-               </div>
-            )}
+            <p className="text-[10px] text-gray-400 mt-3 uppercase font-bold tracking-wider">
+               * Lưu ý: Đối với hàng 2Hand, mỗi size thường chỉ có số lượng là 1.
+            </p>
           </section>
 
           {/* Footer Actions */}

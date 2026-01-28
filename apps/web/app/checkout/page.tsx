@@ -177,6 +177,18 @@ export default function CheckoutPage() {
   const subtotal = getTotalPrice();
   const shippingFee = subtotal >= 1000000 ? 0 : (subtotal >= 500000 ? 30000 : 50000);
   
+  const getImageUrl = (item: any): string => {
+    const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace('/api', '');
+    let rawUrl = item.selectedVariant?.image || item.product.image || '';
+    
+    // Nếu rawUrl là object
+    let url = typeof rawUrl === 'string' ? rawUrl : (rawUrl?.url || '');
+    
+    if (!url || typeof url !== 'string' || url.includes('[object')) return '/placeholder.jpg';
+    if (url.startsWith('http') || url.startsWith('data:')) return url;
+    return `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
   // Calculate discount
   useEffect(() => {
      if (selectedVoucher) {
@@ -354,18 +366,23 @@ export default function CheckoutPage() {
         const fullAddress = `${streetAddress}, ${wardName}, ${provinceName}`;
 
         // Validate items
-        const validItems = cart.map(item => ({
-           productId: item.product._id || item.product.id,
-           productName: item.product.name,
-           productBrand: item.product.brand || 'N/A',
-           productImage: item.product.image || '',
-           price: item.selectedVariant?.price || item.product.price,
-           quantity: item.quantity,
-           variant: item.selectedVariant ? {
-              name: item.selectedVariant.name,
-              sku: item.selectedVariant.sku
-           } : undefined
-        })).filter(item => item.productId); // Filter out invalid items
+        const validItems = cart.map(item => {
+           const rawImage = item.product.image || '';
+           const productImage = typeof rawImage === 'string' ? rawImage : (rawImage as any)?.url || '';
+           
+           return {
+              productId: item.product._id || item.product.id,
+              productName: item.product.name,
+              productBrand: item.product.brand || 'N/A',
+              productImage: productImage,
+              price: item.selectedVariant?.price || item.product.price,
+              quantity: item.quantity,
+              variant: item.selectedVariant ? {
+                 name: item.selectedVariant.name,
+                 sku: item.selectedVariant.sku
+              } : undefined
+           };
+        }).filter(item => item.productId); // Filter out invalid items
 
         if (validItems.length === 0) {
            toast.error('Giỏ hàng lỗi: Sản phẩm không hợp lệ');
@@ -582,7 +599,7 @@ export default function CheckoutPage() {
                       {cart.map((item, idx) => (
                          <div key={idx} className="flex gap-4">
                             <div className="w-16 h-16 bg-white rounded-none overflow-hidden border border-gray-200 flex-shrink-0 relative">
-                               <img src={item.selectedVariant?.image || item.product.image} alt="" className="w-full h-full object-cover"/>
+                               <img src={getImageUrl(item)} alt="" className="w-full h-full object-cover"/>
                                <span className="absolute -top-1 -right-1 bg-primary text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-none shadow">{item.quantity}</span>
                             </div>
                             <div className="flex-1 min-w-0">

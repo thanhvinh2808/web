@@ -14,6 +14,7 @@ import {
   XCircle
 } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
+import { useWishlist } from '../../contexts/WishlistContext';
 import ProductCard from '../../../components/ProductCard';
 
 // --- TYPES ---
@@ -81,7 +82,7 @@ const RelatedCarousel = ({ products }: { products: Product[] }) => {
    const scroll = (direction: 'left' | 'right') => {
       if (scrollRef.current) {
          const { current } = scrollRef;
-         const scrollAmount = 300;
+         const scrollAmount = 320; // Khoảng cách cuộn khớp với chiều rộng card + gap
          if (direction === 'left') {
             current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
          } else {
@@ -91,17 +92,21 @@ const RelatedCarousel = ({ products }: { products: Product[] }) => {
    };
 
    return (
-      <div className="relative group">
+      <div className="relative group w-full">
          <button 
             onClick={() => scroll('left')}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 backdrop-blur p-2 rounded-none shadow-lg opacity-0 group-hover:opacity-100 transition disabled:opacity-0"
+            className="absolute left-[-20px] top-1/2 -translate-y-1/2 z-20 bg-white border border-gray-100 p-2 rounded-none shadow-xl opacity-0 group-hover:opacity-100 transition disabled:opacity-0 hidden lg:block hover:bg-black hover:text-white"
          >
-            <ChevronRight size={24} className="rotate-180"/>
+            <ChevronRight size={20} className="rotate-180"/>
          </button>
          
-         <div ref={scrollRef} className="flex gap-6 overflow-x-auto scrollbar-hide pb-4 snap-x">
+         <div 
+            ref={scrollRef} 
+            className="flex gap-4 md:gap-6 overflow-x-auto scrollbar-hide pb-8 snap-x snap-mandatory touch-pan-x"
+            style={{ scrollBehavior: 'smooth' }}
+         >
             {products.map(p => (
-               <div key={p.id} className="min-w-[280px] snap-start">
+               <div key={p.id || (p as any)._id} className="w-[260px] md:w-[300px] flex-shrink-0 snap-start">
                   <ProductCard product={p} />
                </div>
             ))}
@@ -109,9 +114,9 @@ const RelatedCarousel = ({ products }: { products: Product[] }) => {
 
          <button 
             onClick={() => scroll('right')}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/80 backdrop-blur p-2 rounded-none shadow-lg opacity-0 group-hover:opacity-100 transition"
+            className="absolute right-[-20px] top-1/2 -translate-y-1/2 z-20 bg-white border border-gray-100 p-2 rounded-none shadow-xl opacity-0 group-hover:opacity-100 transition hidden lg:block hover:bg-black hover:text-white"
          >
-            <ChevronRight size={24}/>
+            <ChevronRight size={20}/>
          </button>
       </div>
    );
@@ -123,6 +128,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   const { slug } = params;
   const router = useRouter();
   const { addToCart } = useCart();
+  const { toggleWishlist, isInWishlist } = useWishlist();
 
   // Data State
   const [product, setProduct] = useState<Product | null>(null);
@@ -133,20 +139,64 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   // Selection State
   const [selectedSize, setSelectedSize] = useState<VariantOption | null>(null);
   const [quantity, setQuantity] = useState(1);
-  const [isFavorite, setIsFavorite] = useState(false);
   const [openAccordion, setOpenAccordion] = useState<string | null>('desc');
+  const [activeImage, setActiveImage] = useState<string>('');
+
+  const productId = product?.id || (product as any)?._id || '';
+  const isFavorite = isInWishlist(productId);
+
+  const handleWishlistToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (product) {
+       // @ts-ignore
+       toggleWishlist({ ...product, _id: productId });
+    }
+  };
+
+  // ✅ Helper function để lấy URL ảnh đầy đủ
+  const getImageUrl = (imgData: any): string => {
+    if (!imgData) return '/placeholder-product.jpg';
+    
+    // Nếu là string
+    let url = '';
+    if (typeof imgData === 'string') {
+      url = imgData;
+    } else if (typeof imgData === 'object' && imgData !== null) {
+      url = imgData.url || '';
+    }
+    
+    if (!url || typeof url !== 'string' || url.includes('[object')) return '/placeholder-product.jpg';
+    if (url.startsWith('http') || url.startsWith('data:')) return url;
+    
+    // Lấy domain từ API_URL (bỏ phần /api nếu có)
+    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace('/api', '');
+    return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
 
   // --- FETCH DATA ---
   useEffect(() => {
     const fetchProduct = async () => {
       setIsLoading(true);
       try {
+        // Khôi phục /api vì API_URL trong môi trường này có thể thiếu nó
         const res = await fetch(`${API_URL}/api/products/${slug}`);
         if (!res.ok) throw new Error('Không tìm thấy sản phẩm');
         
         const data = await res.json();
         const productData = data.data || data; // Handle response format
         setProduct(productData);
+        
+        // Trích xuất danh sách ảnh (chuẩn hóa về mảng string URL)
+        const rawImages = productData.images && productData.images.length > 0 
+           ? productData.images 
+           : (productData.image ? [productData.image] : []);
+        
+        const processedImages = rawImages.map((img: any) => getImageUrl(img));
+        
+        // Set initial active image
+        if (processedImages.length > 0) {
+           setActiveImage(processedImages[0]);
+        }
 
         // Fetch Related (Cùng Category)
         if (productData.categorySlug) {
@@ -195,9 +245,22 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
      }
   }, [sizeOptions]);
 
-  const images = product?.images && product.images.length > 0 
-    ? product.images 
-    : (product?.image ? [product.image] : []);
+  // Chuẩn hóa danh sách ảnh URL để hiển thị
+  const displayImages = React.useMemo(() => {
+     if (!product) return [];
+     const rawImages = product.images && product.images.length > 0 
+        ? product.images 
+        : (product.image ? [product.image] : []);
+     
+     return rawImages.map(img => getImageUrl(img));
+  }, [product]);
+
+  // Sync active image khi list ảnh thay đổi
+  useEffect(() => {
+     if (displayImages.length > 0 && (!activeImage || typeof activeImage !== 'string' || activeImage.includes('[object'))) {
+        setActiveImage(displayImages[0]);
+     }
+  }, [displayImages, activeImage]);
 
   const handleAddToCart = () => {
     if (!product) return;
@@ -255,28 +318,56 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
             
             {/* LEFT COLUMN: IMAGES (60%) */}
-            <div className="lg:col-span-8">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {images.map((img, idx) => (
-                     <div key={idx} className={`bg-gray-100 aspect-square rounded-none overflow-hidden cursor-pointer ${idx === 0 ? 'md:col-span-2 md:aspect-[4/3]' : ''}`}>
-                        <img 
-                           src={img} 
-                           alt={`${product.name} - ${idx}`} 
-                           className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
-                        />
-                     </div>
-                  ))}
+            <div className="lg:col-span-7">
+               {/* Main Image */}
+               <div className="bg-gray-50 aspect-square overflow-hidden mb-4 border border-gray-100 group">
+                  <img 
+                     src={activeImage || (displayImages.length > 0 ? displayImages[0] : '')} 
+                     alt={product.name} 
+                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  />
+               </div>
+               
+               {/* Thumbnails */}
+               {displayImages.length > 1 && (
+                  <div className="grid grid-cols-5 md:grid-cols-6 gap-3">
+                     {displayImages.map((img, idx) => (
+                        <button 
+                           key={idx}
+                           onClick={() => setActiveImage(img)}
+                           className={`aspect-square border-2 transition-all overflow-hidden bg-gray-50 ${activeImage === img ? 'border-black opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                        >
+                           <img src={img} alt={`${product.name} ${idx}`} className="w-full h-full object-cover" />
+                        </button>
+                     ))}
+                  </div>
+               )}
+
+               {/* Detailed Images Grid (Section for detailed view) */}
+               <div className="mt-12 space-y-4">
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-6 border-b pb-2">Hình ảnh chi tiết</h3>
+                  <div className="grid grid-cols-1 gap-4">
+                     {displayImages.map((img, idx) => (
+                        <div key={idx} className="bg-gray-50 overflow-hidden border border-gray-100">
+                           <img 
+                              src={img} 
+                              alt={`${product.name} detail ${idx}`} 
+                              className="w-full h-auto object-cover"
+                           />
+                        </div>
+                     ))}
+                  </div>
                </div>
             </div>
 
             {/* RIGHT COLUMN: INFO (40%) - STICKY */}
-            <div className="lg:col-span-4 lg:sticky lg:top-24 h-fit space-y-8">
+            <div className="lg:col-span-5 lg:sticky lg:top-24 h-fit space-y-8">
                
                {/* Header Info */}
                <div>
                   <div className="flex justify-between items-start mb-2">
                      <h1 className="text-3xl lg:text-4xl font-black italic leading-none tracking-tight">{product.name}</h1>
-                     <button onClick={() => setIsFavorite(!isFavorite)} className="p-2 hover:bg-gray-100 rounded-none transition">
+                     <button onClick={handleWishlistToggle} className="p-2 hover:bg-gray-100 rounded-none transition">
                         <Heart className={isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400'}/>
                      </button>
                   </div>
@@ -430,7 +521,9 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   <h3 className="text-2xl font-black italic uppercase">Có thể bạn thích</h3>
                   <Link href="/products" className="text-sm font-bold text-gray-500 hover:text-black underline">Xem tất cả</Link>
                </div>
-               <RelatedCarousel products={relatedProducts} />
+               <div className="w-full overflow-hidden">
+                  <RelatedCarousel products={relatedProducts} />
+               </div>
             </div>
          )}
       </div>

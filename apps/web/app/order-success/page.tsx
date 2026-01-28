@@ -17,6 +17,16 @@ export default function OrderSuccessPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // ✅ Helper function để lấy URL ảnh đầy đủ
+  const getImageUrl = (url: any): string => {
+    if (!url) return '/placeholder.png';
+    const cleanUrl = typeof url === 'string' ? url : (url.url || '');
+    if (!cleanUrl || cleanUrl.includes('[object')) return '/placeholder.png';
+    if (cleanUrl.startsWith('http')) return cleanUrl;
+    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace('/api', '');
+    return `${baseUrl}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`;
+  };
+
   useEffect(() => {
     const fetchOrder = async () => {
       if (orderId) {
@@ -88,7 +98,7 @@ export default function OrderSuccessPage() {
                 {order.items.map((item: any, idx: number) => (
                    <div key={idx} className="flex gap-4">
                       <div className="w-16 h-16 bg-gray-100 rounded-none overflow-hidden border border-gray-200 flex-shrink-0 relative">
-                         <img src={item.productImage} alt="" className="w-full h-full object-cover"/>
+                         <img src={getImageUrl(item.productImage)} alt="" className="w-full h-full object-cover"/>
                       </div>
                       <div className="flex-1">
                          <h4 className="font-bold text-sm line-clamp-1 uppercase italic tracking-tighter italic uppercase">{item.productName}</h4>

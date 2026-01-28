@@ -3,6 +3,7 @@
 
 import { ReactNode } from 'react';
 import { CartProvider } from '../app/contexts/CartContext';
+import { WishlistProvider } from '../app/contexts/WishlistContext';
 import { useAuth } from '../app/contexts/AuthContext';
 import { useOrderUpdates, useAdminUpdates } from '../app/contexts/SocketContext';
 
@@ -21,8 +22,10 @@ export default function ClientProviders({ children }: { children: ReactNode }) {
   console.log('🛒 ClientProviders render - userId:', userId, 'isAdmin:', isAdmin, 'isLoading:', isLoading);
   
   return (
-    <CartProvider userId={userId}>
-      {children}
-    </CartProvider>
+    <WishlistProvider>
+      <CartProvider userId={userId}>
+        {children}
+      </CartProvider>
+    </WishlistProvider>
   );
 }

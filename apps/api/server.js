@@ -39,6 +39,7 @@ import { createNotification } from './controller/adminController.js';
 import adminRoutes from './routes/admin.js';
 import tradeInRoutes from './routes/tradeIn.js';
 import blogRoutes from './routes/blog.js';
+import wishlistRoutes from './routes/wishlist.js';
 
 // ✅ Load environment variables
 dotenv.config({ path: path.resolve(process.cwd(), 'apps/api/.env') });
@@ -63,6 +64,7 @@ app.use('/uploads', express.static('uploads'));
 // Routes
 app.use('/api/trade-in', tradeInRoutes);
 app.use('/api/blogs', blogRoutes);
+app.use('/api/wishlist', wishlistRoutes);
 
 // ✅ Socket.io setup
 const io = new Server(server, {

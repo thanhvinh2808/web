@@ -68,6 +68,10 @@ export default function ProductsPage() {
   const [showMobileFilter, setShowMobileFilter] = useState(false);
   const [sortBy, setSortBy] = useState('newest');
   const [currentPage, setCurrentPage] = useState(1);
+  const [productType, setProductType] = useState<'all' | 'new' | '2hand'>(
+    (searchParams.get('type') as any) || 'all'
+  );
+  const searchKeyword = searchParams.get('search') || '';
 
   useEffect(() => {
     const fetchData = async () => {
@@ -92,11 +96,27 @@ export default function ProductsPage() {
   useEffect(() => {
     const cat = searchParams.get('category');
     if (cat) setSelectedCategory(cat);
+    const type = searchParams.get('type');
+    if (type) setProductType(type as any);
   }, [searchParams]);
 
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
-      if (selectedCategory !== 'all' && product.categorySlug !== selectedCategory) return false;
+      // Filter by Search Keyword
+      if (searchKeyword) {
+        const keyword = searchKeyword.toLowerCase();
+        const matchesName = product.name.toLowerCase().includes(keyword);
+        const matchesBrand = product.brand?.toLowerCase().includes(keyword);
+        const matchesCategory = product.categorySlug?.toLowerCase().includes(keyword);
+        
+        if (!matchesName && !matchesBrand && !matchesCategory) return false;
+      }
+
+      // Filter by Type (New / 2Hand)
+      if (productType === 'new' && !product.isNew) return false;
+      if (productType === '2hand' && product.isNew) return false;
+
+      // if (selectedCategory !== 'all' && product.categorySlug !== selectedCategory) return false;
       if (selectedBrands.length > 0 && !selectedBrands.includes(product.brand || '')) return false;
       if (selectedConditions.length > 0) {
         const prodCond = product.specs?.condition || 'New';
@@ -117,7 +137,7 @@ export default function ProductsPage() {
       }
       return true;
     });
-  }, [products, selectedCategory, selectedBrands, selectedConditions, selectedPriceRange, selectedSizes]);
+  }, [products, selectedCategory, selectedBrands, selectedConditions, selectedPriceRange, selectedSizes, productType]);
 
   const sortedProducts = useMemo(() => {
     let sorted = [...filteredProducts];
@@ -158,6 +178,7 @@ export default function ProductsPage() {
     setSelectedSizes([]);
     setSelectedPriceRange('');
     setSelectedCategory('all');
+    setProductType('all');
     router.push('/products');
   };
 
@@ -177,13 +198,21 @@ export default function ProductsPage() {
   return (
     <div className="bg-white min-h-screen font-sans text-gray-900">
       <div className="bg-gray-50 py-16 border-b border-gray-200">
-        <div className="container mx-auto px-4">
-          <h1 className="text-5xl md:text-7xl font-black italic tracking-tighter mb-4 uppercase italic uppercase">
-            ALL <span className="text-primary">SNEAKERS</span>
-          </h1>
-          <p className="text-gray-500 max-w-2xl font-bold uppercase tracking-widest text-[10px]">
-            Khám phá bộ sưu tập giày chính hãng và 2hand tuyển chọn. Fullbox, check legit trọn đời.
-          </p>
+        <div className="container mx-auto px-4 text-center">
+          {searchKeyword ? (
+            <>
+              <h1 className="text-4xl md:text-6xl font-black italic tracking-tighter mb-4 uppercase">
+                KẾT QUẢ TÌM KIẾM
+              </h1>
+              <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">
+                Từ khóa: <span className="text-primary">"{searchKeyword}"</span> - {filteredProducts.length} sản phẩm
+              </p>
+            </>
+          ) : (
+            <h1 className="text-5xl md:text-7xl font-black italic tracking-tighter mb-6 uppercase">
+              {productType === 'all' ? 'THE COLLECTIONS' : productType === 'new' ? 'NEW ARRIVALS' : '2HAND SELECTS'}
+            </h1>
+          )}
         </div>
       </div>
 

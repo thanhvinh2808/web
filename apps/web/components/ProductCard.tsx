@@ -38,18 +38,42 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, showSoldCount = false }: ProductCardProps) {
+
   const router = useRouter();
+
   const { addToCart } = useCart();
+
   const [showSizes, setShowSizes] = useState(false);
+
   const [isAdding, setIsAdding] = useState(false);
+
   
+
   const productId = product.id || product._id || '';
-  const productSlug = product.slug || productId;
-  
+
+  const rawSlug = product.slug || productId;
+  const productSlug = typeof rawSlug === 'string' ? rawSlug : productId;
+
   const getImageUrl = (p: Product): string => {
-    if (p.images && Array.isArray(p.images) && p.images.length > 0) return p.images[0];
-    if (p.image) return p.image;
-    return '/placeholder-product.jpg';
+    const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace('/api', '');
+    let rawUrl: any = '';
+    
+    if (p.images && Array.isArray(p.images) && p.images.length > 0) {
+      rawUrl = p.images[0];
+    } else if (p.image) {
+      rawUrl = p.image;
+    } else {
+      return '/placeholder-product.jpg';
+    }
+
+    // Nếu rawUrl là object (theo cấu trúc mới {url, alt, ...})
+    let url = typeof rawUrl === 'string' ? rawUrl : (rawUrl?.url || '');
+
+    // Chống lỗi [object Object] nếu dữ liệu bị ép kiểu sai đâu đó trong quá trình nhận diện
+    if (!url || typeof url !== 'string' || url.includes('[object')) return '/placeholder-product.jpg';
+    
+    if (url.startsWith('http') || url.startsWith('data:')) return url;
+    return `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
   const getLowestPrice = (p: Product): number => {

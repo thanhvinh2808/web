@@ -86,6 +86,16 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
     return price.toLocaleString('vi-VN') + 'đ';
   };
 
+  // ✅ Helper function để lấy URL ảnh đầy đủ
+  const getImageUrl = (url: any): string => {
+    if (!url) return '/placeholder.png';
+    const cleanUrl = typeof url === 'string' ? url : (url.url || '');
+    if (!cleanUrl || cleanUrl.includes('[object')) return '/placeholder.png';
+    if (cleanUrl.startsWith('http')) return cleanUrl;
+    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace('/api', '');
+    return `${baseUrl}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`;
+  };
+
   // ✅ Reset trang khi filter thay đổi
   useEffect(() => {
     setCurrentPage(1);
@@ -361,7 +371,7 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
                             {order.items.slice(0, 3).map((item, index) => (
                               <div key={index} className="relative inline-block w-10 h-10 rounded-lg border-2 border-white bg-gray-100 overflow-hidden shadow-sm">
                                 <img 
-                                  src={item.productImage || '/placeholder.png'} 
+                                  src={getImageUrl(item.productImage)} 
                                   alt={item.productName}
                                   className="w-full h-full object-cover"
                                 />

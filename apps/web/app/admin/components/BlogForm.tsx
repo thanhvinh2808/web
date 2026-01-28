@@ -95,7 +95,11 @@ export default function BlogForm({ blogId, onFormClose, token }: BlogFormProps) 
       });
       if (!res.ok) throw new Error((await res.json()).message || 'Failed to upload image');
       const data = await res.json();
-      setImage(data.data.url);
+      
+      // Trích xuất URL chuẩn xác
+      const imageUrl = typeof data.data === 'string' ? data.data : (data.data?.url || '');
+      setImage(imageUrl);
+      
       toast.success('Image uploaded successfully!');
     } catch (err: any) {
       toast.error(err.message || 'Error uploading image.');
@@ -184,7 +188,15 @@ export default function BlogForm({ blogId, onFormClose, token }: BlogFormProps) 
           <label className="block text-sm font-medium text-gray-700 mb-1">Ảnh đại diện</label>
           <div className="flex items-center space-x-4">
             <input type="file" id="image-upload" accept="image/*" onChange={handleImageUpload} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" disabled={submitting} />
-            {image && <Image src={isAbsoluteUrl(image) ? image : `${API_URL}${image}`} alt="Preview" width={96} height={96} className="object-cover rounded-md border" />}
+            {image && (
+              <div className="relative w-24 h-24 border rounded-md overflow-hidden">
+                <img 
+                  src={isAbsoluteUrl(image) ? image : `${API_URL.replace('/api', '')}${image.startsWith('/') ? '' : '/'}${image}`} 
+                  alt="Preview" 
+                  className="w-full h-full object-cover" 
+                />
+              </div>
+            )}
           </div>
         </div>
         

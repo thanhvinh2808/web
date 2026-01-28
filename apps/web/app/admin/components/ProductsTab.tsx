@@ -80,20 +80,25 @@ export default function ProductsTab({
 
   // ✅ Helper function để lấy URL ảnh
   const getImageUrl = (product: Product): string => {
+    const BASE_URL = (API_URL || 'http://localhost:5000').replace('/api', '');
+    let rawUrl: any = '';
+
     // Ưu tiên images array
     if (product.images && Array.isArray(product.images) && product.images.length > 0) {
-      const firstImage = product.images[0];
-      if (typeof firstImage === 'string') {
-        return firstImage;
-      }
-    }
-    // Fallback về image (string)
-    if (product.image && typeof product.image === 'string') {
-      return product.image;
+      rawUrl = product.images[0];
+    } else if (product.image) {
+      // Fallback về image (string)
+      rawUrl = product.image;
     }
     
-    // Default placeholder
-    return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIzMiIgZmlsbD0iI2QxZDVkYiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPvCfk7c8L3RleHQ+PC9zdmc+';
+    const url = typeof rawUrl === 'string' ? rawUrl : (rawUrl?.url || '');
+
+    if (!url || url.includes('[object')) {
+      return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIzMiIgZmlsbD0iI2QxZDVkYiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPvCfk7c8L3RleHQ+PC9zdmc+';
+    }
+
+    if (url.startsWith('http') || url.startsWith('data:')) return url;
+    return `${BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
   // ✅ Lọc sản phẩm theo tìm kiếm và danh mục
@@ -209,8 +214,8 @@ export default function ProductsTab({
       
       // ✅ Gọi API
       const url = editingProduct
-        ? `${API_URL}/admin/products/${editingProduct.slug}`
-        : `${API_URL}/admin/products`;
+        ? `${API_URL}/api/admin/products/${editingProduct.slug}`
+        : `${API_URL}/api/admin/products`;
       
       const method = editingProduct ? 'PUT' : 'POST';
       
@@ -248,7 +253,7 @@ export default function ProductsTab({
     if (!window.confirm('⚠️ Bạn có chắc muốn xóa sản phẩm này?')) return;
     
     try {
-      const res = await fetch(`${API_URL}/admin/products/${productSlug}`, {
+      const res = await fetch(`${API_URL}/api/admin/products/${productSlug}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

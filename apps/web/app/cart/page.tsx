@@ -18,6 +18,18 @@ export default function CartPage() {
   const subtotal = getTotalPrice();
   const totalItems = getTotalItems();
 
+  const getImageUrl = (item: any): string => {
+    const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace('/api', '');
+    let rawUrl = item.selectedVariant?.image || item.product.image || '';
+    
+    // Nếu rawUrl là object
+    let url = typeof rawUrl === 'string' ? rawUrl : (rawUrl?.url || '');
+    
+    if (!url || typeof url !== 'string' || url.includes('[object')) return '/placeholder.jpg';
+    if (url.startsWith('http') || url.startsWith('data:')) return url;
+    return `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
   const calculateDiscount = (voucher: Voucher | null): number => {
     if (!voucher) return 0;
     if (voucher.discountType === 'percentage') {
@@ -75,7 +87,7 @@ export default function CartPage() {
                     {/* Image */}
                     <div className="w-24 h-24 sm:w-32 sm:h-32 bg-gray-100 rounded-none overflow-hidden flex-shrink-0 border border-gray-200">
                       <img
-                        src={item.selectedVariant?.image || item.product.image || '/placeholder.jpg'}
+                        src={getImageUrl(item)}
                         alt={item.product.name}
                         className="w-full h-full object-cover"
                       />
