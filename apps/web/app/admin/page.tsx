@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Search, User, Menu, Package, ShoppingCart, Users } from 'lucide-react'; // Import icons
 import { API_URL } from './config/constants';
+import { useSocket } from '../contexts/SocketContext';
 import LoginForm from './components/LoginForm';
 import Sidebar from './components/Sidebar';
 import DashboardTab from './components/DashboardTab';
@@ -12,9 +13,11 @@ import ProductsTab from './components/ProductsTab';
 import CategoriesTab from './components/CategoriesTab';
 import ContactsTab from './components/ContactsTab';
 import VouchersTab from './components/VouchersTab';
+import TradeInTab from './components/TradeInTab';
 import BlogsTab from './components/BlogsTab';
 
 export default function AdminDashboard() {
+  const { socket, isConnected } = useSocket();
   const [token, setToken] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState(null);
@@ -31,6 +34,36 @@ export default function AdminDashboard() {
     role: string;
   } | null>(null);
 
+  // ✅ SOCKET LISTENERS
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleNewOrder = (order: any) => {
+      console.log('🔔 New order received via socket:', order);
+      showMessage(`🆕 Có đơn hàng mới #${order._id.slice(-6).toUpperCase()}`);
+      
+      // Refresh data
+      fetchStats(token);
+      if (activeTab === 'orders') fetchOrders();
+      if (activeTab === 'dashboard') fetchStats(token);
+    };
+
+    const handleStatusUpdate = (data: any) => {
+      console.log('📝 Order status updated via socket:', data);
+      if (activeTab === 'orders') fetchOrders();
+    };
+
+    socket.on('newOrder', handleNewOrder);
+    socket.on('orderStatusUpdated', handleStatusUpdate);
+    socket.on('orderCancelled', handleNewOrder); // Dùng chung logic thông báo
+
+    return () => {
+      socket.off('newOrder', handleNewOrder);
+      socket.off('orderStatusUpdated', handleStatusUpdate);
+      socket.off('orderCancelled', handleNewOrder);
+    };
+  }, [socket, isConnected, token, activeTab]);
+  
   // ✅ STATE CHO MOBILE MENU
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -102,7 +135,7 @@ export default function AdminDashboard() {
       }
       try {
         const res = await fetch(`${API_URL}/api/admin/verify`, {
-          headers: { 'Authorization': `Bearer ${savedToken}`, 'Content-Type': 'application/json' }        
+          headers: { 'Authorization': `Bearer ${savedToken}`, 'Content-Type': 'application/json' }
         });
         if (res.ok) {
           const data = await res.json();
@@ -145,22 +178,22 @@ export default function AdminDashboard() {
       if (data.success) setStats(data.data);
     } catch (e) {}
   };
-  const fetchUsers = async () => {
+  const fetchUsers = async () => { 
       const res = await fetch(`${API_URL}/api/admin/users`, { headers: { 'Authorization': `Bearer ${token}` } });
       const data = await res.json();
       if(data.success) setUsers(data.data);
   };
-  const fetchOrders = async () => {
+  const fetchOrders = async () => { 
       const res = await fetch(`${API_URL}/api/admin/orders?limit=100`, { headers: { 'Authorization': `Bearer ${token}` } });
       const data = await res.json();
       if(data.success) setOrders(data.data);
   };
-  const fetchProducts = async () => {
+  const fetchProducts = async () => { 
       const res = await fetch(`${API_URL}/api/admin/products`, { headers: { 'Authorization': `Bearer ${token}` } });
       const data = await res.json();
       if (Array.isArray(data.data)) setProducts(data.data);
   };
-  const fetchCategories = async () => {
+  const fetchCategories = async () => { 
       const res = await fetch(`${API_URL}/api/categories`);
       const data = await res.json();
       if (Array.isArray(data)) setCategories(data as any);
@@ -216,8 +249,9 @@ export default function AdminDashboard() {
       case 'orders': return 'Đơn Hàng';
       case 'products': return 'Sản Phẩm';
       case 'categories': return 'Danh Mục';
-      case 'blogs': return 'Bài viết';
       case 'vouchers': return 'Mã Giảm Giá';
+      case 'blogs': return 'Tin Tức';
+      case 'trade-in': return 'Thu Cũ Đổi Mới';
       case 'contacts': return 'Liên Hệ';
       default: return 'Dashboard';
     }
@@ -226,9 +260,9 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-slate-50 flex font-sans">
       {/* Sidebar Responsive */}
-      <Sidebar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
+      <Sidebar 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
         onLogout={handleLogout}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
@@ -236,12 +270,12 @@ export default function AdminDashboard() {
 
       {/* Main Content Area - Điều chỉnh margin left trên desktop */}
       <main className="flex-1 flex flex-col min-w-0 md:ml-72 transition-all duration-300">
-
+        
         {/* Top Header */}
         <header className="h-16 md:h-20 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30">
           <div className="flex items-center gap-3">
             {/* Nút Hamburger cho Mobile */}
-            <button
+            <button 
               onClick={() => setIsSidebarOpen(true)}
               className="md:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
             >
@@ -256,16 +290,16 @@ export default function AdminDashboard() {
 
           <div className="flex items-center gap-3 md:gap-6">
             <div className="relative hidden md:block z-50" ref={searchRef}>
-              <input
-                type="text"
-                placeholder="Tìm mọi thứ (SP, Đơn, User)..."
+              <input 
+                type="text" 
+                placeholder="Tìm mọi thứ (SP, Đơn, User)..." 
                 value={globalSearch}
                 onChange={(e) => setGlobalSearch(e.target.value)}
                 onFocus={() => setShowResults(true)}
                 className="pl-10 pr-4 py-2 bg-gray-50 border-none rounded-full text-sm focus:ring-2 focus:ring-black w-72 transition-all font-medium"
               />
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />   
-
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              
               {/* 🔍 SEARCH RESULTS DROPDOWN */}
               {showResults && searchResults && (globalSearch.trim().length > 0) && (
                 <div className="absolute top-full mt-2 left-0 w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
@@ -280,9 +314,9 @@ export default function AdminDashboard() {
                               <Package size={12}/> Sản Phẩm
                            </div>
                            {searchResults.products.map(p => (
-                             <div
-                                key={p._id}
-                                onClick={() => { setActiveTab('products'); setShowResults(false); }}      
+                             <div 
+                                key={p._id} 
+                                onClick={() => { setActiveTab('products'); setShowResults(false); }}
                                 className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition"
                              >
                                <img src={p.image || '/placeholder.png'} className="w-8 h-8 rounded border object-cover" />
@@ -302,9 +336,9 @@ export default function AdminDashboard() {
                               <ShoppingCart size={12}/> Đơn Hàng
                            </div>
                            {searchResults.orders.map(o => (
-                             <div
-                                key={o._id}
-                                onClick={() => { setActiveTab('orders'); setShowResults(false); }}        
+                             <div 
+                                key={o._id} 
+                                onClick={() => { setActiveTab('orders'); setShowResults(false); }}
                                 className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition"
                              >
                                <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded flex items-center justify-center font-bold text-[10px]">#{o._id.slice(-4).toUpperCase()}</div>
@@ -326,8 +360,8 @@ export default function AdminDashboard() {
                               <Users size={12}/> Người Dùng
                            </div>
                            {searchResults.users.map(u => (
-                             <div
-                                key={u._id}
+                             <div 
+                                key={u._id} 
                                 onClick={() => { setActiveTab('users'); setShowResults(false); }}
                                 className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition"
                              >
@@ -352,7 +386,7 @@ export default function AdminDashboard() {
                 </div>
               )}
             </div>
-
+            
             <button className="relative p-2 text-gray-400 hover:text-blue-600 transition-colors">
               <Bell size={20} />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
@@ -374,8 +408,8 @@ export default function AdminDashboard() {
         <div className="p-4 md:p-8 flex-1 overflow-x-hidden">
           {message && (
             <div className={`mb-6 p-4 rounded-xl shadow-sm border flex items-center gap-3 ${
-              message.includes('thành công') || message.includes('✅')
-                ? 'bg-green-50 border-green-100 text-green-700'
+              message.includes('thành công') || message.includes('✅') 
+                ? 'bg-green-50 border-green-100 text-green-700' 
                 : 'bg-red-50 border-red-100 text-red-700'
             }`}>
               {message}
@@ -388,8 +422,9 @@ export default function AdminDashboard() {
             {activeTab === 'orders' && <OrdersTab orders={orders} token={token} onRefresh={fetchOrders} showMessage={showMessage} />}
             {activeTab === 'products' && <ProductsTab products={products} categories={categories} token={token} onRefresh={fetchProducts} showMessage={showMessage} />}
             {activeTab === 'categories' && <CategoriesTab categories={categories} token={token} onRefresh={fetchCategories} showMessage={showMessage} />}
-            {activeTab === 'blogs' && <BlogsTab token={token} showMessage={showMessage} />}
             {activeTab === 'vouchers' && <VouchersTab token={token} showMessage={showMessage} />}
+            {activeTab === 'blogs' && <BlogsTab token={token} showMessage={showMessage} />}
+            {activeTab === 'trade-in' && <TradeInTab token={token} showMessage={showMessage} />}
             {activeTab === 'contacts' && <ContactsTab contacts={contacts} token={token} onRefresh={fetchContacts} showMessage={showMessage} />}
           </div>
         </div>

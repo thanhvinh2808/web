@@ -105,3 +105,18 @@ export function useOrderUpdates(userId?: string, onUpdate?: (order: any) => void
 
   return { socket, isConnected };
 }
+
+// Hook for admin room
+export function useAdminUpdates(isAdmin: boolean) {
+  const { socket, isConnected } = useSocket();
+
+  useEffect(() => {
+    if (!socket || !isConnected || !isAdmin) return;
+
+    console.log('👑 Joining Admin Room...');
+    socket.emit('joinAdminRoom');
+
+  }, [socket, isConnected, isAdmin]);
+
+  return { socket, isConnected };
+}

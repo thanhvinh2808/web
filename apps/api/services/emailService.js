@@ -176,8 +176,91 @@ export const sendReplyEmail = async (customerEmail, customerName, replyMessage) 
   }
 };
 
+// ✅ Gửi email cập nhật trạng thái Trade-In
+export const sendTradeInUpdateEmail = async (tradeIn, replyMessage) => {
+  try {
+    // Lấy email từ user (populate) hoặc từ contactInfo (nếu có, dù model hiện tại chưa tách rõ email trong contactInfo)
+    // Giả sử tradeIn.userId đã được populate email
+    const customerEmail = tradeIn.userId?.email;
+    const customerName = tradeIn.userId?.name || tradeIn.contactInfo?.name || 'Khách hàng';
+
+    if (!customerEmail) {
+        throw new Error('Không tìm thấy email khách hàng');
+    }
+
+    const statusColor = {
+        'approved': '#28a745', // Green
+        'rejected': '#dc3545', // Red
+        'evaluating': '#ffc107', // Yellow
+        'completed': '#007bff'  // Blue
+    }[tradeIn.status] || '#6c757d';
+
+    const statusText = {
+        'approved': 'ĐÃ ĐỊNH GIÁ / CHẤP NHẬN',
+        'rejected': 'TỪ CHỐI',
+        'evaluating': 'ĐANG ĐỊNH GIÁ',
+        'completed': 'HOÀN TẤT'
+    }[tradeIn.status] || tradeIn.status.toUpperCase();
+
+    const emailContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 8px; overflow: hidden;">
+        <div style="background-color: black; padding: 20px; text-align: center;">
+             <h2 style="color: white; margin: 0; font-style: italic;">FOOTMARK TRADE-IN</h2>
+        </div>
+        
+        <div style="padding: 30px;">
+            <h3 style="margin-top: 0;">Xin chào ${customerName},</h3>
+            
+            <p>Yêu cầu thu cũ đổi mới cho sản phẩm <strong>${tradeIn.productName}</strong> của bạn đã được cập nhật trạng thái:</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <span style="background-color: ${statusColor}; color: white; padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 16px;">
+                    ${statusText}
+                </span>
+            </div>
+
+            ${tradeIn.finalPrice > 0 ? `
+            <div style="background-color: #f8f9fa; border: 1px solid #ddd; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 20px;">
+                <p style="margin: 0; color: #666; font-size: 14px;">Giá thu mua đề xuất:</p>
+                <p style="margin: 5px 0 0 0; color: #0070f3; font-size: 28px; font-weight: bold;">
+                    ${tradeIn.finalPrice.toLocaleString('vi-VN')}đ
+                </p>
+            </div>
+            ` : ''}
+
+            <div style="background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin-bottom: 20px;">
+                <p style="margin: 0; font-weight: bold; color: #856404;">Phản hồi từ chuyên gia:</p>
+                <p style="margin: 5px 0 0 0; color: #856404;">${replyMessage || tradeIn.adminNote || 'Chúng tôi đang xử lý yêu cầu của bạn.'}</p>
+            </div>
+
+            <p>Vui lòng truy cập website hoặc liên hệ hotline để biết thêm chi tiết về quy trình giao dịch tiếp theo.</p>
+        </div>
+
+        <div style="background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666;">
+            <p>Đây là email tự động, vui lòng không trả lời trực tiếp email này.</p>
+            <p>© 2026 FootMark - TechStore Inc.</p>
+        </div>
+      </div>
+    `;
+
+    await transporter.sendMail({
+      from: `"FootMark Trade-In" <${process.env.ADMIN_EMAIL}>`,
+      to: customerEmail,
+      subject: `[Cập Nhật Trade-In] ${tradeIn.productName} - ${statusText}`,
+      html: emailContent,
+    });
+
+    console.log(`✅ Email Trade-In đã được gửi tới ${customerEmail}`);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Lỗi khi gửi email Trade-In:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 export default { 
   sendNewOrderEmail, 
   sendNewContactEmail, 
-  sendReplyEmail 
+  sendReplyEmail,
+  sendTradeInUpdateEmail
 };
