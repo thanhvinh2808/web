@@ -314,6 +314,7 @@ app.post('/api/register', async (req, res) => {
       success: true,
       message: 'Registration successful',
       token,
+      expiresIn: 604800,
       user: {
         id: newUser._id,
         name: newUser.name,
@@ -375,6 +376,7 @@ app.post('/api/login', async (req, res) => {
     return res.json({
       success: true,
       token,
+      expiresIn: 604800,
       user: {
         id: user._id,
         name: user.name,
@@ -471,7 +473,99 @@ app.post('/api/logout', authenticateToken, async (req, res) => {
 });
 
 // ============================================ 
-// USER ROUTES
+// REVIEW ROUTES
+// ============================================ 
+
+// ✅ GET REVIEWS FOR A PRODUCT
+app.get('/api/products/:productId/reviews', async (req, res) => {
+  try {
+    const reviews = await Review.find({ productId: req.params.productId })
+      .populate('userId', 'name avatar')
+      .sort({ createdAt: -1 });
+    res.json({ success: true, reviews });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ✅ CHECK IF USER CAN REVIEW
+app.get('/api/products/:productId/can-review', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const productId = req.params.productId;
+
+    // 1. Kiểm tra đã review chưa
+    const existingReview = await Review.findOne({ userId, productId });
+    if (existingReview) {
+      return res.json({ canReview: false, reason: 'ALREADY_REVIEWED' });
+    }
+
+    // 2. Kiểm tra đã mua và đơn hàng hoàn thành chưa
+    // Lưu ý: items.productId trong Order đang lưu ID hoặc slug tùy logic đặt hàng
+    const completedOrder = await Order.findOne({
+      userId,
+      status: 'delivered',
+      'items.productId': productId
+    });
+
+    if (!completedOrder) {
+      return res.json({ canReview: false, reason: 'NOT_PURCHASED' });
+    }
+
+    res.json({ canReview: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ✅ SUBMIT A REVIEW
+app.post('/api/products/:productId/reviews', authenticateToken, async (req, res) => {
+  try {
+    const { rating, comment } = req.body;
+    const productId = req.params.productId;
+    const userId = req.user.id;
+
+    // Re-validate purchase
+    const completedOrder = await Order.findOne({
+      userId,
+      status: 'delivered',
+      'items.productId': productId
+    });
+
+    if (!completedOrder) {
+      return res.status(403).json({ success: false, message: 'Bạn cần hoàn thành đơn hàng để đánh giá' });
+    }
+
+    const review = await Review.create({
+      userId,
+      productId,
+      rating,
+      comment,
+      isPurchased: true
+    });
+
+    // 🔔 Notify Admin via Socket.io
+    const io = req.app.get('socketio');
+    if (io) {
+      const product = await Product.findById(productId);
+      io.emit('newNotification', {
+        type: 'review',
+        message: `Đánh giá mới ${rating}⭐ cho sản phẩm ${product?.name || 'giày'}`,
+        relatedId: productId,
+        createdAt: new Date()
+      });
+    }
+
+    res.status(201).json({ success: true, review });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ success: false, message: 'Bạn đã đánh giá sản phẩm này rồi' });
+    }
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ✅ PRODUCT ROUTES
 // ============================================ 
 
 // Get current user
@@ -621,6 +715,17 @@ app.put('/api/user/change-password', authenticateToken, async (req, res) => {
 
     res.json({ success: true, message: 'Đổi mật khẩu thành công' });
 
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ✅ ADDRESS: GET ALL
+app.get('/api/user/addresses', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    res.json({ success: true, addresses: user.addresses || [] });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -1818,53 +1923,32 @@ app.get('/api/vouchers', async (req, res) => {
 app.post('/api/orders', async (req, res) => {
   try {
     const orderData = req.body;
+    const savedOrder = await Order.create(orderData);
 
-    if (!orderData.items || orderData.items.length === 0) {
-      return res.status(400).json({
-        success: false, 
-        message: 'Order must have at least 1 item' 
-      });
-    }
-
-    if (!orderData.customerInfo || !orderData.userId) {
-      return res.status(400).json({
-        success: false, 
-        message: 'Missing customer info or userId' 
-      });
-    }
-
-    // Check stock
+    // ✅ TRỪ KHO TRỰC TIẾP
     for (const item of orderData.items) {
       const product = await Product.findById(item.productId);
-      
-      if (!product) {
-        return res.status(404).json({
-          success: false,
-          message: `Product ${item.productId} not found`
-        });
-      }
-
-      if (product.stock < item.quantity) {
-        return res.status(400).json({
-          success: false,
-          message: `"${product.name}" insufficient stock. Available: ${product.stock}, Required: ${item.quantity}`
-        });
+      if (product) {
+        // 1. Trừ kho tổng
+        product.stock = Math.max(0, product.stock - item.quantity);
+        
+        // 2. Trừ kho theo Variant (Size) nếu có
+        if (item.variant && product.variants) {
+          product.variants.forEach(v => {
+            const option = v.options.find(opt => opt.name === item.variant.name);
+            if (option) {
+              option.stock = Math.max(0, option.stock - item.quantity);
+            }
+          });
+        }
+        await product.save();
       }
     }
-
-    // Update stock
-    for (const item of orderData.items) {
-      await Product.findByIdAndUpdate(
-        item.productId,
-        { $inc: { stock: -item.quantity } }
-      );
-    }
-
-    const newOrder = new Order(orderData);
-    const savedOrder = await newOrder.save();
 
     // 🔔 Notify Admin
-    await createNotification('order', `Đơn hàng mới #${savedOrder._id.toString().slice(-6).toUpperCase()}`, savedOrder._id, 'Order');
+    if (typeof createNotification === 'function') {
+       await createNotification('order', `Đơn hàng mới #${savedOrder._id.toString().slice(-6).toUpperCase()}`, savedOrder._id, 'Order');
+    }
 
     try {
       await sendNewOrderEmail(savedOrder);

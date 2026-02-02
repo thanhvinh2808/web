@@ -211,7 +211,7 @@ const login = async (email: string, password: string) => {
     sessionStorage.removeItem('redirectAfterLogin');
     
     console.log('🔄 Redirecting to:', redirectUrl);
-    window.location.href = redirectUrl;
+    router.push(redirectUrl);
     
   } catch (error: any) {
     console.error('❌ Login error:', error);

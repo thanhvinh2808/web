@@ -126,10 +126,12 @@ export default function AdminDashboard() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Check Auth Logic (Giữ nguyên)
+  // Check Auth Logic
   useEffect(() => {
     const checkAuth = async () => {
-      const savedToken = localStorage.getItem('adminToken');
+      // Ưu tiên lấy token chung của hệ thống
+      const savedToken = localStorage.getItem('token') || localStorage.getItem('adminToken');
+      
       if (!savedToken) {
         setIsCheckingAuth(false);
         return;
@@ -142,6 +144,9 @@ export default function AdminDashboard() {
           const data = await res.json();
           if (data.success) {
             setToken(savedToken);
+            // Đảm bảo lưu lại vào adminToken để tương thích với các logic cũ nếu có
+            localStorage.setItem('adminToken', savedToken);
+            
             if (data.user) {
               setCurrentUser({
                 name: data.user.name || 'Admin',
@@ -151,7 +156,8 @@ export default function AdminDashboard() {
             }
             fetchStats(savedToken);
           } else {
-            localStorage.removeItem('adminToken');
+            // Nếu token không hợp lệ cho quyền admin
+            setToken('');
           }
         } else if (res.status === 401 || res.status === 403) {
           handleTokenExpired();
@@ -214,9 +220,20 @@ export default function AdminDashboard() {
       });
       const data = await res.json();
       if (data.success && data.token) {
+        // Kiểm tra role ngay lập tức
+        if (data.user.role !== 'admin') {
+           showMessage('❌ Bạn không có quyền truy cập trang quản trị');
+           return;
+        }
+
         setToken(data.token);
-        if (data.user) setCurrentUser({ name: data.user.name, email: data.user.email, role: data.user.role });
+        setCurrentUser({ name: data.user.name, email: data.user.email, role: data.user.role });
+        
+        // Lưu vào cả 2 key để đồng bộ toàn hệ thống
         localStorage.setItem('adminToken', data.token);
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        
         fetchStats(data.token);
       } else {
         showMessage('❌ ' + (data.message || 'Đăng nhập thất bại'));
@@ -228,6 +245,9 @@ export default function AdminDashboard() {
     setToken('');
     setCurrentUser(null);
     localStorage.removeItem('adminToken');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login'; // Chuyển về trang login chính
   };
 
   useEffect(() => {

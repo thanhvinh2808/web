@@ -9,18 +9,10 @@ import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    if (isAuthenticated && !isLoading) {
-      const redirectPath = sessionStorage.getItem('redirectAfterLogin') || '/';
-      sessionStorage.removeItem('redirectAfterLogin');
-      router.push(redirectPath);
-    }
-  }, [isAuthenticated, isLoading, router]);
 
   const handleForceLogout = () => {
     localStorage.clear();
@@ -42,96 +34,133 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 font-sans">
-      <div className="bg-white rounded-none shadow-2xl p-8 w-full max-w-md border border-gray-100 relative">
-        {/* Decorative Top Bar */}
-        <div className="absolute top-0 left-0 w-full h-1.5 bg-primary"></div>
-
-        <div className="text-center mb-10">
-          <div className="bg-primary w-16 h-16 rounded-none flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/20 transform rotate-3">
-            <User className="text-white" size={32} />
-          </div>
-          <h2 className="text-4xl font-black italic tracking-tighter uppercase italic uppercase">FOOT<span className="text-primary">MARK</span>.</h2>
-          <p className="text-gray-400 mt-2 font-bold uppercase tracking-widest text-[10px]">Đăng nhập để săn giày chất</p>
+    <div className="min-h-screen flex items-stretch bg-white font-sans overflow-hidden">
+      {/* Left Side: Brand Visual */}
+      <div className="hidden lg:flex lg:w-1/2 bg-black relative flex-col justify-between p-12 text-white">
+        <div className="absolute inset-0 opacity-40">
+           <img 
+             src="https://images.unsplash.com/photo-1552346154-21d32810aba3?q=80&w=2070&auto=format&fit=crop" 
+             alt="Sneaker Culture" 
+             className="w-full h-full object-cover"
+           />
+           <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black"></div>
+        </div>
+        
+        <div className="relative z-10">
+          <Link href="/" className="text-3xl font-black italic tracking-tighter italic">FOOTMARK.</Link>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Email Address</label>
-            <div className="relative">
-               <input
-                 type="email"
-                 value={formData.email}
-                 onChange={(e) => setFormData({...formData, email: e.target.value})}
-                 className="w-full px-4 py-4 bg-gray-50 border-none rounded-none focus:ring-2 focus:ring-primary outline-none transition font-medium text-sm pl-12"
-                 placeholder="email@example.com"
-                 required
-                 disabled={isLoading}
-               />
-               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18}/>
-            </div>
+        <div className="relative z-10">
+          <h1 className="text-7xl font-black italic uppercase leading-none tracking-tighter mb-6">
+            STEP INTO <br />
+            <span className="text-primary text-8xl">THE FUTURE.</span>
+          </h1>
+          <p className="max-w-md text-gray-300 font-medium text-lg leading-relaxed">
+            Khám phá những đôi giày Sneaker chính hãng và hàng 2Hand tuyển chọn. Định nghĩa lại phong cách của bạn cùng FootMark.
+          </p>
+        </div>
+
+        <div className="relative z-10 flex gap-8 text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">
+          <span>Instagram</span>
+          <span>Facebook</span>
+          <span>TikTok</span>
+        </div>
+      </div>
+
+      {/* Right Side: Login Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 md:p-16 bg-white relative">
+        <div className="w-full max-w-md">
+          <div className="mb-10 lg:hidden text-center">
+             <Link href="/" className="text-3xl font-black italic tracking-tighter italic inline-block mb-4">FOOTMARK.</Link>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-               <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Password</label>
-               <Link href="/forgot-password" size="sm" className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline">
-                  Quên mật khẩu?
-               </Link>
-            </div>
-            <div className="relative">
-               <input
-                 type="password"
-                 value={formData.password}
-                 onChange={(e) => setFormData({...formData, password: e.target.value})}
-                 className="w-full px-4 py-4 bg-gray-50 border-none rounded-none focus:ring-2 focus:ring-primary outline-none transition font-medium text-sm pl-12"
-                 placeholder="••••••••"
-                 required
-                 disabled={isLoading}
-               />
-               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18}/>
-            </div>
+          <div className="mb-12">
+            <h2 className="text-4xl font-black italic uppercase tracking-tighter mb-2">Đăng nhập.</h2>
+            <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Tiếp tục cuộc hành trình sneaker của bạn</p>
           </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-primary text-white py-5 rounded-none font-black uppercase tracking-[0.2em] hover:bg-primary-dark transition disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-primary/20 flex items-center justify-center gap-3 group"
-          >
-            {isLoading ? 'Đang xử lý...' : 'Đăng nhập'} <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform"/>
-          </button>
-
-          {message && (
-            <div className={`p-4 rounded-none text-center font-bold text-xs uppercase tracking-widest border ${
-               message.includes('thành công') 
-               ? 'bg-green-50 text-green-600 border-green-100' 
-               : 'bg-red-50 text-red-600 border-red-100'
-            }`}>
-              {message}
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="space-y-2 group">
+              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 group-focus-within:text-primary transition-colors">Địa chỉ Email</label>
+              <div className="relative border-b-2 border-gray-100 group-focus-within:border-primary transition-all">
+                 <input
+                   type="email"
+                   value={formData.email}
+                   onChange={(e) => setFormData({...formData, email: e.target.value})}
+                   className="w-full py-4 bg-transparent outline-none font-bold text-lg placeholder:text-gray-200"
+                   placeholder="your@email.com"
+                   required
+                   disabled={isLoading}
+                 />
+                 <Mail className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-200 group-focus-within:text-primary transition-colors" size={20}/>
+              </div>
             </div>
-          )}
-        </form>
 
-          <div className="mt-10 text-center space-y-4">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+            <div className="space-y-2 group">
+              <div className="flex justify-between items-center">
+                 <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 group-focus-within:text-primary transition-colors">Mật khẩu</label>
+                 <Link href="/forgot-password" size="sm" className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline">
+                    Quên?
+                 </Link>
+              </div>
+              <div className="relative border-b-2 border-gray-100 group-focus-within:border-primary transition-all">
+                 <input
+                   type="password"
+                   value={formData.password}
+                   onChange={(e) => setFormData({...formData, password: e.target.value})}
+                   className="w-full py-4 bg-transparent outline-none font-bold text-lg placeholder:text-gray-200"
+                   placeholder="••••••••"
+                   required
+                   disabled={isLoading}
+                 />
+                 <Lock className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-200 group-focus-within:text-primary transition-colors" size={20}/>
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-black text-white py-6 rounded-none font-black uppercase tracking-[0.3em] hover:bg-primary transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 group relative overflow-hidden"
+              >
+                <span className="relative z-10 flex items-center gap-3">
+                  {isLoading ? 'Đang xác thực...' : 'Đăng nhập ngay'} <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform"/>
+                </span>
+                <div className="absolute inset-0 bg-primary translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+              </button>
+            </div>
+
+            {message && (
+              <div className={`p-4 rounded-none text-center font-bold text-[10px] uppercase tracking-widest ${
+                 message.includes('thành công') 
+                 ? 'text-green-600 bg-green-50' 
+                 : 'text-red-600 bg-red-50'
+              }`}>
+                {message}
+              </div>
+            )}
+          </form>
+
+          <div className="mt-12 text-center">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-400">
               Chưa có tài khoản?{' '}
               <Link
                 href="/register"
-                className="text-primary font-black hover:underline ml-1"
+                className="text-black font-black hover:text-primary transition-colors border-b-2 border-black ml-1"
               >
-                Đăng ký ngay
+                TẠO TÀI KHOẢN MỚI
               </Link>
             </p>
-            <div className="pt-4 border-t border-gray-100">
-               <button
-                 type="button"
-                 onClick={handleForceLogout}
-                 className="text-[8px] font-bold text-red-400 uppercase tracking-[0.3em] hover:text-red-600 opacity-60 hover:opacity-100 transition"
-               >
-                 Gặp lỗi đăng nhập? Xóa cache ứng dụng
-               </button>
-            </div>
           </div>
+        </div>
+        
+        {/* Floating Tag */}
+        <div className="absolute bottom-8 right-8 hidden lg:block">
+           <div className="flex items-center gap-3 text-gray-300">
+              <div className="w-12 h-px bg-gray-200"></div>
+              <span className="text-[10px] font-black uppercase tracking-[0.4em]">Footmark Elite 2024</span>
+           </div>
+        </div>
       </div>
     </div>
   );

@@ -6,10 +6,10 @@ import { Trash2, Minus, Plus, ShoppingBag, ArrowLeft, Ticket, CreditCard, Chevro
 import { useCart } from "../contexts/CartContext";
 import { Voucher } from '../types/voucher';
 import { VoucherSelector } from "../../components/VoucherSelector";
+import toast from 'react-hot-toast';
 
 export default function CartPage() {
-  const { cart, updateQuantity, removeItem, getTotalItems, getTotalPrice } = useCart();
-  const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null);
+  const { cart, updateQuantity, removeItem, getTotalItems, getTotalPrice, selectedVoucher, setSelectedVoucher } = useCart();
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -130,7 +130,14 @@ export default function CartPage() {
                             </button>
                             <span className="w-8 text-center font-bold text-sm">{item.quantity}</span>
                             <button 
-                               onClick={() => updateQuantity(productId, variantKey, item.quantity + 1)}
+                               onClick={() => {
+                                  const maxStock = item.selectedVariant ? item.selectedVariant.stock : (item.product.stock || 0);
+                                  if (item.quantity < maxStock) {
+                                     updateQuantity(productId, variantKey, item.quantity + 1);
+                                  } else {
+                                     toast.error(`Sản phẩm này chỉ còn ${maxStock} cái trong kho`);
+                                  }
+                               }}
                                className="px-3 hover:bg-gray-100 h-full flex items-center justify-center text-gray-600"
                             >
                                <Plus size={14}/>
@@ -188,7 +195,7 @@ export default function CartPage() {
                      <span className="font-black text-lg uppercase italic tracking-tighter">Tổng cộng</span>
                      <div className="text-right">
                         <span className="block font-black text-3xl text-primary italic tracking-tighter">{formatCurrency(finalTotal)}</span>
-                        <span className="text-[10px] text-gray-400 font-bold uppercase">(Đã bao gồm VAT)</span>
+                        <span className="text-[10px] text-gray-400 font-bold uppercase">(Chưa bao gồm VAT)</span>
                      </div>
                   </div>
 

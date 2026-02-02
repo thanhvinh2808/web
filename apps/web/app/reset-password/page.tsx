@@ -2,11 +2,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Lock, KeyRound, ChevronRight, CheckCircle2 } from "lucide-react";
+import { Lock, KeyRound, ChevronRight, CheckCircle, Mail } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import toast from "react-hot-toast";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -64,93 +65,136 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 font-sans py-12">
-      <div className="bg-white rounded-none shadow-2xl p-8 w-full max-w-md border border-gray-100 relative">
-        <div className="absolute top-0 left-0 w-full h-1.5 bg-primary"></div>
-
-        <div className="text-center mb-10">
-          <div className="bg-primary w-16 h-16 rounded-none flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/20 -rotate-3">
-            <KeyRound className="text-white" size={32} />
-          </div>
-          <h2 className="text-3xl font-black italic tracking-tighter uppercase">ĐẶT LẠI MẬT KHẨU</h2>
-          <p className="text-gray-400 mt-2 font-bold uppercase tracking-widest text-[10px]">Nhập mã OTP và mật khẩu mới của bạn</p>
+    <div className="min-h-screen flex items-stretch bg-white font-sans overflow-hidden">
+      {/* Left Side: Brand Visual */}
+      <div className="hidden lg:flex lg:w-1/2 bg-black relative flex-col justify-between p-12 text-white">
+        <div className="absolute inset-0 opacity-40">
+           <img 
+             src="https://images.unsplash.com/photo-1597045566677-8cf032ed6634?q=80&w=1974&auto=format&fit=crop" 
+             alt="Sneaker Security" 
+             className="w-full h-full object-cover"
+           />
+           <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black"></div>
+        </div>
+        
+        <div className="relative z-10">
+          <Link href="/" className="text-3xl font-black italic tracking-tighter italic">FOOTMARK.</Link>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-2">
-            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Email Address</label>
-            <input
-              type="email"
-              value={formData.email}
-              readOnly
-              className="w-full px-4 py-4 bg-gray-100 border-none rounded-none text-gray-400 font-medium text-sm outline-none"
-            />
+        <div className="relative z-10">
+          <h1 className="text-7xl font-black italic uppercase leading-none tracking-tighter mb-6">
+            SECURE YOUR <br />
+            <span className="text-primary text-8xl">VAULT.</span>
+          </h1>
+          <p className="max-w-md text-gray-300 font-medium text-lg leading-relaxed">
+            Thiết lập mật khẩu mới mạnh mẽ hơn để bảo vệ tài khoản và lịch sử săn giày của bạn tại FootMark.
+          </p>
+        </div>
+
+        <div className="relative z-10 flex gap-8 text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">
+          <span>Encryption</span>
+          <span>Verified</span>
+          <span>Footmark Elite</span>
+        </div>
+      </div>
+
+      {/* Right Side: Reset Password Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 md:p-16 bg-white relative">
+        <div className="w-full max-w-md">
+          <div className="mb-10 lg:hidden text-center">
+             <Link href="/" className="text-3xl font-black italic tracking-tighter italic inline-block mb-4">FOOTMARK.</Link>
           </div>
 
-          <div className="space-y-2">
-            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">OTP Code (6 Digits)</label>
-            <div className="relative">
-               <input
-                 type="text"
-                 maxLength={6}
-                 value={formData.otp}
-                 onChange={(e) => setFormData({...formData, otp: e.target.value})}
-                 className="w-full px-4 py-4 bg-gray-50 border-none rounded-none focus:ring-2 focus:ring-primary outline-none transition font-black tracking-[0.5em] text-center text-lg"
-                 placeholder="000000"
-                 required
-                 disabled={isLoading}
-               />
+          <div className="mb-12">
+            <h2 className="text-4xl font-black italic uppercase tracking-tighter mb-2">Đặt lại mật khẩu.</h2>
+            <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Nhập mã xác thực 6 số và mật khẩu mới của bạn</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="space-y-2 group">
+              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Email xác thực</label>
+              <div className="relative border-b-2 border-gray-100 transition-all opacity-60">
+                 <input
+                   type="email"
+                   value={formData.email}
+                   readOnly
+                   className="w-full py-4 bg-transparent outline-none font-bold text-lg text-gray-400 cursor-not-allowed"
+                 />
+                 <Mail className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-300" size={20}/>
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">New Password</label>
-            <div className="relative">
-               <input
-                 type="password"
-                 value={formData.newPassword}
-                 onChange={(e) => setFormData({...formData, newPassword: e.target.value})}
-                 className="w-full px-4 py-4 bg-gray-50 border-none rounded-none focus:ring-2 focus:ring-primary outline-none transition font-medium text-sm pl-12"
-                 placeholder="••••••••"
-                 required
-                 disabled={isLoading}
-               />
-               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18}/>
+            <div className="space-y-2 group">
+              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 group-focus-within:text-primary transition-colors">Mã xác thực OTP (6 số)</label>
+              <div className="relative border-b-2 border-gray-100 group-focus-within:border-primary transition-all">
+                 <input
+                   type="text"
+                   maxLength={6}
+                   value={formData.otp}
+                   onChange={(e) => setFormData({...formData, otp: e.target.value})}
+                   className="w-full py-4 bg-transparent outline-none font-black tracking-[1em] text-2xl placeholder:text-gray-100"
+                   placeholder="000000"
+                   required
+                   disabled={isLoading}
+                 />
+                 <KeyRound className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-200 group-focus-within:text-primary transition-colors" size={20}/>
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Confirm New Password</label>
-            <div className="relative">
-               <input
-                 type="password"
-                 value={formData.confirmPassword}
-                 onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                 className="w-full px-4 py-4 bg-gray-50 border-none rounded-none focus:ring-2 focus:ring-primary outline-none transition font-medium text-sm pl-12"
-                 placeholder="••••••••"
-                 required
-                 disabled={isLoading}
-               />
-               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18}/>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2 group">
+                <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 group-focus-within:text-primary transition-colors">Mật khẩu mới</label>
+                <div className="relative border-b-2 border-gray-100 group-focus-within:border-primary transition-all">
+                   <input
+                     type="password"
+                     value={formData.newPassword}
+                     onChange={(e) => setFormData({...formData, newPassword: e.target.value})}
+                     className="w-full py-4 bg-transparent outline-none font-bold text-lg placeholder:text-gray-200"
+                     placeholder="••••••••"
+                     required
+                     disabled={isLoading}
+                   />
+                </div>
+              </div>
+
+              <div className="space-y-2 group">
+                <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 group-focus-within:text-primary transition-colors">Xác nhận mật khẩu</label>
+                <div className="relative border-b-2 border-gray-100 group-focus-within:border-primary transition-all">
+                   <input
+                     type="password"
+                     value={formData.confirmPassword}
+                     onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                     className="w-full py-4 bg-transparent outline-none font-bold text-lg placeholder:text-gray-200"
+                     placeholder="••••••••"
+                     required
+                     disabled={isLoading}
+                   />
+                </div>
+              </div>
             </div>
+
+            <div className="pt-4">
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-black text-white py-6 rounded-none font-black uppercase tracking-[0.3em] hover:bg-primary transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 group relative overflow-hidden"
+              >
+                <span className="relative z-10 flex items-center gap-3">
+                  {isLoading ? 'Đang cập nhật...' : 'Xác nhận thay đổi'} <CheckCircle size={20} className="group-hover:scale-110 transition-transform"/>
+                </span>
+                <div className="absolute inset-0 bg-primary translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+              </button>
+            </div>
+          </form>
+
+          <div className="mt-12 text-center">
+             <button 
+                onClick={() => router.push('/forgot-password')}
+                className="text-[10px] font-black text-gray-400 hover:text-black uppercase tracking-[0.2em] transition border-b border-gray-200 hover:border-black"
+             >
+                Gửi lại mã OTP mới
+             </button>
           </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-primary text-white py-5 rounded-none font-black uppercase tracking-[0.2em] hover:bg-primary-dark transition disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-primary/20 flex items-center justify-center gap-3 group mt-4"
-          >
-            {isLoading ? 'Đang xử lý...' : 'Xác nhận đổi mật khẩu'} <CheckCircle2 size={20} className="group-hover:scale-110 transition-transform"/>
-          </button>
-        </form>
-
-        <div className="mt-8 text-center">
-           <button 
-              onClick={() => router.push('/forgot-password')}
-              className="text-[10px] font-bold text-gray-400 hover:text-primary uppercase tracking-widest transition underline"
-           >
-              Gửi lại mã OTP mới
-           </button>
         </div>
       </div>
     </div>

@@ -1,13 +1,10 @@
 // app/admin/config/constants.ts
 
-// API Base URL - điều chỉnh theo môi trường của bạn
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+// ✅ ÉP CỨNG PORT 5000 ĐỂ TRÁNH LỖI NHẦM VỚI PORT 3000 CỦA FRONTEND
+export const API_URL = 'http://localhost:5000';
 
-// Các hằng số khác có thể dùng trong admin panel
 export const ITEMS_PER_PAGE = 10;
-
 export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-
 export const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
 export const STATUS_OPTIONS = [
@@ -16,48 +13,22 @@ export const STATUS_OPTIONS = [
   { value: 'draft', label: 'Nháp' }
 ];
 
-// Token storage key
-export const AUTH_TOKEN_KEY = 'admin_auth_token';
+export const AUTH_TOKEN_KEY = 'adminToken';
 
-// API Endpoints
 export const API_ENDPOINTS = {
   // Auth
-  LOGIN: `${API_URL}/admin/login`,
-  LOGOUT: `${API_URL}/admin/logout`,
+  LOGIN: `${API_URL}/api/login`,
   
   // Categories
-  CATEGORIES: `${API_URL}/admin/categories`,
-  CATEGORY_BY_SLUG: (slug: string) => `${API_URL}/admin/categories/${slug}`,
+  CATEGORIES: `${API_URL}/api/categories`,
   
   // Products
-  PRODUCTS: `${API_URL}/admin/products`,
-  PRODUCT_BY_ID: (slug: string) => `${API_URL}/admin/products/${slug}`,
+  PRODUCTS: `${API_URL}/api/admin/products`,
   
   // Users
-  USERS: `${API_URL}/admin/users`,
-  USER_BY_ID: (id: string) => `${API_URL}/admin/users/${id}`,
+  USERS: `${API_URL}/api/admin/users`,
   
   // Orders
-  ORDERS: `${API_URL}/admin/orders`,
-  ORDER_BY_ID: (id: string) => `${API_URL}/admin/orders/${id}`,
-};
-
-// Messages
-export const MESSAGES = {
-  SUCCESS: {
-    CREATE: 'Tạo mới thành công!',
-    UPDATE: 'Cập nhật thành công!',
-    DELETE: 'Xóa thành công!',
-    LOGIN: 'Đăng nhập thành công!',
-  },
-  ERROR: {
-    GENERIC: 'Có lỗi xảy ra, vui lòng thử lại',
-    NETWORK: 'Lỗi kết nối server',
-    UNAUTHORIZED: 'Bạn không có quyền truy cập',
-    NOT_FOUND: 'Không tìm thấy dữ liệu',
-    VALIDATION: 'Dữ liệu không hợp lệ',
-  },
-  CONFIRM: {
-    DELETE: 'Bạn có chắc muốn xóa?',
-  }
+  ORDERS: `${API_URL}/api/admin/orders`,
+  ORDER_BY_ID: (id: string) => `${API_URL}/api/admin/orders/${id}`,
 };

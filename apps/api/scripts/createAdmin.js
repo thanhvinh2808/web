@@ -10,7 +10,7 @@ const createAdmin = async () => {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('✅ Connected to MongoDB');
 
-    const adminEmail = 'admin@techstore.com';
+    const adminEmail = 'admin@footmark.com';
     const adminPassword = 'admin123456';
 
     // Kiểm tra admin đã tồn tại chưa

@@ -2,12 +2,12 @@
 "use client";
 
 import { useState } from "react";
-import { Mail, ChevronRight, ArrowLeft } from "lucide-react";
+import { Mail, ChevronRight, ArrowLeft, KeyRound, CheckCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -28,7 +28,6 @@ export default function ForgotPasswordPage() {
       const data = await res.json();
       if (res.ok) {
         toast.success('Mã OTP đã được gửi vào Email của bạn!');
-        // Chuyển sang trang Reset mật khẩu và truyền email qua query param
         router.push(`/reset-password?email=${encodeURIComponent(email)}`);
       } else {
         toast.error(data.message || 'Email không tồn tại trong hệ thống!');
@@ -41,52 +40,93 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 font-sans">
-      <div className="bg-white rounded-none shadow-2xl p-8 w-full max-w-md border border-gray-100 relative">
-        <div className="absolute top-0 left-0 w-full h-1.5 bg-primary"></div>
-
-        <div className="mb-8">
-           <Link href="/login" className="inline-flex items-center gap-2 text-gray-400 hover:text-primary transition font-bold text-[10px] uppercase tracking-widest">
-              <ArrowLeft size={14}/> Quay lại đăng nhập
-           </Link>
+    <div className="min-h-screen flex items-stretch bg-white font-sans overflow-hidden">
+      {/* Left Side: Brand Visual */}
+      <div className="hidden lg:flex lg:w-1/2 bg-black relative flex-col justify-between p-12 text-white">
+        <div className="absolute inset-0 opacity-40">
+           <img 
+             src="https://images.unsplash.com/photo-1512374382149-4332c6c02151?q=80&w=1931&auto=format&fit=crop" 
+             alt="Lost in Sneaker" 
+             className="w-full h-full object-cover"
+           />
+           <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black"></div>
+        </div>
+        
+        <div className="relative z-10">
+          <Link href="/" className="text-3xl font-black italic tracking-tighter italic">FOOTMARK.</Link>
         </div>
 
-        <div className="text-center mb-10">
-          <div className="bg-primary w-16 h-16 rounded-none flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/20 rotate-3">
-            <Mail className="text-white" size={32} />
+        <div className="relative z-10">
+          <h1 className="text-7xl font-black italic uppercase leading-none tracking-tighter mb-6">
+            LOST YOUR <br />
+            <span className="text-primary text-8xl">WAY?</span>
+          </h1>
+          <p className="max-w-md text-gray-300 font-medium text-lg leading-relaxed">
+            Đừng lo lắng, chúng tôi sẽ giúp bạn khôi phục quyền truy cập vào bộ sưu tập sneaker của mình trong vài bước đơn giản.
+          </p>
+        </div>
+
+        <div className="relative z-10 flex gap-8 text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">
+          <span>Security</span>
+          <span>Privacy</span>
+          <span>Support</span>
+        </div>
+      </div>
+
+      {/* Right Side: Forgot Password Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 md:p-16 bg-white relative">
+        <div className="w-full max-w-md">
+          <div className="mb-10 lg:hidden text-center">
+             <Link href="/" className="text-3xl font-black italic tracking-tighter italic inline-block mb-4">FOOTMARK.</Link>
           </div>
-          <h2 className="text-3xl font-black italic tracking-tighter uppercase">QUÊN MẬT KHẨU?</h2>
-          <p className="text-gray-400 mt-2 font-bold uppercase tracking-widest text-[10px]">Nhập email để nhận mã xác thực OTP</p>
-        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Email Address</label>
-            <div className="relative">
-               <input
-                 type="email"
-                 value={email}
-                 onChange={(e) => setEmail(e.target.value)}
-                 className="w-full px-4 py-4 bg-gray-50 border-none rounded-none focus:ring-2 focus:ring-primary outline-none transition font-medium text-sm pl-12"
-                 placeholder="email@example.com"
-                 required
-                 disabled={isLoading}
-               />
-               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18}/>
+          <div className="mb-8">
+             <Link href="/login" className="inline-flex items-center gap-2 text-gray-400 hover:text-black transition-colors font-black text-[10px] uppercase tracking-widest group">
+                <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform"/> TRỞ LẠI ĐĂNG NHẬP
+             </Link>
+          </div>
+
+          <div className="mb-12">
+            <h2 className="text-4xl font-black italic uppercase tracking-tighter mb-2">Quên mật khẩu?</h2>
+            <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Nhập email để nhận mã xác thực OTP khôi phục tài khoản</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-10">
+            <div className="space-y-2 group">
+              <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 group-focus-within:text-primary transition-colors">Địa chỉ Email xác thực</label>
+              <div className="relative border-b-2 border-gray-100 group-focus-within:border-primary transition-all">
+                 <input
+                   type="email"
+                   value={email}
+                   onChange={(e) => setEmail(e.target.value)}
+                   className="w-full py-4 bg-transparent outline-none font-bold text-lg placeholder:text-gray-200"
+                   placeholder="your@email.com"
+                   required
+                   disabled={isLoading}
+                 />
+                 <Mail className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-200 group-focus-within:text-primary transition-colors" size={20}/>
+              </div>
             </div>
+
+            <div className="pt-4">
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-black text-white py-6 rounded-none font-black uppercase tracking-[0.3em] hover:bg-primary transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 group relative overflow-hidden"
+              >
+                <span className="relative z-10 flex items-center gap-3">
+                  {isLoading ? 'Đang gửi mã...' : 'Gửi mã xác thực'} <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform"/>
+                </span>
+                <div className="absolute inset-0 bg-primary translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+              </button>
+            </div>
+          </form>
+
+          <div className="mt-12 text-center">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 leading-relaxed max-w-xs mx-auto">
+              Kiểm tra kỹ hộp thư đến và cả hộp thư rác (Spam). Nếu vẫn không nhận được, hãy thử lại sau vài phút.
+            </p>
           </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-primary text-white py-5 rounded-none font-black uppercase tracking-[0.2em] hover:bg-primary-dark transition disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-primary/20 flex items-center justify-center gap-3 group"
-          >
-            {isLoading ? 'Đang gửi...' : 'Gửi mã xác thực'} <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform"/>
-          </button>
-        </form>
-
-        <div className="mt-10 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400 leading-relaxed">
-           Nếu không nhận được email, vui lòng kiểm tra hộp thư rác (Spam) hoặc liên hệ hỗ trợ.
         </div>
       </div>
     </div>

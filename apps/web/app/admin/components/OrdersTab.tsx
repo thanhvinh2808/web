@@ -108,8 +108,8 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
       return total + (item.price * item.quantity);
     }, 0);
 
-    // VAT 1%
-    const vatAmount = Math.round(subtotal * 0.01);
+    // VAT 10%
+    const vatAmount = Math.round(subtotal * 0.1);
 
     // Phí vận chuyển
     const calculateShippingFee = () => {
@@ -135,7 +135,7 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
   };
 
   const handleViewOrder = (orderId: string) => {
-    router.push(`/api/admin/orders/${orderId}`);
+    router.push(`/admin/orders/${orderId}`);
   };
 
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {

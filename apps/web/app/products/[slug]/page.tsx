@@ -11,11 +11,14 @@ import {
   Minus, 
   Plus,
   Check,
-  XCircle
+  XCircle,
+  CheckCircle
 } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { useWishlist } from '../../contexts/WishlistContext';
+import { useAuth } from '../../contexts/AuthContext';
 import ProductCard from '../../../components/ProductCard';
+import toast from 'react-hot-toast';
 
 // --- TYPES ---
 interface VariantOption {
@@ -122,6 +125,188 @@ const RelatedCarousel = ({ products }: { products: Product[] }) => {
    );
 };
 
+// --- REVIEW COMPONENT ---
+const ProductReviews = ({ productId }: { productId: string }) => {
+   const { user, isAuthenticated } = useAuth();
+   const [reviews, setReviews] = useState<any[]>([]);
+   const [canReview, setCanReview] = useState(false);
+   const [isLoading, setIsLoading] = useState(true);
+   const [isSubmitting, setIsSubmitting] = useState(false);
+   
+   // Form state
+   const [rating, setRating] = useState(5);
+   const [comment, setComment] = useState('');
+
+   const fetchReviews = async () => {
+      try {
+         const res = await fetch(`${API_URL}/api/products/${productId}/reviews`);
+         const data = await res.json();
+         if (data.success) setReviews(data.reviews);
+      } catch (e) { console.error(e); }
+   };
+
+   const checkCanReview = async () => {
+      if (!isAuthenticated) return;
+      try {
+         const token = localStorage.getItem('token');
+         const res = await fetch(`${API_URL}/api/products/${productId}/can-review`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+         });
+         const data = await res.json();
+         setCanReview(data.canReview);
+      } catch (e) { console.error(e); }
+   };
+
+   useEffect(() => {
+      if (productId) {
+         fetchReviews();
+         checkCanReview();
+         setIsLoading(false);
+      }
+   }, [productId, isAuthenticated]);
+
+   const handleSubmitReview = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!comment.trim()) return;
+
+      setIsSubmitting(true);
+      try {
+         const token = localStorage.getItem('token');
+         const res = await fetch(`${API_URL}/api/products/${productId}/reviews`, {
+            method: 'POST',
+            headers: { 
+               'Content-Type': 'application/json',
+               'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ rating, comment })
+         });
+         const data = await res.json();
+         if (data.success) {
+            toast.success('Cảm ơn bạn đã đánh giá sản phẩm!');
+            setComment('');
+            setCanReview(false);
+            fetchReviews();
+         } else {
+            toast.error(data.message);
+         }
+      } catch (e) {
+         toast.error('Gửi đánh giá thất bại');
+      } finally {
+         setIsSubmitting(false);
+      }
+   };
+
+   if (isLoading) return <div className="py-10 text-center text-gray-400">Đang tải đánh giá...</div>;
+
+   return (
+      <div className="mt-16 border-t border-gray-100 pt-12">
+         <h3 className="text-2xl font-black italic uppercase mb-8 flex items-center gap-3">
+            Đánh giá khách hàng <span className="text-gray-300 text-lg">({reviews.length})</span>
+         </h3>
+
+         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+            {/* Form Section */}
+            <div className="lg:col-span-5">
+               {canReview ? (
+                  <div className="bg-gray-50 p-8 border border-gray-100 sticky top-24">
+                     <h4 className="font-bold uppercase tracking-widest text-sm mb-6">Viết đánh giá của bạn</h4>
+                     <form onSubmit={handleSubmitReview} className="space-y-6">
+                        <div>
+                           <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Mức độ hài lòng</label>
+                           <div className="flex gap-2">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                 <button 
+                                    key={star}
+                                    type="button"
+                                    onClick={() => setRating(star)}
+                                    className={`text-2xl transition ${star <= rating ? 'text-yellow-400' : 'text-gray-200'}`}
+                                 >
+                                    ★
+                                 </button>
+                              ))}
+                           </div>
+                        </div>
+
+                        <div>
+                           <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Nội dung đánh giá</label>
+                           <textarea 
+                              value={comment}
+                              onChange={(e) => setComment(e.target.value)}
+                              placeholder="Chia sẻ trải nghiệm của bạn về đôi giày này..."
+                              className="w-full bg-white border-none p-4 text-sm font-medium focus:ring-2 focus:ring-primary outline-none min-h-[120px] resize-none"
+                              required
+                           />
+                        </div>
+
+                        <button 
+                           type="submit" 
+                           disabled={isSubmitting}
+                           className="w-full bg-black text-white py-4 font-black uppercase tracking-widest hover:bg-primary transition disabled:opacity-50"
+                        >
+                           {isSubmitting ? 'Đang gửi...' : 'Gửi đánh giá ngay'}
+                        </button>
+                     </form>
+                  </div>
+               ) : (
+                  <div className="bg-blue-50/50 p-8 border border-blue-100 text-center sticky top-24">
+                     <CheckCircle className="mx-auto mb-4 text-blue-600" size={32}/>
+                     <h4 className="font-bold uppercase tracking-widest text-sm text-blue-900 mb-2">Đánh giá sản phẩm</h4>
+                     <p className="text-xs text-blue-700 font-medium leading-relaxed">
+                        {!isAuthenticated 
+                           ? 'Vui lòng đăng nhập để thực hiện đánh giá' 
+                           : 'Chỉ những khách hàng đã hoàn thành đơn hàng mới có thể gửi đánh giá cho sản phẩm này.'}
+                     </p>
+                  </div>
+               )}
+            </div>
+
+            {/* List Section */}
+            <div className="lg:col-span-7">
+               {reviews.length === 0 ? (
+                  <div className="text-center py-20 bg-gray-50 border border-dashed border-gray-200">
+                     <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Chưa có đánh giá nào cho sản phẩm này</p>
+                  </div>
+               ) : (
+                  <div className="space-y-8">
+                     {reviews.map((rev) => (
+                        <div key={rev._id} className="border-b border-gray-100 pb-8 last:border-0">
+                           <div className="flex justify-between items-start mb-4">
+                              <div className="flex items-center gap-3">
+                                 <div className="w-10 h-10 bg-gray-200 rounded-none flex items-center justify-center font-black text-gray-400 uppercase">
+                                    {rev.userId?.avatar ? <img src={rev.userId.avatar} className="w-full h-full object-cover" /> : rev.userId?.name?.charAt(0)}
+                                 </div>
+                                 <div>
+                                    <div className="font-bold text-sm uppercase tracking-tight">{rev.userId?.name}</div>
+                                    <div className="text-yellow-400 text-xs">{'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}</div>
+                                 </div>
+                              </div>
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                 {new Date(rev.createdAt).toLocaleDateString()}
+                              </span>
+                           </div>
+                           <p className="text-gray-600 text-sm leading-relaxed font-medium italic">"{rev.comment}"</p>
+                           {rev.isPurchased && (
+                              <div className="mt-3 flex items-center gap-1 text-green-600">
+                                 <ShieldCheck size={12}/>
+                                 <span className="text-[10px] font-black uppercase tracking-widest">Đã mua hàng tại FootMark</span>
+                              </div>
+                           )}
+                           {rev.reply?.content && (
+                              <div className="mt-4 ml-8 p-4 bg-gray-50 border-l-2 border-primary">
+                                 <div className="font-black text-[10px] uppercase tracking-widest text-primary mb-1">FootMark Team phản hồi:</div>
+                                 <p className="text-sm text-gray-500 font-medium">{rev.reply.content}</p>
+                              </div>
+                           )}
+                        </div>
+                     ))}
+                  </div>
+               )}
+            </div>
+         </div>
+      </div>
+   );
+};
+
 // --- MAIN COMPONENT ---
 
 export default function ProductDetailPage({ params }: { params: { slug: string } }) {
@@ -141,6 +326,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   const [quantity, setQuantity] = useState(1);
   const [openAccordion, setOpenAccordion] = useState<string | null>('desc');
   const [activeImage, setActiveImage] = useState<string>('');
+  const [isActionLoading, setIsActionLoading] = useState(false);
 
   const productId = product?.id || (product as any)?._id || '';
   const isFavorite = isInWishlist(productId);
@@ -263,12 +449,13 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   }, [displayImages, activeImage]);
 
   const handleAddToCart = () => {
-    if (!product) return;
+    if (!product || isActionLoading) return;
     if (sizeOptions.length > 0 && !selectedSize) {
-       alert('Vui lòng chọn Size!');
+       toast.error('Vui lòng chọn Size!');
        return;
     }
 
+    setIsActionLoading(true);
     // @ts-ignore
     addToCart(product, quantity, selectedSize || undefined);
     
@@ -277,13 +464,31 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
     if (btn) {
        const originalText = btn.innerText;
        btn.innerText = 'Đã thêm vào giỏ ✓';
-       setTimeout(() => btn.innerText = originalText, 2000);
+       setTimeout(() => {
+          if (btn) btn.innerText = originalText;
+          setIsActionLoading(false);
+       }, 1500);
+    } else {
+       setIsActionLoading(false);
     }
   };
 
-  const handleBuyNow = () => {
-     handleAddToCart();
-     router.push('/cart');
+  const handleBuyNow = (e: React.MouseEvent) => {
+     e.preventDefault(); // Ngăn chặn mọi hành vi mặc định hoặc bubbling
+     if (!product || isActionLoading) return;
+     if (sizeOptions.length > 0 && !selectedSize) {
+        toast.error('Vui lòng chọn Size!');
+        return;
+     }
+
+     setIsActionLoading(true);
+     // @ts-ignore
+     addToCart(product, quantity, selectedSize || undefined);
+     
+     // Chuyển trang sau một khoảng thời gian cực ngắn để state kịp commit
+     setTimeout(() => {
+        router.push('/cart');
+     }, 100);
   };
 
   if (isLoading) return (
@@ -343,21 +548,8 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   </div>
                )}
 
-               {/* Detailed Images Grid (Section for detailed view) */}
-               <div className="mt-12 space-y-4">
-                  <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400 mb-6 border-b pb-2">Hình ảnh chi tiết</h3>
-                  <div className="grid grid-cols-1 gap-4">
-                     {displayImages.map((img, idx) => (
-                        <div key={idx} className="bg-gray-50 overflow-hidden border border-gray-100">
-                           <img 
-                              src={img} 
-                              alt={`${product.name} detail ${idx}`} 
-                              className="w-full h-auto object-cover"
-                           />
-                        </div>
-                     ))}
-                  </div>
-               </div>
+               {/* Product Reviews Section */}
+               <ProductReviews productId={productId} />
             </div>
 
             {/* RIGHT COLUMN: INFO (40%) - STICKY */}
@@ -418,7 +610,10 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                               <button
                                  key={idx}
                                  disabled={!isAvailable}
-                                 onClick={() => setSelectedSize(opt)}
+                                 onClick={() => {
+                                    setSelectedSize(opt);
+                                    if (quantity > opt.stock) setQuantity(opt.stock);
+                                 }}
                                  className={`
                                     py-3 rounded-none border text-sm font-bold transition
                                     ${isSelected 
@@ -435,12 +630,41 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                         })}
                      </div>
                      {selectedSize && (
-                        <p className="text-xs text-primary font-bold mt-2 flex items-center gap-1">
-                           <Check size={12}/> Còn {selectedSize.stock} sản phẩm
-                        </p>
+                        <div className="flex justify-between items-center mt-2">
+                           <p className="text-xs text-primary font-bold flex items-center gap-1">
+                              <Check size={12}/> Còn {selectedSize.stock} sản phẩm
+                           </p>
+                           {selectedSize.stock <= 5 && (
+                              <span className="text-[10px] font-black text-red-500 uppercase animate-pulse">Sắp hết hàng!</span>
+                           )}
+                        </div>
                      )}
                   </div>
                )}
+
+               {/* Quantity Selector */}
+               <div className="space-y-3">
+                  <span className="font-bold text-sm">Số lượng</span>
+                  <div className="flex items-center border border-gray-200 w-fit">
+                     <button 
+                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                        className="px-4 py-2 hover:bg-gray-50 border-r border-gray-200"
+                     >
+                        <Minus size={16}/>
+                     </button>
+                     <span className="px-6 font-bold">{quantity}</span>
+                     <button 
+                        onClick={() => {
+                           const max = selectedSize ? selectedSize.stock : (product?.stock || 0);
+                           if (quantity < max) setQuantity(quantity + 1);
+                           else toast.error(`Xin lỗi, chỉ còn ${max} sản phẩm trong kho`);
+                        }}
+                        className="px-4 py-2 hover:bg-gray-50 border-l border-gray-200"
+                     >
+                        <Plus size={16}/>
+                     </button>
+                  </div>
+               </div>
 
                {/* Add to Cart Actions */}
                <div className="space-y-3 pt-4 border-t border-gray-100">

@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import { isAdmin } from '../middleware/isAdmin.js';
 import adminBlogRoutes from './adminBlog.js'; // Import new admin blog routes
@@ -8,6 +8,7 @@ import {
   updateUserRole,
   deleteUser,
   getAllOrders,
+  getOrderById,
   updateOrderStatus,
   resetUserPassword,
   globalSearch,
@@ -27,7 +28,7 @@ import User from '../models/User.js';
 
 const router = express.Router();
 
-// 🔒 Tất cả routes dưới đây yêu cầu admin
+// ðŸ”’ Táº¥t cáº£ routes dÆ°á»›i Ä‘Ã¢y yÃªu cáº§u admin
 router.use(authenticateToken);
 router.use(isAdmin);
 
@@ -46,15 +47,16 @@ router.put('/users/:userId/password', resetUserPassword);
 
 // Orders Management
 router.get('/orders', getAllOrders);
+router.get('/orders/:orderId', getOrderById);
 router.put('/orders/:orderId/status', updateOrderStatus);
 
-// 🎫 Voucher Management
+// ðŸŽ« Voucher Management
 router.get('/vouchers', getAllVouchers);
 router.post('/vouchers', createVoucher);
 router.put('/vouchers/:id', updateVoucher);
 router.delete('/vouchers/:id', deleteVoucher);
 
-// 🔔 Notifications
+// ðŸ”” Notifications
 router.get('/notifications', getNotifications);
 router.put('/notifications/read-all', markAllNotificationsRead);
 router.put('/notifications/:id/read', markNotificationRead);
