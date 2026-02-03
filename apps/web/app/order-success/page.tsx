@@ -1,12 +1,11 @@
-// app/order-success/page.tsx
 "use client";
-
 import { useSearchParams } from 'next/navigation';
 import { useOrders } from '../contexts/OrderContext';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Order } from '../contexts/OrderContext';
 import { CheckCircle, ShoppingBag, ArrowRight } from 'lucide-react';
+import QRCodePayment from '../../components/QRCodePayment';
 
 export default function OrderSuccessPage() {
   const searchParams = useSearchParams();
@@ -32,7 +31,22 @@ export default function OrderSuccessPage() {
       if (orderId) {
         setIsLoading(true);
         try {
-          const foundOrder = await getOrderById(orderId);
+          // 1. Thử tìm trong Context trước
+          let foundOrder = getOrderById(orderId);
+          
+          // 2. Nếu không thấy (do Context chưa kịp refresh), gọi API trực tiếp
+          if (!foundOrder) {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_URL}/api/orders/${orderId}`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+              const data = await res.json();
+              foundOrder = data.order || data;
+            }
+          }
+          
           setOrder(foundOrder);
         } catch (err) {
           console.error('Error fetching order:', err);
@@ -75,6 +89,17 @@ export default function OrderSuccessPage() {
           <h1 className="text-4xl font-black italic tracking-tighter mb-2 uppercase italic uppercase">ĐẶT HÀNG THÀNH CÔNG!</h1>
           <p className="text-gray-500 mb-10 font-medium italic italic uppercase">Cảm ơn {order.customerInfo.fullName}, đơn hàng của bạn đang được xử lý.</p>
           
+          {/* ✅ TÍCH HỢP VIETQR NẾU CHỌN BANKING */}
+          {order.paymentMethod === 'banking' && (
+             <div className="mb-10">
+                <QRCodePayment 
+                   amount={order.totalAmount} 
+                   orderInfo={order.orderNumber || orderId?.slice(-6) || 'FOOTMARK'}
+                   orderId={order._id || order.id}
+                />
+             </div>
+          )}
+
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link href="/products" className="px-8 py-4 bg-gray-100 rounded-none font-bold text-xs uppercase tracking-[0.2em] hover:bg-gray-200 transition">
               Tiếp tục mua sắm

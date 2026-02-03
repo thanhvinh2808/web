@@ -155,6 +155,7 @@ export default function CheckoutPage() {
   });
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isOrderPlaced, setIsOrderPlaced] = useState(false); // ✅ Fix Redirect Loop
 
   // Address State
   const [provinces, setProvinces] = useState<Province[]>([]);
@@ -209,12 +210,13 @@ export default function CheckoutPage() {
 
   // Redirect Logic
   useEffect(() => {
+    if (isOrderPlaced) return; // ✅ Stop redirect if order placed
     if (cart && cart.length === 0) router.push('/cart');
     if (!isAuthenticated) {
       sessionStorage.setItem('redirectAfterLogin', '/checkout');
       router.push('/login');
     }
-  }, [cart, isAuthenticated, router]);
+  }, [cart, isAuthenticated, router, isOrderPlaced]);
 
   // Load User Data & Addresses
   useEffect(() => {
@@ -421,7 +423,7 @@ export default function CheckoutPage() {
            discountAmount,
            voucherCode: selectedVoucher?.code || null,
            status: 'pending' as const,
-           paymentStatus: (paymentMethod === 'cod' ? 'unpaid' : 'paid') as 'paid' | 'unpaid'
+           paymentStatus: 'unpaid' as 'paid' | 'unpaid'
         };
 
         const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -445,9 +447,11 @@ export default function CheckoutPage() {
            
            const orderId = data.order?._id || data.order?.id || data._id || data.id;
            
+           setIsOrderPlaced(true); // ✅ Flag to prevent redirect
            clearCart();
            router.push(`/order-success?orderId=${orderId}`);
         } else {
+           setIsOrderPlaced(true);
            addOrder(orderData);
            clearCart();
            router.push('/order-success');
@@ -662,7 +666,7 @@ export default function CheckoutPage() {
                          <input type="radio" name="payment" value="banking" checked={paymentMethod === 'banking'} onChange={() => setPaymentMethod('banking')} className="w-5 h-5 text-primary focus:ring-primary"/>
                          <div className="flex-1">
                             <span className="font-bold block text-sm uppercase tracking-wide">Chuyển khoản ngân hàng</span>
-                            <span className="text-xs text-gray-500 font-medium italic">QR Code Techcombank/Vietcombank</span>
+                            <span className="text-xs text-gray-500 font-medium italic">Hiển thị mã QR sau khi xác nhận đơn hàng</span>
                          </div>
                          <CreditCard className="text-gray-400"/>
                       </label>
@@ -787,7 +791,7 @@ export default function CheckoutPage() {
                       disabled={isProcessing}
                       className="w-full bg-primary text-white py-4 rounded-none font-bold uppercase tracking-widest hover:bg-primary-dark transition shadow-xl shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                    >
-                      {isProcessing ? 'Đang xử lý...' : 'Đặt hàng ngay'} <CheckCircle size={20}/>
+                      {isProcessing ? 'Đang xử lý...' : (paymentMethod === 'banking' ? 'Thanh toán & Đặt hàng' : 'Đặt hàng ngay')} <CheckCircle size={20}/>
                    </button>
                    
                    <p className="text-center text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-6 flex items-center justify-center gap-1">

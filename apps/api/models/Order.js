@@ -37,8 +37,12 @@ const OrderSchema = new mongoose.Schema({
   customerInfo: CustomerInfoSchema,
   paymentMethod: { 
     type: String, 
-    enum: ['cod', 'banking', 'momo'],
+    enum: ['cod', 'banking', 'momo', 'card'],
     default: 'cod' 
+  },
+  orderNumber: {
+    type: String,
+    unique: true
   },
   totalAmount: { 
     type: Number, 
@@ -139,6 +143,14 @@ OrderSchema.pre('save', function(next) {
   // Nếu đã giao hàng, tự động chuyển sang đã thanh toán
   if (this.status === 'delivered' && this.paymentStatus === 'unpaid') {
     this.paymentStatus = 'paid';
+  }
+
+  // ✅ AUTO GENERATE ORDER NUMBER
+  if (!this.orderNumber) {
+    const date = new Date();
+    const dateStr = `${date.getFullYear().toString().substr(-2)}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000); // 4 digit random
+    this.orderNumber = `FM${dateStr}-${randomSuffix}`;
   }
   
   next();

@@ -204,9 +204,19 @@ export default function OrdersPage() {
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-sm text-gray-900 line-clamp-1 uppercase tracking-tighter italic">
-                        {item.productName}
-                      </h4>
+                      <div className="flex justify-between items-start gap-2">
+                        <h4 className="font-bold text-sm text-gray-900 line-clamp-1 uppercase tracking-tighter italic">
+                          {item.productName}
+                        </h4>
+                        {(order.status === 'delivered' || order.status === 'processing' || order.status === 'shipped') && (
+                          <Link 
+                            href={`/products/${item.productId}?review=true#review`}
+                            className="flex-shrink-0 text-[10px] font-black text-primary border border-primary px-2 py-1 hover:bg-primary hover:text-white transition uppercase tracking-widest"
+                          >
+                            Đánh giá
+                          </Link>
+                        )}
+                      </div>
                       {item.variant && (
                         <div className="flex items-center gap-2 mt-1">
                            <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-none uppercase tracking-wider">

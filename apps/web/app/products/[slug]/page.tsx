@@ -199,7 +199,7 @@ const ProductReviews = ({ productId }: { productId: string }) => {
    if (isLoading) return <div className="py-10 text-center text-gray-400">Đang tải đánh giá...</div>;
 
    return (
-      <div className="mt-16 border-t border-gray-100 pt-12">
+      <div id="review" className="mt-16 border-t border-gray-100 pt-12">
          <h3 className="text-2xl font-black italic uppercase mb-8 flex items-center gap-3">
             Đánh giá khách hàng <span className="text-gray-300 text-lg">({reviews.length})</span>
          </h3>
@@ -407,6 +407,15 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
 
     if (slug) fetchProduct();
   }, [slug]);
+
+  // ✅ Auto scroll to review
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('review') === 'true') {
+      const el = document.getElementById('review');
+      if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth' }), 500);
+    }
+  }, [product]);
 
   // --- LOGIC ---
   const toggleAccordion = (id: string) => {

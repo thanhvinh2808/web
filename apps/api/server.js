@@ -18,6 +18,7 @@ import Category from './models/Category.js';
 import Contact from './models/Contact.js';
 import Blog from './models/Blog.js';
 import Voucher from './models/Voucher.js';
+import Review from './models/Review.js';
 // Middleware
 import { 
   uploadSingle, 
@@ -479,11 +480,15 @@ app.post('/api/logout', authenticateToken, async (req, res) => {
 // ✅ GET REVIEWS FOR A PRODUCT
 app.get('/api/products/:productId/reviews', async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.productId)) {
+       return res.json({ success: true, reviews: [] });
+    }
     const reviews = await Review.find({ productId: req.params.productId })
       .populate('userId', 'name avatar')
       .sort({ createdAt: -1 });
     res.json({ success: true, reviews });
   } catch (error) {
+    console.error("Get Reviews Error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -491,6 +496,9 @@ app.get('/api/products/:productId/reviews', async (req, res) => {
 // ✅ CHECK IF USER CAN REVIEW
 app.get('/api/products/:productId/can-review', authenticateToken, async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.productId)) {
+       return res.json({ canReview: false, reason: 'INVALID_ID' });
+    }
     const userId = req.user.id;
     const productId = req.params.productId;
 
@@ -504,7 +512,7 @@ app.get('/api/products/:productId/can-review', authenticateToken, async (req, re
     // Lưu ý: items.productId trong Order đang lưu ID hoặc slug tùy logic đặt hàng
     const completedOrder = await Order.findOne({
       userId,
-      status: 'delivered',
+      status: { $in: ['processing', 'shipped', 'delivered', 'completed'] }, // ✅ Allow reviewing sooner for testing
       'items.productId': productId
     });
 
@@ -528,7 +536,7 @@ app.post('/api/products/:productId/reviews', authenticateToken, async (req, res)
     // Re-validate purchase
     const completedOrder = await Order.findOne({
       userId,
-      status: 'delivered',
+      status: { $in: ['processing', 'shipped', 'delivered', 'completed'] },
       'items.productId': productId
     });
 
@@ -883,7 +891,17 @@ app.get('/api/products', async (req, res) => {
 // Get product by slug (public)
 app.get('/api/products/:slug', async (req, res) => {
   try {
-    const product = await Product.findOne({ slug: req.params.slug });
+    let product;
+
+    // 1. Try finding by ID if it's a valid ObjectId
+    if (mongoose.Types.ObjectId.isValid(req.params.slug)) {
+       product = await Product.findById(req.params.slug);
+    }
+
+    // 2. If not found by ID, try finding by Slug
+    if (!product) {
+       product = await Product.findOne({ slug: req.params.slug });
+    }
     
     if (product) {
       res.json(product);
@@ -2083,6 +2101,41 @@ app.put('/api/orders/:id/cancel', authenticateToken, async (req, res) => {
       success: false,
       message: 'Server error: ' + error.message
     });
+  }
+});
+
+// ✅ MARK ORDER AS PAID (For QR Code Demo)
+app.put('/api/orders/:id/pay', authenticateToken, async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid order ID' });
+    }
+
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Check ownership
+    if (order.userId.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    order.paymentStatus = 'paid';
+    order.isPaid = true;
+    order.paidAt = new Date();
+    
+    // Nếu đơn đang pending -> processing luôn
+    if (order.status === 'pending') {
+      order.status = 'processing';
+    }
+
+    await order.save();
+
+    res.json({ success: true, message: 'Order paid successfully', order });
+  } catch (error) {
+    console.error('❌ Error marking order as paid:', error);
+    res.status(500).json({ success: false, message: 'Server error: ' + error.message });
   }
 });
 
