@@ -2,10 +2,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, User, Calendar } from "lucide-react";
+import { formatDistanceToNow } from 'date-fns';
+import { vi } from 'date-fns/locale';
 
 // --- TYPES ---
 interface Blog {
-  id: number;
+  _id: string; // or id
   slug: string;
   title: string;
   excerpt: string;
@@ -15,13 +17,33 @@ interface Blog {
     name: string;
     avatar?: string;
   };
-  date: string;
   readTime: string;
   content?: string;
+  createdAt: string; // Use createdAt from MongoDB
+  [key: string]: any; // Allow other properties
 }
+
 
 // --- API URL ---
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+// --- UTILS ---
+const calculateReadingTime = (content: string): string => {
+  if (!content) return '1 phút đọc';
+  const wordsPerMinute = 200;
+  const wordCount = content.split(/\s+/).filter(Boolean).length;
+  const minutes = Math.ceil(wordCount / wordsPerMinute);
+  return `${minutes} phút đọc`;
+};
+
+const formatDate = (dateString: string): string => {
+  try {
+    return formatDistanceToNow(new Date(dateString), { addSuffix: true, locale: vi });
+  } catch (error) {
+    console.error('Invalid date format:', error);
+    return 'Ngày không xác định';
+  }
+};
 
 // --- BLOG PAGE COMPONENT ---
 export default function BlogPage() {
@@ -43,7 +65,14 @@ export default function BlogPage() {
         }
 
         const data = await response.json();
-        setBlogs(Array.isArray(data) ? data : []);
+        const blogsWithReadTime = (Array.isArray(data) ? data : []).map((blog: Blog) => {
+          const updatedBlog = { ...blog };
+          if (blog.content) {
+            updatedBlog.readTime = calculateReadingTime(blog.content);
+          }
+          return updatedBlog;
+        });
+        setBlogs(blogsWithReadTime);
       } catch (err) {
         console.error('Error fetching blogs:', err);
         setError('Không thể tải bài viết. Vui lòng thử lại sau.');
@@ -56,7 +85,6 @@ export default function BlogPage() {
   }, []);
 
   const handleBlogClick = (blog: Blog) => {
-    // Sử dụng slug thay vì id để navigate
     router.push(`/blog/${blog.slug}`);
   };
 
@@ -111,7 +139,7 @@ export default function BlogPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {blogs.map(blog => (
             <article
-              key={blog.id}
+              key={blog._id}
               className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-2xl transition-all group cursor-pointer"
               onClick={() => handleBlogClick(blog)}
             >
@@ -153,10 +181,10 @@ export default function BlogPage() {
                   </div>
                 </div>
 
-                {blog.date && (
+                {blog.createdAt && (
                   <div className="flex items-center gap-1 text-sm text-gray-400">
                     <Calendar size={14} />
-                    <span>{blog.date}</span>
+                    <span>{formatDate(blog.createdAt)}</span>
                   </div>
                 )}
               </div>

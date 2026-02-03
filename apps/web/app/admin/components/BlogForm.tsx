@@ -61,7 +61,7 @@ export default function BlogForm({ blogId, onFormClose, token }: BlogFormProps) 
           setExcerpt(data.excerpt || '');
           setContent(data.content);
           setImage(data.image || '');
-          setCategory(data.category || 'Technology');
+          setCategory(data.category || '');
           setTags(data.tags || []);
           setPublished(data.published || false);
         } catch (err: any) {
@@ -74,6 +74,7 @@ export default function BlogForm({ blogId, onFormClose, token }: BlogFormProps) 
       fetchBlog();
     }
   }, [blogId, isEditing, token, onFormClose]);
+
 
   useEffect(() => {
     if (!isEditing) {
@@ -191,12 +192,7 @@ export default function BlogForm({ blogId, onFormClose, token }: BlogFormProps) 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
             <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">Danh mục</label>
-            <select id="category" value={category} onChange={(e) => setCategory(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-              <option value="Technology">Công nghệ</option>
-              <option value="Review">Đánh giá</option>
-              <option value="News">Tin tức</option>
-              <option value="Tips">Thủ thuật</option>
-            </select>
+            <input type="text" id="category" value={category} onChange={(e) => setCategory(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Thẻ (Tags)</label>
