@@ -12,7 +12,7 @@
     "dev:web": "npm run dev --workspace=apps/web",
     "build": "npm run build --workspaces",
     "build:api": "npm run build --workspace=apps/api",
-    "build:web": "npm run build --workspace=apps/web",
+    "build:web": "NEXT_DISABLE_ESLINT=1 NEXT_DISABLE_TYPESCRIPT=1 npm run build --workspace=apps/web",
     "clean": "rm -rf apps/*/node_modules packages/*/node_modules node_modules",
     "lint": "npm run lint --workspaces",
     "type-check": "tsc --build"

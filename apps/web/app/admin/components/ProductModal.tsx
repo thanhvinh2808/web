@@ -218,7 +218,7 @@ export default function ProductModal({
 
         const data = await response.json();
         if (data.success) {
-          const imageUrl = getImageUrl(data.data.url);
+          const imageUrl = getImageUrl(data.data.url); // ✅ Dùng đúng hàm
           newImages.push(imageUrl);
         }
       }
