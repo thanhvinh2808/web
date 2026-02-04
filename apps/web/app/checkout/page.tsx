@@ -460,7 +460,7 @@ export default function CheckoutPage() {
            router.push(`/order-success?orderId=${orderId}`);
         } else {
            setIsOrderPlaced(true);
-           addOrder(orderData);
+           addOrder(orderData as any);
            clearCart();
            router.push('/order-success');
         }

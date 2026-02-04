@@ -55,7 +55,7 @@ export default function BlogForm({ blogId, onFormClose, token }: BlogFormProps) 
             headers: { 'Authorization': `Bearer ${token}` },
           });
           if (!res.ok) throw new Error('Failed to fetch blog post');
-          const data: Blog = await res.json();
+          const data: any = await res.json();
           setTitle(data.title);
           setSlug(data.slug);
           setExcerpt(data.excerpt || '');

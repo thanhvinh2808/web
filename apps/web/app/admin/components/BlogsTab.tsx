@@ -159,7 +159,7 @@ export default function BlogsTab({ token, showMessage }: BlogsTabProps) {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {blogs.map((blog) => (
+              {blogs.map((blog: any) => (
                 <tr key={blog._id}>
                   <td className="px-6 py-4"><div className="w-16 h-10 relative"><Image src={isAbsoluteUrl(blog.image) ? blog.image : `${API_URL}${blog.image}`} alt={blog.title} layout="fill" className="object-cover rounded-md"/></div></td>
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{blog.title}</td>
