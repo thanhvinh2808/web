@@ -24,7 +24,8 @@ async function getProducts(): Promise<Product[]> {
       next: { revalidate: 3600 } // Revalidate every hour
     })
     if (!res.ok) return []
-    return res.json()
+    const result = await res.json()
+    return Array.isArray(result) ? result : (result.data || [])
   } catch (error) {
     console.error('Sitemap: Failed to fetch products', error)
     return []
@@ -37,7 +38,8 @@ async function getCategories(): Promise<Category[]> {
       next: { revalidate: 3600 } 
     })
     if (!res.ok) return []
-    return res.json()
+    const result = await res.json()
+    return Array.isArray(result) ? result : (result.data || [])
   } catch (error) {
     console.error('Sitemap: Failed to fetch categories', error)
     return []
@@ -50,7 +52,8 @@ async function getBlogs(): Promise<Blog[]> {
       next: { revalidate: 3600 } 
     })
     if (!res.ok) return []
-    return res.json()
+    const result = await res.json()
+    return Array.isArray(result) ? result : (result.data || [])
   } catch (error) {
     console.error('Sitemap: Failed to fetch blogs', error)
     return []
