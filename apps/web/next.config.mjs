@@ -8,7 +8,7 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    domains: ['localhost', 'images.unsplash.com', 'footmark-api.onrender.com'], // ? Thêm domain Render
+    domains: ['localhost', 'images.unsplash.com', 'footmark-api.onrender.com'], // ? Thï¿½m domain Render
     remotePatterns: [
       {
         protocol: 'https', // ? HTTPS cho Render
@@ -24,15 +24,15 @@ const nextConfig = {
     ],
   },
   async rewrites() {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}';
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     return [
       {
         source: '/uploads/:path*',
-        destination: `${API_URL}/uploads/:path*`, // ? Dùng bi?n môi tru?ng
+        destination: `${API_URL}/uploads/:path*`, // ? Dï¿½ng bi?n mï¿½i tru?ng
       },
       {
         source: '/api/:path*',
-        destination: `${API_URL}/api/:path*`, // ? Proxy API luôn cho ch?c
+        destination: `${API_URL}/api/:path*`, // ? Proxy API luï¿½n cho ch?c
       },
     ];
   },
