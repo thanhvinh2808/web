@@ -10,14 +10,15 @@ interface Blog {
   title: string;
   excerpt: string;
   image: string;
-  category: string;
+  category: string; // Still a string for now based on current revert state
   author: {
     name: string;
     avatar?: string;
   };
-  date: string;
-  readTime: string;
+  publishedAt?: string; // Use publishedAt from backend
+  readTime?: string; // Make readTime optional as it might not always be present
   content: string;
+  tags?: string[]; // Add tags
 }
 
 // --- API URL ---
@@ -48,17 +49,17 @@ export default function BlogDetailPage() {
           throw new Error('Blog not found');
         }
 
-        const data = await response.json();
+        const data: Blog = await response.json(); // Cast to Blog interface
         setBlog(data);
 
         // Fetch related blogs
         if (data.category) {
           const relatedResponse = await fetch(
-            `${API_URL}/api/blogs?category=${data.category}`
+            `${API_URL}/api/blogs?category=${data.category}` // Use the category string directly
           );
           if (relatedResponse.ok) {
             const relatedData = await relatedResponse.json();
-            // Filter out current blog and limit to 3
+            // The API for public blogs returns an array directly, not an object with 'blogs'
             setRelatedBlogs(
               Array.isArray(relatedData)
                 ? relatedData.filter((b: Blog) => b.slug !== slug).slice(0, 3)
@@ -167,12 +168,9 @@ export default function BlogDetailPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Calendar size={18} />
-                <span>{new Date(blog.date).toLocaleDateString()}</span>
+                <span>{blog.publishedAt ? new Date(blog.publishedAt).toLocaleDateString() : 'N/A'}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Clock size={18} />
-                <span>{blog.readTime}</span>
-              </div>
+
               <button
                 onClick={handleShare}
                 className="flex items-center gap-2 ml-auto text-primary hover:text-primary-dark transition"  
@@ -217,16 +215,18 @@ export default function BlogDetailPage() {
               />
             </div>
 
-            {/* Tags/Categories */}
+            {/* Tags */}
             <div className="mt-8 pt-8 border-t">
-              <div className="flex flex-wrap gap-2">
-                <span className="text-gray-600 font-medium">Tags:</span>
-                {blog.category && (
-                  <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
-                    #{blog.category}
-                  </span>
-                )}
-              </div>
+              {blog.tags && blog.tags.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-gray-600 font-medium">Tags:</span>
+                  {blog.tags.map((tag) => (
+                    <span key={tag} className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </article>
@@ -258,7 +258,7 @@ export default function BlogDetailPage() {
                     </p>
                     <div className="flex items-center gap-2 mt-3 text-sm text-gray-500">
                       <Clock size={14} />
-                      <span>{relatedBlog.readTime}</span>
+                      <span>{relatedBlog.readTime || 'N/A'}</span>
                     </div>
                   </div>
                 </article>

@@ -11,7 +11,7 @@ import Image from 'next/image';
 
 
 const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 // Function to check if a URL is absolute
 const isAbsoluteUrl = (url: string) => {
@@ -55,13 +55,13 @@ export default function BlogForm({ blogId, onFormClose, token }: BlogFormProps) 
             headers: { 'Authorization': `Bearer ${token}` },
           });
           if (!res.ok) throw new Error('Failed to fetch blog post');
-          const data: any = await res.json();
+          const data: Blog = await res.json();
           setTitle(data.title);
           setSlug(data.slug);
           setExcerpt(data.excerpt || '');
           setContent(data.content);
           setImage(data.image || '');
-          setCategory(data.category || 'Technology');
+          setCategory(data.category || '');
           setTags(data.tags || []);
           setPublished(data.published || false);
         } catch (err: any) {
@@ -74,6 +74,7 @@ export default function BlogForm({ blogId, onFormClose, token }: BlogFormProps) 
       fetchBlog();
     }
   }, [blogId, isEditing, token, onFormClose]);
+
 
   useEffect(() => {
     if (!isEditing) {
@@ -95,11 +96,7 @@ export default function BlogForm({ blogId, onFormClose, token }: BlogFormProps) 
       });
       if (!res.ok) throw new Error((await res.json()).message || 'Failed to upload image');
       const data = await res.json();
-      
-      // Trích xuất URL chuẩn xác
-      const imageUrl = typeof data.data === 'string' ? data.data : (data.data?.url || '');
-      setImage(imageUrl);
-      
+      setImage(data.data.url);
       toast.success('Image uploaded successfully!');
     } catch (err: any) {
       toast.error(err.message || 'Error uploading image.');
@@ -188,27 +185,14 @@ export default function BlogForm({ blogId, onFormClose, token }: BlogFormProps) 
           <label className="block text-sm font-medium text-gray-700 mb-1">Ảnh đại diện</label>
           <div className="flex items-center space-x-4">
             <input type="file" id="image-upload" accept="image/*" onChange={handleImageUpload} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" disabled={submitting} />
-            {image && (
-              <div className="relative w-24 h-24 border rounded-md overflow-hidden">
-                <img 
-                  src={isAbsoluteUrl(image) ? image : `${API_URL.replace('/api', '')}${image.startsWith('/') ? '' : '/'}${image}`} 
-                  alt="Preview" 
-                  className="w-full h-full object-cover" 
-                />
-              </div>
-            )}
+            {image && <Image src={isAbsoluteUrl(image) ? image : `${API_URL}${image}`} alt="Preview" width={96} height={96} className="object-cover rounded-md border" />}
           </div>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
             <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">Danh mục</label>
-            <select id="category" value={category} onChange={(e) => setCategory(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-              <option value="Technology">Công nghệ</option>
-              <option value="Review">Đánh giá</option>
-              <option value="News">Tin tức</option>
-              <option value="Tips">Thủ thuật</option>
-            </select>
+            <input type="text" id="category" value={category} onChange={(e) => setCategory(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Thẻ (Tags)</label>

@@ -9,7 +9,7 @@ import Image from 'next/image';
 import BlogForm from './BlogForm'; // Import the new form component
 
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 // Function to check if a URL is absolute
 const isAbsoluteUrl = (url: string) => {
@@ -159,7 +159,7 @@ export default function BlogsTab({ token, showMessage }: BlogsTabProps) {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {blogs.map((blog: any) => (
+              {blogs.map((blog) => (
                 <tr key={blog._id}>
                   <td className="px-6 py-4"><div className="w-16 h-10 relative"><Image src={isAbsoluteUrl(blog.image) ? blog.image : `${API_URL}${blog.image}`} alt={blog.title} layout="fill" className="object-cover rounded-md"/></div></td>
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{blog.title}</td>
