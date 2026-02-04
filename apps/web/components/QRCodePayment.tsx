@@ -51,7 +51,7 @@ export default function QRCodePayment({
     try {
       if (orderId) {
         const token = localStorage.getItem('token');
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}';
         await fetch(`${API_URL}/api/orders/${orderId}/pay`, {
           method: 'PUT',
           headers: {

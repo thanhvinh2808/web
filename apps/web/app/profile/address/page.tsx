@@ -125,7 +125,7 @@ export default function AddressPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/user/addresses', {
+      const res = await fetch('$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/addresses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -161,7 +161,7 @@ export default function AddressPage() {
   const handleDelete = async (id: string) => {
     if(!confirm('Xóa địa chỉ này?')) return;
     const token = localStorage.getItem('token');
-    const res = await fetch(`http://localhost:5000/api/user/addresses/${id}`, {
+    const res = await fetch(`$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/addresses/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -176,7 +176,7 @@ export default function AddressPage() {
 
   const handleSetDefault = async (id: string) => {
     const token = localStorage.getItem('token');
-    const res = await fetch(`http://localhost:5000/api/user/addresses/${id}/default`, {
+    const res = await fetch(`$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/addresses/${id}/default`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
     });

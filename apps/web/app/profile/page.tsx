@@ -26,7 +26,7 @@ export default function ProfilePage() {
       if (!token) return;
 
       try {
-        const res = await fetch('http://localhost:5000/api/user/me', {
+        const res = await fetch('$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/me', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -80,7 +80,7 @@ export default function ProfilePage() {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/user/update', {
+      const res = await fetch('$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/update', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

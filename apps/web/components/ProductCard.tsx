@@ -55,7 +55,7 @@ export default function ProductCard({ product, showSoldCount = false }: ProductC
   const productSlug = typeof rawSlug === 'string' ? rawSlug : productId;
 
   const getImageUrl = (p: Product): string => {
-    const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace('/api', '');
+    const API_URL = (process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}').replace('/api', '');
     let rawUrl: any = '';
     
     if (p.images && Array.isArray(p.images) && p.images.length > 0) {

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Filter, SlidersHorizontal, X, Check, ChevronDown } from 'lucide-react';
 import ProductCard from '../../components/ProductCard';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api';
 const PRODUCTS_PER_PAGE = 12;
 
 interface Product {

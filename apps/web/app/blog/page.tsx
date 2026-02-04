@@ -21,7 +21,7 @@ interface Blog {
 }
 
 // --- API URL ---
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}';
 
 // --- BLOG PAGE COMPONENT ---
 export default function BlogPage() {

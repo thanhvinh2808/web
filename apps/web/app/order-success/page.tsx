@@ -22,7 +22,7 @@ export default function OrderSuccessPage() {
     const cleanUrl = typeof url === 'string' ? url : (url.url || '');
     if (!cleanUrl || cleanUrl.includes('[object')) return '/placeholder.png';
     if (cleanUrl.startsWith('http')) return cleanUrl;
-    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace('/api', '');
+    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}').replace('/api', '');
     return `${baseUrl}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`;
   };
 
@@ -36,7 +36,7 @@ export default function OrderSuccessPage() {
           
           // 2. Nếu không thấy (do Context chưa kịp refresh), gọi API trực tiếp
           if (!foundOrder) {
-            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}';
             const token = localStorage.getItem('token');
             const res = await fetch(`${API_URL}/api/orders/${orderId}`, {
               headers: { 'Authorization': `Bearer ${token}` }

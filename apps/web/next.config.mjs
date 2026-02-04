@@ -1,4 +1,4 @@
-﻿/** @type {import('next').NextConfig} */
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   typescript: {
@@ -8,10 +8,10 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    domains: ['localhost', 'images.unsplash.com', 'footmark-api.onrender.com'], // ✅ Thêm domain Render
+    domains: ['localhost', 'images.unsplash.com', 'footmark-api.onrender.com'], // ? Th�m domain Render
     remotePatterns: [
       {
-        protocol: 'https', // ✅ HTTPS cho Render
+        protocol: 'https', // ? HTTPS cho Render
         hostname: 'footmark-api.onrender.com',
         pathname: '/uploads/**',
       },
@@ -24,15 +24,15 @@ const nextConfig = {
     ],
   },
   async rewrites() {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}';
     return [
       {
         source: '/uploads/:path*',
-        destination: `${API_URL}/uploads/:path*`, // ✅ Dùng biến môi trường
+        destination: `${API_URL}/uploads/:path*`, // ? D�ng bi?n m�i tru?ng
       },
       {
         source: '/api/:path*',
-        destination: `${API_URL}/api/:path*`, // ✅ Proxy API luôn cho chắc
+        destination: `${API_URL}/api/:path*`, // ? Proxy API lu�n cho ch?c
       },
     ];
   },

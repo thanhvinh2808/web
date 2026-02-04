@@ -19,7 +19,7 @@ export default function CartPage() {
   const totalItems = getTotalItems();
 
   const getImageUrl = (item: any): string => {
-    const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace('/api', '');
+    const API_URL = (process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}').replace('/api', '');
     let rawUrl = item.selectedVariant?.image || item.product.image || '';
     
     // Nếu rawUrl là object

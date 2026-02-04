@@ -38,7 +38,7 @@ export const Header = ({ cartCount = 0 }: HeaderProps) => {
       }
 
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api';
         const res = await fetch(`${API_URL}/api/products`);
         const data = await res.json();
         const allProducts = Array.isArray(data) ? data : data.data || [];
@@ -174,7 +174,7 @@ export const Header = ({ cartCount = 0 }: HeaderProps) => {
                          >
                             <div className="w-12 h-12 bg-gray-100 overflow-hidden flex-shrink-0">
                                <img 
-                                  src={p.image?.startsWith('http') ? p.image : `http://localhost:5000${p.image}`} 
+                                  src={p.image?.startsWith('http') ? p.image : `${(process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}').replace('/api', '')}${p.image?.startsWith('/') ? '' : '/'}${p.image}`} 
                                   alt={p.name} 
                                   className="w-full h-full object-cover"
                                   onError={(e: any) => e.target.src = '/placeholder-product.jpg'}
@@ -322,7 +322,7 @@ export const Header = ({ cartCount = 0 }: HeaderProps) => {
                             className="flex items-center gap-3 p-3 border-b border-gray-50"
                          >
                             <img 
-                               src={p.image?.startsWith('http') ? p.image : `http://localhost:5000${p.image}`} 
+                               src={p.image?.startsWith('http') ? p.image : `${(process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}').replace('/api', '')}${p.image?.startsWith('/') ? '' : '/'}${p.image}`} 
                                alt={p.name} 
                                className="w-10 h-10 object-cover"
                             />

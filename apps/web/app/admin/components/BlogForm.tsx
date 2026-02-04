@@ -11,7 +11,7 @@ import Image from 'next/image';
 
 
 const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}';
 
 // Function to check if a URL is absolute
 const isAbsoluteUrl = (url: string) => {

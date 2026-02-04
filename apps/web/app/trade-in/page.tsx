@@ -91,7 +91,7 @@ export default function TradeInPage() {
           data.append('images', file);
       });
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/trade-in`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}'}/api/trade-in`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}` 

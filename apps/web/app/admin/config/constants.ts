@@ -1,7 +1,7 @@
 // app/admin/config/constants.ts
 
 // ✅ ÉP CỨNG PORT 5000 ĐỂ TRÁNH LỖI NHẦM VỚI PORT 3000 CỦA FRONTEND
-export const API_URL = 'http://localhost:5000';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}';
 
 export const ITEMS_PER_PAGE = 10;
 export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
