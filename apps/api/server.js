@@ -41,6 +41,10 @@ import adminRoutes from './routes/admin.js';
 import tradeInRoutes from './routes/tradeIn.js';
 import blogRoutes from './routes/blog.js';
 import wishlistRoutes from './routes/wishlist.js';
+// ✅ Routes mới
+import brandRoutes from './routes/brands.js';
+import addressRoutes from './routes/addresses.js';
+import sizeGuideRoutes from './routes/sizeGuides.js';
 
 // ✅ Load environment variables
 dotenv.config({ path: path.resolve(process.cwd(), 'apps/api/.env') });
@@ -66,6 +70,10 @@ app.use('/uploads', express.static('uploads'));
 app.use('/api/trade-in', tradeInRoutes);
 app.use('/api/blogs', blogRoutes);
 app.use('/api/wishlist', wishlistRoutes);
+// ✅ Register New Routes
+app.use('/api/brands', brandRoutes);
+app.use('/api/addresses', addressRoutes);
+app.use('/api/size-guides', sizeGuideRoutes);
 
 // ✅ Socket.io setup
 const io = new Server(server, {
@@ -371,7 +379,7 @@ app.post('/api/login', async (req, res) => {
         role: user.role 
       },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '7h' }
     );
 
     return res.json({
@@ -868,12 +876,32 @@ app.get('/api/user/orders', authenticateToken, async (req, res) => {
 // PRODUCT ROUTES (PUBLIC)
 // ============================================ 
 
-// Get all products (public)
+// Get all products (public) - Optimized with filtering
 app.get('/api/products', async (req, res) => {
   try {
-    const products = await Product.find()
-      .sort({ createdAt: -1 })
-      .lean();
+    const { category, limit, exclude } = req.query;
+    
+    const query = {};
+    
+    // Filter by category slug
+    if (category) {
+      query.categorySlug = category;
+    }
+    
+    // Exclude specific product (e.g. current product in detail page)
+    if (exclude) {
+      query.slug = { $ne: exclude };
+    }
+    
+    // Mặc định sort mới nhất
+    let productQuery = Product.find(query).sort({ createdAt: -1 });
+    
+    // Limit results
+    if (limit) {
+      productQuery = productQuery.limit(parseInt(limit));
+    }
+    
+    const products = await productQuery.lean();
     
     res.json({
       success: true, 
@@ -900,7 +928,10 @@ app.get('/api/products/:slug', async (req, res) => {
 
     // 2. If not found by ID, try finding by Slug
     if (!product) {
-       product = await Product.findOne({ slug: req.params.slug });
+       product = await Product.findOne({ slug: req.params.slug }).populate('brandId', 'name logo slug');
+    } else {
+       // Nếu tìm thấy bằng ID thì cũng cần populate
+       await product.populate('brandId', 'name logo slug');
     }
     
     if (product) {

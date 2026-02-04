@@ -225,7 +225,8 @@ export default function CheckoutPage() {
 
        try {
           const token = localStorage.getItem('token');
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/addresses`, {
+          // ✅ UPDATE API ENDPOINT
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/addresses`, {
              headers: { 'Authorization': `Bearer ${token}` }
           });
           
@@ -297,15 +298,14 @@ export default function CheckoutPage() {
         fullName: addr.name || addr.fullName,
         email: addr.email || user?.email || '',
         phone: addr.phone,
-        address: addr.address || addr.streetAddress,
+        // ✅ Handle fields mapping
+        address: addr.specificAddress || addr.address || addr.streetAddress,
         city: addr.city,
-        district: '',
+        district: addr.district || '',
         ward: addr.ward,
         notes: ''
      });
-     setStreetAddress(addr.address || addr.streetAddress);
-     // Note: we don't necessarily have codes for existing addresses, 
-     // but we can still show the text info
+     setStreetAddress(addr.specificAddress || addr.address || addr.streetAddress);
      setIsEditingAddress(false);
   };
 
@@ -317,19 +317,26 @@ export default function CheckoutPage() {
 
      const provinceName = provinces.find(p => p.code == +selectedProvince)?.name || '';
      const wardName = wards.find(w => w.code == +selectedWard)?.name || '';
+     // Tách wardName: "Phường X (Quận Y)" -> lấy district nếu cần thiết
+     let districtName = '';
+     if (wardName.includes('(')) {
+        districtName = wardName.match(/\(([^)]+)\)/)?.[1] || '';
+     }
 
      const newAddr = {
         name: customerInfo.fullName,
         phone: customerInfo.phone,
-        address: streetAddress,
+        specificAddress: streetAddress, // ✅ Map to schema
         city: provinceName,
-        ward: wardName,
+        district: districtName || 'Other',
+        ward: wardName.split('(')[0].trim(),
         isDefault: savedAddresses.length === 0
      };
 
      try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/addresses`, {
+        // ✅ UPDATE API ENDPOINT
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/addresses`, {
            method: 'POST',
            headers: {
               'Content-Type': 'application/json',
@@ -341,7 +348,8 @@ export default function CheckoutPage() {
         if (res.ok) {
            const data = await res.json();
            setSavedAddresses(data.addresses);
-           const addedAddr = data.addresses[data.addresses.length - 1];
+           // Lấy địa chỉ vừa thêm (thường là cuối hoặc đầu tùy sort, API trả về list sort mới nhất)
+           const addedAddr = data.addresses[0]; 
            setSelectedAddressId(addedAddr._id || addedAddr.id);
            loadAddressToForm(addedAddr);
            toast.success('Đã lưu địa chỉ mới');
@@ -580,8 +588,8 @@ export default function CheckoutPage() {
                                              <span className="text-gray-500">{addr.phone}</span>
                                          </div>
                                          <div className="text-sm text-gray-600">
-                                             <p>{addr.address}</p>
-                                             <p>{addr.ward}, {addr.city}</p>
+                                             <p>{addr.specificAddress || addr.address}</p>
+                                             <p>{addr.ward}, {addr.district ? `${addr.district}, ` : ''}{addr.city}</p>
                                          </div>
                                      </div>
                                   </div>
@@ -621,7 +629,7 @@ export default function CheckoutPage() {
                                   <div className="text-gray-600 leading-relaxed max-w-md text-sm font-medium">
                                      <p className="flex items-start gap-2">
                                         <MapPin size={14} className="mt-1 flex-shrink-0 text-gray-400"/>
-                                        {customerInfo.address}, {customerInfo.ward}, {customerInfo.city}
+                                        {customerInfo.address}, {customerInfo.ward}, {customerInfo.district ? `${customerInfo.district}, ` : ''}{customerInfo.city}
                                      </p>
                                   </div>
                                </div>

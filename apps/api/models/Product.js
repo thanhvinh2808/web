@@ -36,6 +36,12 @@ const productSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  // ✅ Reference đến Brand Model (Cho quan hệ chặt chẽ)
+  brandId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Brand'
+  },
+  // ✅ Giữ field String để hiển thị nhanh/backward compatible
   brand: {
     type: String,
     trim: true
