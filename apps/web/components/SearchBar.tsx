@@ -63,7 +63,7 @@ export const SearchBar = () => {
           console.log('✅ Is Array?:', Array.isArray(data));
           
           // Kiểm tra nếu data có structure khác
-          let products = [];
+          let products: Product[] = [];
           if (Array.isArray(data)) {
             products = data;
           } else if (data && Array.isArray(data.products)) {

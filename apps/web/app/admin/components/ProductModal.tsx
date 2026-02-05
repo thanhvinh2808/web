@@ -305,7 +305,7 @@ export default function ProductModal({
     }
 
     const newVariant = { name: variantName, options: validOptions };
-    let updatedVariants = [];
+    let updatedVariants: Variant[] = [];
     
     if (editingVariantIndex >= 0) {
       updatedVariants = [...variants];

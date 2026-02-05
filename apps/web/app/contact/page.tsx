@@ -3,13 +3,13 @@ import { useState } from "react";
 import { Phone, Mail, MapPin, Clock } from "lucide-react";
 
 // --- API URL ---
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api`;
 
 // --- TYPES ---
 interface ContactForm {
-  name: string;
-  email: string;
-  message: string;
+  name: string,
+  email: string,
+  message: string,
 }
 
 type SubmitStatus = 'idle' | 'loading' | 'success' | 'error';

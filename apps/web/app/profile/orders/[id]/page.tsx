@@ -49,10 +49,10 @@ export default function OrderDetailPage() {
     if (cachedOrder) setOrder(cachedOrder);
 
     const fetchFreshOrder = async () => {
-       if (!user?.token) return;
+       if (!user) return;
        try {
           const res = await fetch(`${API_URL}/api/orders/${orderId}`, {
-             headers: { 'Authorization': `Bearer ${user.token}` }
+             headers: { 'Authorization': `Bearer ${user._id}` }
           });
           if (res.ok) {
              const data = await res.json();
@@ -68,7 +68,7 @@ export default function OrderDetailPage() {
        }
     };
     fetchFreshOrder();
-  }, [orderId, user?.token, getOrderById]);
+  }, [orderId, user?._id, getOrderById]);
 
   useEffect(() => {
     if (!socket || !isConnected || !orderId) return;
@@ -97,7 +97,7 @@ export default function OrderDetailPage() {
           method: 'PUT',
           headers: {
              'Content-Type': 'application/json',
-             'Authorization': `Bearer ${user?.token}`
+             'Authorization': `Bearer ${user?._id}`
           },
           body: JSON.stringify({ cancelReason })
        });
