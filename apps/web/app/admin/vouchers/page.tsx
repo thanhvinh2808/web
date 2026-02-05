@@ -44,7 +44,7 @@ export default function AdminVouchersPage() {
   const fetchVouchers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}'}/api/admin/vouchers?search=${searchTerm}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/vouchers?search=${searchTerm}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -70,8 +70,8 @@ export default function AdminVouchersPage() {
     
     try {
       const url = editingVoucher 
-        ? `${process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}'}/api/admin/vouchers/${editingVoucher._id}`
-        : `${process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}'}/api/admin/vouchers`;
+        ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/vouchers/${editingVoucher._id}`
+        : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/vouchers`;
       
       const method = editingVoucher ? 'PUT' : 'POST';
 
@@ -104,7 +104,7 @@ export default function AdminVouchersPage() {
     
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}'}/api/admin/vouchers/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/vouchers/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
