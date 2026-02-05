@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { CLEAN_API_URL as API_URL } from '@/lib/shared/constants'; // ✅ Dùng hằng số chuẩn
+import { CLEAN_API_URL as API_URL } from '../../lib/shared/constants'; // ✅ Dùng hằng số chuẩn
 import toast from 'react-hot-toast';
 
 interface User {
@@ -12,6 +12,7 @@ interface User {
   email: string;
   role: string;
   avatar?: string;
+  
 }
 
 interface AuthContextType {
@@ -19,7 +20,8 @@ interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (token: string, user: User) => void;
+  login: (email: string, password: string) => Promise<void>;
+  register: (data: any) => Promise<void>; // Add register to interface
   logout: () => void;
   updateUser: (user: User) => void;
   refreshUser: () => Promise<void>;
@@ -46,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     
+    // Always verify token with server on load
     checkAuth(storedToken);
   }, []);
 
@@ -66,10 +69,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userData = await res.json();
         setUser(userData);
         localStorage.setItem('user', JSON.stringify(userData));
-        console.log('✅ Token verified with server');
+        console.log('✅ Token verified');
       } else {
-        console.error('❌ Token invalid, logging out');
-        logout();
+        console.warn('❌ Token invalid/expired');
+        // Silent logout on load failure to avoid redirect loop if on public page
+        setToken(null);
+        setUser(null);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
       }
     } catch (error) {
       console.error('Error verifying token:', error);
@@ -78,12 +85,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = (newToken: string, userData: User) => {
-    setToken(newToken);
-    setUser(userData);
-    localStorage.setItem('token', newToken);
-    localStorage.setItem('user', JSON.stringify(userData));
-    toast.success('Đăng nhập thành công!');
+  const login = async (email: string, password: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || 'Đăng nhập thất bại');
+      }
+
+      const { token: newToken, user: userData } = data;
+
+      setToken(newToken);
+      setUser(userData);
+      localStorage.setItem('token', newToken);
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+      // router.push('/'); // Let the page handle redirect
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const register = async (formData: any) => {
+    try {
+      const res = await fetch(`${API_URL}/api/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || 'Đăng ký thất bại');
+      }
+      
+      // Auto login after register? Or just return success.
+      // Usually register returns token too.
+      if (data.token) {
+         setToken(data.token);
+         setUser(data.user);
+         localStorage.setItem('token', data.token);
+         localStorage.setItem('user', JSON.stringify(data.user));
+      }
+    } catch (error) {
+      throw error;
+    }
   };
 
   const logout = () => {
@@ -101,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshUser = async () => {
-    await checkAuth(token);
+    if (token) await checkAuth(token);
   };
 
   return (
@@ -111,6 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: !!token, 
       isLoading, 
       login, 
+      register,
       logout, 
       updateUser,
       refreshUser

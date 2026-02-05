@@ -21,6 +21,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import ProductCard from '../../../components/ProductCard';
 import SizeGuideModal from '../../../components/SizeGuideModal'; // ✅ Import Modal
 import toast from 'react-hot-toast';
+import { getImageUrl } from '../../../lib/imageHelper';
 
 // --- TYPES ---
 interface VariantOption {
@@ -349,26 +350,6 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
        // @ts-ignore
        toggleWishlist({ ...product, _id: productId });
     }
-  };
-
-  // ✅ Helper function để lấy URL ảnh đầy đủ
-  const getImageUrl = (imgData: any): string => {
-    if (!imgData) return '/placeholder-product.jpg';
-    
-    // Nếu là string
-    let url = '';
-    if (typeof imgData === 'string') {
-      url = imgData;
-    } else if (typeof imgData === 'object' && imgData !== null) {
-      url = imgData.url || '';
-    }
-    
-    if (!url || typeof url !== 'string' || url.includes('[object')) return '/placeholder-product.jpg';
-    if (url.startsWith('http') || url.startsWith('data:')) return url;
-    
-    // Lấy domain từ API_URL (bỏ phần /api nếu có)
-    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace('/api', '');
-    return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
   // --- FETCH DATA ---

@@ -1,9 +1,17 @@
 import mongoose from 'mongoose';
 
 const notificationSchema = new mongoose.Schema({
+  user_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   type: {
     type: String,
-    enum: ['order', 'user', 'contact'],
+    enum: ['order', 'user', 'contact', 'system'],
+    required: true
+  },
+  title: {
+    type: String,
     required: true
   },
   message: {
@@ -16,7 +24,7 @@ const notificationSchema = new mongoose.Schema({
   },
   referenceModel: {
     type: String,
-    enum: ['Order', 'User', 'Contact']
+    enum: ['Order', 'User', 'Contact', 'TradeIn']
   },
   isRead: {
     type: Boolean,

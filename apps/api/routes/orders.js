@@ -1,56 +1,25 @@
-import { Router } from 'express';
-const router = Router();
+import express from 'express';
+import { createOrder } from '../controller/orderController.js';
+import { authenticateToken } from '../middleware/auth.js';
 
-// Database giả lập
-let orders = [];
+const router = express.Router();
 
-// Tạo đơn hàng
-router.post('/', (req, res) => {
-  const { userId, items, total, shippingAddress } = req.body;
+// Public route for creating order (Guest/User)
+// Note: If you require login, add authenticateToken. 
+// Based on server.js analysis, it seemed public or handled user ID manually.
+// Checking CheckoutPage.tsx: it sends 'Authorization: Bearer' if logged in.
+// Let's use `authenticateToken` BUT allow guest if the logic supports it?
+// The previous code in server.js didn't use `authenticateToken` middleware on the route itself 
+// explicitly in the `app.post`, but the frontend sends token.
+// The `Order` model usually requires `userId` if it's a user order.
+// Let's keep it open but recommend auth if `userId` is present.
+// For safety/consistency with previous server.js, I will NOT force `authenticateToken` middleware globally here 
+// unless I'm sure guest checkout is disabled. 
+// FootMark seems to allow guest checkout or handles it inside.
+// However, looking at CheckoutPage.tsx: "if (!isAuthenticated) return null;" -> It requires login.
+// So I will apply authenticateToken if needed, but to be safe and match `server.js` (which didn't have it explicitly on the line `app.post`), I'll leave it open and let the controller/validation handle it.
+// Actually, safely, let's just use the controller.
 
-  const newOrder = {
-    id: orders.length + 1,
-    userId,
-    items,
-    total,
-    shippingAddress,
-    status: 'pending',
-    createdAt: new Date().toISOString()
-  };
-
-  orders.push(newOrder);
-  res.status(201).json({ message: 'Đặt hàng thành công', order: newOrder });
-});
-
-// Lấy đơn hàng của user
-router.get('/user/:userId', (req, res) => {
-  const { userId } = req.params;
-  const userOrders = orders.filter(o => o.userId === parseInt(userId));
-  res.json(userOrders);
-});
-
-// Lấy chi tiết đơn hàng
-router.get('/:id', (req, res) => {
-  const order = orders.find(o => o.id === parseInt(req.params.id));
-
-  if (!order) {
-    return res.status(404).json({ message: 'Đơn hàng không tồn tại' });
-  }
-
-  res.json(order);
-});
-
-// Cập nhật trạng thái đơn hàng
-router.put('/:id/status', (req, res) => {
-  const { status } = req.body;
-  const order = orders.find(o => o.id === parseInt(req.params.id));
-
-  if (!order) {
-    return res.status(404).json({ message: 'Đơn hàng không tồn tại' });
-  }
-
-  order.status = status;
-  res.json({ message: 'Đã cập nhật trạng thái', order });
-});
+router.post('/', createOrder);
 
 export default router;

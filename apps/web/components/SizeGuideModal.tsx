@@ -16,7 +16,7 @@ export default function SizeGuideModal({ brandId, brandName, isOpen, onClose }: 
   const [activeGender, setActiveGender] = useState('Men'); // Mặc định Men
   
   // API URL
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api`;
 
   useEffect(() => {
     if (isOpen && brandId) {

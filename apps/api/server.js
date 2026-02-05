@@ -26,6 +26,7 @@ import {
   handleUploadError, 
   deleteFile 
 } from './middleware/upload.js';
+import { authenticateToken } from './middleware/auth.js';
 
 // Services
 import { 
@@ -36,7 +37,7 @@ import {
 
 import { createNotification } from './controller/adminController.js';
 
-// Routes
+// ✅ Routes
 import adminRoutes from './routes/admin.js';
 import tradeInRoutes from './routes/tradeIn.js';
 import blogRoutes from './routes/blog.js';
@@ -45,14 +46,20 @@ import wishlistRoutes from './routes/wishlist.js';
 import brandRoutes from './routes/brands.js';
 import addressRoutes from './routes/addresses.js';
 import sizeGuideRoutes from './routes/sizeGuides.js';
+import orderRoutes from './routes/orders.js'; // ✅ Imported Order Routes
+
+import { getJwtSecret } from './config/secrets.js';
 
 // ✅ Load environment variables
-dotenv.config({ path: path.resolve(process.cwd(), 'apps/api/.env') });
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 // ✅ App setup
 const app = express();
 const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || 'vinh-super-secret-key-2024-techstore-12345';
+const JWT_SECRET = getJwtSecret();
 
 // ✅ Create HTTP server
 const server = createServer(app);
@@ -74,6 +81,7 @@ app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/brands', brandRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/size-guides', sizeGuideRoutes);
+app.use('/api/orders', orderRoutes); // ✅ Use Order Routes
 
 // ✅ Socket.io setup
 const io = new Server(server, {
@@ -114,7 +122,8 @@ const connectDB = async () => {
     console.log('✅ MongoDB connected successfully');
     console.log(`📊 Database: ${mongoose.connection.name}`);
     
-    await createDefaultAdmin();
+    // Admin creation should be handled via script: npm run create:admin
+    // await createDefaultAdmin(); 
   } catch (error) {
     console.error('❌ MongoDB connection error:', error.message);
     console.error('💡 Check MONGODB_URI in .env file');
@@ -175,33 +184,6 @@ mongoose.connection.on('reconnected', () => {
 // ============================================ 
 // MIDDLEWARE
 // ============================================ 
-
-// ✅ Authenticate token
-const authenticateToken = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  
-  if (!token) {
-    return res.status(401).json({
-      success: false,
-      message: 'Token required'
-    });
-  }
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = {
-      id: decoded.id,
-      email: decoded.email,
-      role: decoded.role
-    };
-    next();
-  } catch (error) {
-    return res.status(403).json({
-      success: false,
-      message: 'Invalid token'
-    });
-  }
-};
 
 // ✅ Require admin
 const requireAdmin = async (req, res, next) => {
@@ -898,6 +880,7 @@ app.get('/api/products', async (req, res) => {
     
     // Limit results
     if (limit) {
+      // productQuery = productQuery.limit(parseInt(limit)); // Temporarily disabled for debugging
       productQuery = productQuery.limit(parseInt(limit));
     }
     
@@ -1389,7 +1372,10 @@ app.post('/api/upload/single', authenticateToken, requireAdmin, uploadSingle, ha
       });
     }
     
-    const fileUrl = `/uploads/products/${req.file.filename}`;
+    // Support both Cloudinary (req.file.path is URL) and Local (construct path)
+    const fileUrl = (req.file.path && req.file.path.startsWith('http')) 
+      ? req.file.path 
+      : `/uploads/products/${req.file.filename}`;
     
     console.log('✅ Upload single image:', fileUrl);
     
@@ -1423,7 +1409,9 @@ app.post('/api/upload/multiple', authenticateToken, requireAdmin, uploadMultiple
     }
     
     const fileUrls = req.files.map(file => ({
-      url: `/uploads/products/${file.filename}`,
+      url: (file.path && file.path.startsWith('http')) 
+        ? file.path 
+        : `/uploads/products/${file.filename}`,
       filename: file.filename,
       size: file.size,
       mimetype: file.mimetype
@@ -1446,12 +1434,14 @@ app.post('/api/upload/multiple', authenticateToken, requireAdmin, uploadMultiple
 });
 
 // Delete image
-app.delete('/api/upload/:filename', authenticateToken, requireAdmin, (req, res) => {
+app.delete('/api/upload/:filename', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { filename } = req.params;
     const filePath = `uploads/products/${filename}`;
     
-    const deleted = deleteFile(filePath);
+    // Note: For Cloudinary, this simple filename delete might not work unless we store public_ids differently.
+    // This maintains backward compatibility for local files.
+    const deleted = await deleteFile(filePath);
     
     if (deleted) {
       res.json({
@@ -1968,58 +1958,9 @@ app.get('/api/vouchers', async (req, res) => {
 // ORDERROUTES (PUBLIC/USER)
 // ============================================ 
 
-// Create order
-app.post('/api/orders', async (req, res) => {
-  try {
-    const orderData = req.body;
-    const savedOrder = await Order.create(orderData);
+// Order routes are now handled in routes/orders.js
 
-    // ✅ TRỪ KHO TRỰC TIẾP
-    for (const item of orderData.items) {
-      const product = await Product.findById(item.productId);
-      if (product) {
-        // 1. Trừ kho tổng
-        product.stock = Math.max(0, product.stock - item.quantity);
-        
-        // 2. Trừ kho theo Variant (Size) nếu có
-        if (item.variant && product.variants) {
-          product.variants.forEach(v => {
-            const option = v.options.find(opt => opt.name === item.variant.name);
-            if (option) {
-              option.stock = Math.max(0, option.stock - item.quantity);
-            }
-          });
-        }
-        await product.save();
-      }
-    }
 
-    // 🔔 Notify Admin
-    if (typeof createNotification === 'function') {
-       await createNotification('order', `Đơn hàng mới #${savedOrder._id.toString().slice(-6).toUpperCase()}`, savedOrder._id, 'Order');
-    }
-
-    try {
-      await sendNewOrderEmail(savedOrder);
-      console.log('📧 Order email sent to admin');
-    } catch (emailError) {
-      console.error('⚠️ Email error:', emailError.message);
-    }
-
-    res.status(201).json({
-      success: true,
-      message: 'Order created',
-      order: savedOrder
-    }); 
-
-  } catch (error) {
-    console.error('❌ Error creating order:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
 
 // Get order by ID
 app.get('/api/orders/:id', async (req, res) => {

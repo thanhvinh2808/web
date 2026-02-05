@@ -7,6 +7,7 @@ import { useCart } from "../contexts/CartContext";
 import { Voucher } from '../types/voucher';
 import { VoucherSelector } from "../../components/VoucherSelector";
 import toast from 'react-hot-toast';
+import { getImageUrl } from '../../lib/imageHelper';
 
 export default function CartPage() {
   const { cart, updateQuantity, removeItem, getTotalItems, getTotalPrice, selectedVoucher, setSelectedVoucher } = useCart();
@@ -18,17 +19,7 @@ export default function CartPage() {
   const subtotal = getTotalPrice();
   const totalItems = getTotalItems();
 
-  const getImageUrl = (item: any): string => {
-    const API_URL = (process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}').replace('/api', '');
-    let rawUrl = item.selectedVariant?.image || item.product.image || '';
-    
-    // Nếu rawUrl là object
-    let url = typeof rawUrl === 'string' ? rawUrl : (rawUrl?.url || '');
-    
-    if (!url || typeof url !== 'string' || url.includes('[object')) return '/placeholder.jpg';
-    if (url.startsWith('http') || url.startsWith('data:')) return url;
-    return `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
-  };
+  // getImageUrl removed, using helper
 
   const calculateDiscount = (voucher: Voucher | null): number => {
     if (!voucher) return 0;

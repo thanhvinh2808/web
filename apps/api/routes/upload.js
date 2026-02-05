@@ -28,16 +28,21 @@ router.post('/single', authenticateToken, isAdmin, (req, res, next) => {
         }
 
         // The frontend expects the URL to be relative to the API server
-        const fileUrl = `/uploads/products/${req.file.filename}`;
-
-        // The frontend expects the response in the format { data: { url: '...' } }
-        res.status(201).json({
-            success: true,
-            message: 'File uploaded successfully.',
-            data: {
-                url: fileUrl
-            }
-        });
+    // Support both Cloudinary and Local
+    const fileUrl = (req.file.path && req.file.path.startsWith('http')) 
+      ? req.file.path 
+      : `/uploads/products/${req.file.filename}`;
+    
+    res.status(200).json({
+      success: true,
+      message: 'File uploaded successfully.',
+      data: {
+        url: fileUrl,
+        filename: req.file.filename,
+        mimetype: req.file.mimetype,
+        size: req.file.size
+      }
+    });
     });
 }, handleUploadError); // Add the custom error handler at the end
 

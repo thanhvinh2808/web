@@ -1,24 +1,10 @@
 import express from 'express';
 import Wishlist from '../models/Wishlist.js';
 import Product from '../models/Product.js';
-import jwt from 'jsonwebtoken';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'vinh-super-secret-key-2024-techstore-12345';
 
-// ✅ Middleware: Authenticate
-const authenticateToken = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ success: false, message: 'Token required' });
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (error) {
-    return res.status(403).json({ success: false, message: 'Invalid token' });
-  }
-};
 
 // ✅ GET: Wishlist of current user
 router.get('/', authenticateToken, async (req, res) => {

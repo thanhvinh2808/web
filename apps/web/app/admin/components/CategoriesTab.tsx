@@ -44,7 +44,7 @@ export default function CategoriesTab({ categories, token, onRefresh, showMessag
       const uploadFormData = new FormData();
       uploadFormData.append('image', file);
       
-      const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}').replace('/api', '');
+      const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}`).replace('/api', '');
       
       const res = await fetch(`${BASE_URL}/api/upload/single`, {
         method: 'POST',

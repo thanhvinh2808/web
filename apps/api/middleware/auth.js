@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'vinh-super-secret-key-2024-techstore-12345';
+import { getJwtSecret } from '../config/secrets.js';
 
 export const authenticateToken = (req, res, next) => {
   try {
@@ -14,7 +13,7 @@ export const authenticateToken = (req, res, next) => {
       });
     }
 
-    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    jwt.verify(token, getJwtSecret(), (err, decoded) => {
       if (err) {
         return res.status(403).json({
           success: false,

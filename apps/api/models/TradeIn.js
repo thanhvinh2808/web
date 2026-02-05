@@ -51,6 +51,7 @@ const tradeInSchema = new mongoose.Schema({
     default: ''
   },
   contactInfo: { // Thông tin liên hệ nếu khác profile
+    name: String,
     phone: String,
     address: String
   }

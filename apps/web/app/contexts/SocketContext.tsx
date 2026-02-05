@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { io, Socket } from "socket.io-client";
-import { SOCKET_URL } from '@/lib/shared/constants'; // ✅ Dùng hằng số chuẩn
+import { SOCKET_URL } from '../../lib/shared/constants'; // ✅ Dùng hằng số chuẩn
 
 interface SocketContextType {
   socket: Socket | null;

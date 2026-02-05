@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Filter, SlidersHorizontal, X, Check, ChevronDown } from 'lucide-react';
 import ProductCard from '../../components/ProductCard';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api`;
 const PRODUCTS_PER_PAGE = 12;
 
 interface Product {
@@ -116,7 +116,8 @@ export default function ProductsPage() {
       if (productType === 'new' && !product.isNew) return false;
       if (productType === '2hand' && product.isNew) return false;
 
-      // if (selectedCategory !== 'all' && product.categorySlug !== selectedCategory) return false;
+      if (selectedCategory !== 'all' && product.categorySlug !== selectedCategory) return false;
+      
       if (selectedBrands.length > 0 && !selectedBrands.includes(product.brand || '')) return false;
       if (selectedConditions.length > 0) {
         const prodCond = product.specs?.condition || 'New';
@@ -238,16 +239,16 @@ export default function ProductsPage() {
             </div>
 
             <FilterSection title="Danh Mục">
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
                 <button 
                   onClick={() => setSelectedCategory('all')}
                   className={`block w-full text-left text-xs font-black uppercase tracking-widest transition ${selectedCategory === 'all' ? 'text-primary' : 'text-gray-400 hover:text-black'}`}
                 >
                   Tất cả sản phẩm
                 </button>
-                {categories.map(cat => (
+                {categories?.map(cat => (
                   <button 
-                    key={cat.id || cat._id}
+                    key={cat.slug}
                     onClick={() => setSelectedCategory(cat.slug)}
                     className={`block w-full text-left text-xs font-black uppercase tracking-widest transition ${selectedCategory === cat.slug ? 'text-primary' : 'text-gray-400 hover:text-black'}`}
                   >

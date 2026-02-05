@@ -38,9 +38,21 @@ const reviewSchema = new mongoose.Schema({
   likes: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
-  }]
+  }],
+  likesCount: {
+    type: Number,
+    default: 0
+  }
 }, {
   timestamps: true
+});
+
+// Middleware để cập nhật likesCount
+reviewSchema.pre('save', function(next) {
+  if (this.isModified('likes')) {
+    this.likesCount = this.likes.length;
+  }
+  next();
 });
 
 // Mỗi user chỉ được review 1 sản phẩm 1 lần (tránh spam)

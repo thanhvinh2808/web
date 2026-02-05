@@ -22,7 +22,7 @@ interface WishlistContextType {
 
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}';
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/api$/, '');
 
 export function WishlistProvider({ children }: { children: ReactNode }) {
   const [wishlist, setWishlist] = useState<Product[]>([]);
@@ -38,6 +38,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
     try {
       const token = localStorage.getItem('token');
+      // Ensure we hit /api/wishlist correctly
       const response = await fetch(`${API_URL}/api/wishlist`, {
         headers: {
           'Authorization': `Bearer ${token}`

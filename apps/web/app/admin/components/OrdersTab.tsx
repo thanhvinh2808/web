@@ -4,15 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, User, Mail, Phone, Package, CreditCard, Clock, Search, CheckCircle, DollarSign } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}`;
 
 interface OrderItem {
-  productId: string;
-  productName: string;
-  productBrand?: string;
-  productImage?: string;
-  price: number;
-  quantity: number;
+  productId: string,
+  productName: string,
+  productBrand?: string,
+  productImage?: string,
+  price: number,
+  quantity: number,
 }
 
 interface Order {
@@ -92,7 +92,7 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
     const cleanUrl = typeof url === 'string' ? url : (url.url || '');
     if (!cleanUrl || cleanUrl.includes('[object')) return '/placeholder.png';
     if (cleanUrl.startsWith('http')) return cleanUrl;
-    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}').replace('/api', '');
+    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}`).replace('/api', '');
     return `${baseUrl}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`;
   };
 

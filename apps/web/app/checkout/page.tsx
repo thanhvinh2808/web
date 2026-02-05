@@ -10,6 +10,7 @@ import { VoucherSelector } from "../../components/VoucherSelector";
 import { Voucher } from '../types/voucher';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { getImageUrl } from '../../lib/imageHelper';
 
 // --- Helper: Xóa dấu tiếng Việt ---
 function removeAccents(str: string) {
@@ -180,18 +181,6 @@ export default function CheckoutPage() {
   const vatAmount = subtotal * 0.01; // 10% VAT
   const shippingFee = subtotal >= 1000000 ? 0 : (subtotal >= 500000 ? 30000 : 50000);
   
-  const getImageUrl = (item: any): string => {
-    const API_URL = (process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}').replace('/api', '');
-    let rawUrl = item.selectedVariant?.image || item.product.image || '';
-    
-    // Nếu rawUrl là object
-    let url = typeof rawUrl === 'string' ? rawUrl : (rawUrl?.url || '');
-    
-    if (!url || typeof url !== 'string' || url.includes('[object')) return '/placeholder.jpg';
-    if (url.startsWith('http') || url.startsWith('data:')) return url;
-    return `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
-  };
-
   // Calculate discount
   useEffect(() => {
      if (selectedVoucher) {

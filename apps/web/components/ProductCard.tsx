@@ -6,12 +6,14 @@ import { ShoppingCart, Check, TrendingUp } from 'lucide-react';
 import { useCart } from '../app/contexts/CartContext';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { getImageUrl } from '../lib/imageHelper';
 
 interface Product {
   id?: string;
   _id?: string;
   name: string;
   brand?: string;
+  categorySlug?: string;
   price: number;
   originalPrice?: number;
   rating?: number;
@@ -47,34 +49,12 @@ export default function ProductCard({ product, showSoldCount = false }: ProductC
 
   const [isAdding, setIsAdding] = useState(false);
 
-  
-
   const productId = product.id || product._id || '';
 
   const rawSlug = product.slug || productId;
   const productSlug = typeof rawSlug === 'string' ? rawSlug : productId;
 
-  const getImageUrl = (p: Product): string => {
-    const API_URL = (process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}').replace('/api', '');
-    let rawUrl: any = '';
-    
-    if (p.images && Array.isArray(p.images) && p.images.length > 0) {
-      rawUrl = p.images[0];
-    } else if (p.image) {
-      rawUrl = p.image;
-    } else {
-      return '/placeholder-product.jpg';
-    }
-
-    // Nếu rawUrl là object (theo cấu trúc mới {url, alt, ...})
-    let url = typeof rawUrl === 'string' ? rawUrl : (rawUrl?.url || '');
-
-    // Chống lỗi [object Object] nếu dữ liệu bị ép kiểu sai đâu đó trong quá trình nhận diện
-    if (!url || typeof url !== 'string' || url.includes('[object')) return '/placeholder-product.jpg';
-    
-    if (url.startsWith('http') || url.startsWith('data:')) return url;
-    return `${API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
-  };
+  // getImageUrl removed, now using imported helper
 
   const getLowestPrice = (p: Product): number => {
     if (!p.variants || p.variants.length === 0) return p.price;
@@ -217,8 +197,9 @@ export default function ProductCard({ product, showSoldCount = false }: ProductC
 
       <div className="p-4">
         <div className="flex justify-between items-start mb-2">
+        <Link href={`/products?category=${encodeURIComponent(product.categorySlug || 'unknown')} `} className="hover:underline lowercase">
            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{product.brand || 'No Brand'}</span>
-           
+           </Link>
            {/* Hiển thị số lượng đã bán nếu được yêu cầu */}
            {showSoldCount && product.soldCount && product.soldCount > 0 && (
               <div className="flex items-center gap-1 text-[10px] font-black text-primary uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-none">

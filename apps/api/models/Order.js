@@ -56,6 +56,10 @@ const OrderSchema = new mongoose.Schema({
     type: Number, 
     default: 0 
   },
+  shippingFee: {
+    type: Number,
+    default: 0
+  },
   status: { 
     type: String,
     enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
