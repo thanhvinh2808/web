@@ -108,7 +108,7 @@ const RelatedCarousel = ({ products }: { products: Product[] }) => {
       <div className="relative group w-full">
          <button 
             onClick={() => scroll('left')}
-            className="absolute left-[-20px] top-1/2 -translate-y-1/2 z-20 bg-white border border-gray-100 p-2 rounded-none shadow-xl opacity-0 group-hover:opacity-100 transition disabled:opacity-0 hidden lg:block hover:bg-black hover:text-white"
+            className="absolute left-[10px] top-1/2 -translate-y-1/2 z-20 bg-white border border-gray-100 p-2 rounded-none shadow-xl opacity-0 group-hover:opacity-100 transition disabled:opacity-0 hidden lg:block hover:bg-black hover:text-white"
          >
             <ChevronRight size={20} className="rotate-180"/>
          </button>
@@ -127,7 +127,7 @@ const RelatedCarousel = ({ products }: { products: Product[] }) => {
 
          <button 
             onClick={() => scroll('right')}
-            className="absolute right-[-20px] top-1/2 -translate-y-1/2 z-20 bg-white border border-gray-100 p-2 rounded-none shadow-xl opacity-0 group-hover:opacity-100 transition hidden lg:block hover:bg-black hover:text-white"
+            className="absolute right-[10px] top-1/2 -translate-y-1/2 z-20 bg-white border border-gray-100 p-2 rounded-none shadow-xl opacity-0 group-hover:opacity-100 transition hidden lg:block hover:bg-black hover:text-white"
          >
             <ChevronRight size={20}/>
          </button>
@@ -381,8 +381,15 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
         if (productData.categorySlug) {
            const relRes = await fetch(`${API_URL}/api/products?category=${productData.categorySlug}&exclude=${productData.slug}&limit=8`);
            const relData = await relRes.json();
-           const related = Array.isArray(relData) ? relData : relData.data || [];
+           let related = Array.isArray(relData) ? relData : relData.data || [];
            
+           // ✅ FALLBACK: Nếu không có sản phẩm cùng danh mục, lấy sản phẩm mới nhất/khác
+           if (related.length === 0) {
+              const fallbackRes = await fetch(`${API_URL}/api/products?limit=8&exclude=${productData.slug}`);
+              const fallbackData = await fallbackRes.json();
+              related = Array.isArray(fallbackData) ? fallbackData : fallbackData.data || [];
+           }
+
            setRelatedProducts(related);
         }
       } catch (err: any) {
@@ -409,23 +416,40 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
      setOpenAccordion(openAccordion === id ? null : id);
   };
   
-  // Flatten Variants thành list Size
+  // Flatten Variants thành list Size và list Color
   const sizeOptions = React.useMemo(() => {
     if (!product?.variants) return [];
+    // Ưu tiên tìm variant có chữ 'size', nếu không có thì lấy cái đầu tiên (thường là size)
     const sizeVar = product.variants.find(v => v.name.toLowerCase().includes('size')) || product.variants[0];
     return sizeVar?.options || [];
+  }, [product]);
+
+  const colorOptions = React.useMemo(() => {
+    if (!product?.variants) return [];
+    // Tìm variant có chữ 'color' hoặc 'màu'
+    const colorVar = product.variants.find(v => 
+       v.name.toLowerCase().includes('color') || 
+       v.name.toLowerCase().includes('màu')
+    );
+    return colorVar?.options || [];
   }, [product]);
 
   const currentPrice = selectedSize ? selectedSize.price : (product?.price || 0);
   const currentStock = selectedSize ? selectedSize.stock : (product?.stock || 0);
   
-  // Tự động chọn size đầu tiên còn hàng
+  // State cho màu sắc
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+
+  // Tự động chọn size/màu đầu tiên còn hàng
   useEffect(() => {
      if (sizeOptions.length > 0 && !selectedSize) {
         const firstAvailable = sizeOptions.find(opt => opt.stock > 0);
         if (firstAvailable) setSelectedSize(firstAvailable);
      }
-  }, [sizeOptions]);
+     if (colorOptions.length > 0 && !selectedColor) {
+        setSelectedColor(colorOptions[0].name);
+     }
+  }, [sizeOptions, colorOptions]);
 
   // Chuẩn hóa danh sách ảnh URL để hiển thị
   const displayImages = React.useMemo(() => {
@@ -446,14 +470,22 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
 
   const handleAddToCart = () => {
     if (!product || isActionLoading) return;
+    
+    // Validate Size
     if (sizeOptions.length > 0 && !selectedSize) {
        toast.error('Vui lòng chọn Size!');
        return;
     }
 
+    // Validate Color
+    if (colorOptions.length > 0 && !selectedColor) {
+       toast.error('Vui lòng chọn Màu sắc!');
+       return;
+    }
+
     setIsActionLoading(true);
     // @ts-ignore
-    addToCart(product, quantity, selectedSize || undefined);
+    addToCart(product, quantity, selectedSize || undefined, selectedColor || undefined);
     
     // Feedback
     const btn = document.getElementById('add-to-cart-btn');
@@ -472,14 +504,20 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   const handleBuyNow = (e: React.MouseEvent) => {
      e.preventDefault(); // Ngăn chặn mọi hành vi mặc định hoặc bubbling
      if (!product || isActionLoading) return;
+     
      if (sizeOptions.length > 0 && !selectedSize) {
         toast.error('Vui lòng chọn Size!');
         return;
      }
 
+     if (colorOptions.length > 0 && !selectedColor) {
+        toast.error('Vui lòng chọn Màu sắc!');
+        return;
+     }
+
      setIsActionLoading(true);
      // @ts-ignore
-     addToCart(product, quantity, selectedSize || undefined);
+     addToCart(product, quantity, selectedSize || undefined, selectedColor || undefined);
      
      // Chuyển trang sau một khoảng thời gian cực ngắn để state kịp commit
      setTimeout(() => {
@@ -521,11 +559,16 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             {/* LEFT COLUMN: IMAGES (60%) */}
             <div className="lg:col-span-7">
                {/* Main Image */}
-               <div className="bg-gray-50 aspect-square overflow-hidden mb-4 border border-gray-100 group">
+               <div className="bg-gray-50 aspect-square overflow-hidden mb-4 border border-gray-100 group relative">
                   <img 
-                     src={activeImage || (displayImages.length > 0 ? displayImages[0] : '')} 
+                     src={activeImage || (displayImages.length > 0 ? displayImages[0] : 'https://placehold.co/600x600/f3f4f6/000000?text=No+Image')} 
                      alt={product.name} 
                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                     onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.onerror = null; 
+                        target.src = 'https://placehold.co/600x600/f3f4f6/000000?text=No+Image';
+                     }}
                   />
                </div>
                
@@ -538,7 +581,16 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                            onClick={() => setActiveImage(img)}
                            className={`aspect-square border-2 transition-all overflow-hidden bg-gray-50 ${activeImage === img ? 'border-black opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
                         >
-                           <img src={img} alt={`${product.name} ${idx}`} className="w-full h-full object-cover" />
+                           <img 
+                              src={img} 
+                              alt={`${product.name} ${idx}`} 
+                              className="w-full h-full object-cover" 
+                              onError={(e) => {
+                                 const target = e.target as HTMLImageElement;
+                                 target.onerror = null; 
+                                 target.src = 'https://placehold.co/600x600/f3f4f6/000000?text=No+Image';
+                              }}
+                           />
                         </button>
                      ))}
                   </div>
@@ -646,7 +698,39 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                   </div>
                )}
 
-               {/* ... (Giữ nguyên Quantity Selector và Buttons) */}
+               {/* Color Selector (MỚI) */}
+               {colorOptions.length > 0 && (
+                  <div className="pt-2">
+                     <div className="flex justify-between items-center mb-3">
+                        <span className="font-bold text-sm">Chọn Màu Sắc</span>
+                     </div>
+                     <div className="flex flex-wrap gap-3">
+                        {colorOptions.map((opt, idx) => {
+                           const isSelected = selectedColor === opt.name;
+                           
+                           return (
+                              <button
+                                 key={idx}
+                                 onClick={() => setSelectedColor(opt.name)}
+                                 className={`
+                                    px-4 py-2 rounded-none border text-sm font-bold transition flex items-center gap-2
+                                    ${isSelected 
+                                       ? 'border-primary bg-gray-900 text-white' 
+                                       : 'border-gray-200 hover:border-primary text-gray-700 hover:text-black' 
+                                    }
+                                 `}
+                              >
+                                 {opt.name.startsWith('#') && (
+                                    <span className="w-4 h-4 rounded-full border border-gray-200" style={{ backgroundColor: opt.name }}></span>
+                                 )}
+                                 {opt.name}
+                              </button>
+                           )
+                        })}
+                     </div>
+                  </div>
+               )}
+
                {/* Quantity Selector */}
                <div className="space-y-3">
                   <span className="font-bold text-sm">Số lượng</span>
@@ -707,7 +791,6 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                      )}
                   </AccordionItem>
                   
-                  {/* ... (Các Accordion khác giữ nguyên) */}
                   <AccordionItem 
                      title="Vận chuyển & Đổi trả" 
                      isOpen={openAccordion === 'shipping'} 

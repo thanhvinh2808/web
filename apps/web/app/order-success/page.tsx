@@ -22,7 +22,7 @@ export default function OrderSuccessPage() {
     const cleanUrl = typeof url === 'string' ? url : (url.url || '');
     if (!cleanUrl || cleanUrl.includes('[object')) return '/placeholder.png';
     if (cleanUrl.startsWith('http')) return cleanUrl;
-    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}').replace('/api', '');
+    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}`).replace('/api', '');
     return `${baseUrl}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`;
   };
 
@@ -36,7 +36,7 @@ export default function OrderSuccessPage() {
           
           // 2. Nếu không thấy (do Context chưa kịp refresh), gọi API trực tiếp
           if (!foundOrder) {
-            const API_URL = process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}';
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}`;
             const token = localStorage.getItem('token');
             const res = await fetch(`${API_URL}/api/orders/${orderId}`, {
               headers: { 'Authorization': `Bearer ${token}` }
@@ -89,14 +89,25 @@ export default function OrderSuccessPage() {
           <h1 className="text-4xl font-black italic tracking-tighter mb-2 uppercase italic uppercase">ĐẶT HÀNG THÀNH CÔNG!</h1>
           <p className="text-gray-500 mb-10 font-medium italic italic uppercase">Cảm ơn {order.customerInfo.fullName}, đơn hàng của bạn đang được xử lý.</p>
           
-          {/* ✅ TÍCH HỢP VIETQR NẾU CHỌN BANKING */}
-          {order.paymentMethod === 'banking' && (
+          {/* ✅ TÍCH HỢP VIETQR NẾU CHỌN BANKING & CHƯA THANH TOÁN */}
+          {order.paymentMethod === 'banking' && order.paymentStatus === 'unpaid' && (
              <div className="mb-10">
                 <QRCodePayment 
                    amount={order.totalAmount} 
-                   orderInfo={order.orderNumber || orderId?.slice(-6) || 'FOOTMARK'}
-                   orderId={order._id || order.id}
+                   orderCode={order.orderNumber || (typeof orderId === 'string' ? orderId.slice(-6).toUpperCase() : 'ORDER')}
+                   orderId={order._id || order.id || ''}
+                   onSuccess={() => {
+                      // Reload order data to update UI
+                      window.location.reload();
+                   }}
                 />
+             </div>
+          )}
+
+          {/* NẾU ĐÃ THANH TOÁN THÌ HIỆN THÔNG BÁO */}
+          {(order.paymentStatus === 'paid' || (order as any).isPaid) && (
+             <div className="mb-10 bg-green-50 p-4 border border-green-200 text-green-700 font-bold uppercase tracking-widest text-sm flex items-center justify-center gap-2">
+                <CheckCircle size={18}/> Đơn hàng đã được thanh toán
              </div>
           )}
 

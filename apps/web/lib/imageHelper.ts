@@ -22,7 +22,11 @@ export const getImageUrl = (item: any): string => {
     } else if (item?.product?.image) {
       rawUrl = item.product.image;
     } else if (item?.image) {
+      // Handle legacy object or field named image
       rawUrl = item.image;
+    } else if (item?.url) {
+      // ✅ Handle standard image object { url: '...' }
+      rawUrl = item.url;
     } else if (typeof item === 'string') {
       rawUrl = item;
     }
@@ -34,12 +38,12 @@ export const getImageUrl = (item: any): string => {
     }
 
     if (!rawUrl || typeof rawUrl !== 'string') {
-      return '/placeholder.jpg';
+      return 'https://placehold.co/600x600/f3f4f6/000000?text=No+Image';
     }
 
     // Check for "bad data" (legacy issues)
     if (rawUrl.includes('[object')) {
-      return '/placeholder.jpg';
+      return 'https://placehold.co/600x600/f3f4f6/000000?text=No+Image';
     }
 
     // Return absolute URLs as is
@@ -48,14 +52,20 @@ export const getImageUrl = (item: any): string => {
     }
 
     // Handle relative URLs (Local Uploads)
-    // Ensure it starts with / if not present
-    const cleanPath = rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`;
+    // 1. Replace backslashes with forward slashes (Windows path fix)
+    let cleanPath = rawUrl.replace(/\\/g, '/');
+    
+    // 2. Ensure it starts with / if not present
+    cleanPath = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
+    
+    // 3. Remove duplicate /uploads if present (e.g. /uploads/uploads/...)
+    // if (cleanPath.startsWith('/uploads') && API_URL.endsWith('/uploads')) { ... } // Logic tùy chọn
     
     // If it's already a complete path like /uploads/..., prepend domain
     return `${API_URL}${cleanPath}`;
 
   } catch (error) {
     console.error('Error parsing image URL:', error);
-    return '/placeholder.jpg';
+    return 'https://placehold.co/600x600/f3f4f6/000000?text=No+Image';
   }
 };

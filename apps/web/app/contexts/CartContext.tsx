@@ -39,13 +39,14 @@ interface CartItem {
   product: Product;
   quantity: number;
   selectedVariant?: VariantOption;
+  selectedColor?: string; // ✅ Thêm field màu sắc
 }
 
 interface CartContextType {
   cart: CartItem[];
-  addToCart: (product: Product, quantity?: number, selectedVariant?: VariantOption) => void;
-  updateQuantity: (productId: string, variantKey: string | null, newQty: number) => void;
-  removeItem: (productId: string, variantKey?: string | null) => void;
+  addToCart: (product: Product, quantity?: number, selectedVariant?: VariantOption, selectedColor?: string) => void;
+  updateQuantity: (productId: string, variantKey: string | null, color: string | null, newQty: number) => void;
+  removeItem: (productId: string, variantKey?: string | null, color?: string | null) => void;
   totalItems: number;
   totalPrice: number;
   clearCart: () => void;
@@ -143,11 +144,12 @@ export const CartProvider = ({
     return cart.reduce((total, item) => total + item.quantity, 0);
   };
 
-  // ✅ ADD TO CART (Logic mới - Bất biến hoàn toàn + Chặn vượt kho)
-  const addToCart = (product: Product, quantity: number = 1, selectedVariant?: VariantOption) => {
+  // ✅ ADD TO CART (Logic mới - Bất biến hoàn toàn + Chặn vượt kho + Support Color)
+  const addToCart = (product: Product, quantity: number = 1, selectedVariant?: VariantOption, selectedColor?: string) => {
     setCart(prevCart => {
       const productId = String(product._id || product.id);
       const variantKey = getVariantKey(selectedVariant);
+      const colorKey = selectedColor || null; // Normalize
       
       // Lấy giới hạn kho (ưu tiên kho của Size đã chọn, nếu không thì lấy kho tổng)
       const maxStock = selectedVariant ? selectedVariant.stock : (product.stock || 0);
@@ -155,7 +157,8 @@ export const CartProvider = ({
       const existingIndex = prevCart.findIndex(item => {
         const itemId = String(item.product._id || item.product.id);
         const itemKey = getVariantKey(item.selectedVariant);
-        return itemId === productId && itemKey === variantKey;
+        const itemColor = item.selectedColor || null;
+        return itemId === productId && itemKey === variantKey && itemColor === colorKey;
       });
 
       if (existingIndex > -1) {
@@ -166,7 +169,7 @@ export const CartProvider = ({
         if (potentialQty > maxStock) {
            const allowedExtra = maxStock - currentQty;
            if (allowedExtra <= 0) {
-              alert(`Sản phẩm này chỉ còn ${maxStock} cái trong kho. Bạn đã có đủ số lượng tối đa trong giỏ hàng.`);
+              alert(`Sản phẩm này chỉ còn ${maxStock} cái trong kho (Size ${selectedVariant?.name}). Bạn đã có đủ số lượng tối đa trong giỏ hàng.`);
               return prevCart;
            }
            alert(`Bạn chỉ có thể thêm tối đa ${allowedExtra} sản phẩm này vào giỏ hàng.`);
@@ -186,24 +189,25 @@ export const CartProvider = ({
         if (quantity > maxStock) {
            alert(`Sản phẩm này chỉ còn ${maxStock} cái trong kho.`);
         }
-        return [...prevCart, { product, quantity: finalQty, selectedVariant }];
+        return [...prevCart, { product, quantity: finalQty, selectedVariant, selectedColor }];
       }
     });
   };
 
   // ✅ UPDATE QUANTITY
-  const updateQuantity = (productId: string, variantKey: string | null, newQty: number) => {
+  const updateQuantity = (productId: string, variantKey: string | null, color: string | null, newQty: number) => {
     if (newQty <= 0) {
-      removeItem(productId, variantKey);
+      removeItem(productId, variantKey, color);
       return;
     }
     
     setCart(prevCart =>
       prevCart.map(item => {
-        const itemId = item.product._id || item.product.id;
+        const itemId = String(item.product._id || item.product.id);
         const itemKey = getVariantKey(item.selectedVariant);
+        const itemColor = item.selectedColor || null;
         
-        if (itemId === productId && itemKey === variantKey) {
+        if (itemId === productId && itemKey === variantKey && itemColor === color) {
           return { ...item, quantity: newQty };
         }
         return item;
@@ -212,17 +216,21 @@ export const CartProvider = ({
   };
 
   // ✅ REMOVE ITEM
-  const removeItem = (productId: string, variantKey?: string | null) => {
+  const removeItem = (productId: string, variantKey?: string | null, color?: string | null) => {
     setCart(prevCart => 
       prevCart.filter(item => {
-        const itemId = item.product._id || item.product.id;
+        const itemId = String(item.product._id || item.product.id);
         const itemKey = getVariantKey(item.selectedVariant);
+        const itemColor = item.selectedColor || null;
         
         // Giữ lại nếu khác ID
         if (itemId !== productId) return true;
         
         // Giữ lại nếu cùng ID nhưng khác Size
         if (itemKey !== (variantKey || null)) return true;
+
+        // Giữ lại nếu cùng ID, cùng Size nhưng khác Màu
+        if (itemColor !== (color || null)) return true;
         
         return false;
       })

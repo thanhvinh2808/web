@@ -1,137 +1,190 @@
+"use client";
+
 import React, { useEffect, useState } from 'react';
-import { Copy, Check, Clock, CheckCircle2, Loader2 } from 'lucide-react';
+import { CheckCircle, Copy, RefreshCw, Smartphone } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useSocket } from '../app/contexts/SocketContext'; // Đảm bảo bạn đã có SocketContext
 import { useRouter } from 'next/navigation';
 
+// ✅ CẤU HÌNH TÀI KHOẢN NGÂN HÀNG NHẬN TIỀN (THAY CỦA BẠN VÀO ĐÂY)
+const BANK_INFO = {
+  BANK_ID: 'MB', // Mã ngân hàng (MB, VCB, TPB...)
+  ACCOUNT_NO: '0336066224', // Số tài khoản của bạn
+  TEMPLATE: 'compact', // compact, qr_only, print
+  ACCOUNT_NAME: 'VO THANH VINH' // Tên chủ tài khoản
+};
+
 interface QRCodePaymentProps {
+  orderId: string;
+  orderCode: string; // Mã đơn hàng (VD: ORD-1234)
   amount: number;
-  orderInfo: string;
-  orderId?: string;
-  accountName?: string;
-  accountNumber?: string;
-  bankId?: string; 
+  onSuccess?: () => void;
 }
 
-export default function QRCodePayment({
-  amount,
-  orderInfo,
-  orderId,
-  accountName = "VO THANH VINH",
-  accountNumber = "0378538884",
-  bankId = "970422" 
-}: QRCodePaymentProps) {
+export default function QRCodePayment({ orderId, orderCode, amount, onSuccess }: QRCodePaymentProps) {
   const router = useRouter();
-  const [timeLeft, setTimeLeft] = useState(15 * 60);
+  const { socket } = useSocket(); // Dùng socket để lắng nghe sự kiện
   const [isPaid, setIsPaid] = useState(false);
-  const intAmount = Math.ceil(amount);
+  const [countdown, setCountdown] = useState(600); // 10 phút đếm ngược
+
+  // Tạo nội dung chuyển khoản: "TT [Mã Đơn Hàng]"
+  const description = `TT ${orderCode}`.replace(/[^a-zA-Z0-9]/g, ''); 
   
-  const qrUrl = `https://img.vietqr.io/image/${bankId}-${accountNumber}-print.png?amount=${intAmount}&addInfo=${encodeURIComponent(orderInfo)}&accountName=${encodeURIComponent(accountName)}`;
+  // Link tạo QR động từ VietQR
+  const qrUrl = `https://img.vietqr.io/image/${BANK_INFO.BANK_ID}-${BANK_INFO.ACCOUNT_NO}-${BANK_INFO.TEMPLATE}.png?amount=${amount}&addInfo=${description}&accountName=${encodeURIComponent(BANK_INFO.ACCOUNT_NAME)}`;
+
+  // Format tiền tệ
+  const formatCurrency = (val: number) => 
+    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+
+  // Format thời gian đếm ngược
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+      setCountdown((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
-
-    // ✅ GIẢ LẬP LẮNG NGHE THANH TOÁN (SOCKET HOẶC POLLING)
-    // Trong thực tế, anh sẽ dùng socket.on('paymentSuccess', ...)
-    const checkPayment = setInterval(() => {
-       // Ở đây em làm logic giả lập: Nếu nhấn nút "Tôi đã chuyển tiền" 
-       // hoặc sau một thời gian nhất định (nếu anh muốn test tự động)
-    }, 3000);
-
-    return () => {
-      clearInterval(timer);
-      clearInterval(checkPayment);
-    };
+    return () => clearInterval(timer);
   }, []);
 
-  const handleTransferred = async () => {
-    toast.success('Hệ thống đang kiểm tra giao dịch...');
-    
+  // ✅ LẮNG NGHE SOCKET: Khi Server báo "Paid" -> Tự động chuyển trạng thái
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleOrderStatus = (data: any) => {
+      // Check đúng đơn hàng và trạng thái đã thanh toán
+      if (data.orderId === orderId && (data.paymentStatus === 'paid' || data.isPaid)) {
+        setIsPaid(true);
+        toast.success('Thanh toán thành công! Cảm ơn bạn.');
+        if (onSuccess) onSuccess();
+      }
+    };
+
+    socket.on('orderStatusUpdated', handleOrderStatus);
+
+    return () => {
+      socket.off('orderStatusUpdated', handleOrderStatus);
+    };
+  }, [socket, orderId, onSuccess]);
+
+  // ✅ HÀM GIẢ LẬP THANH TOÁN (DÀNH CHO DEMO)
+  const simulatePayment = async () => {
     try {
-      if (orderId) {
-        const token = localStorage.getItem('token');
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}';
-        await fetch(`${API_URL}/api/orders/${orderId}/pay`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/orders/${orderId}/pay`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Socket sẽ tự trigger việc update UI, nhưng ta set luôn cho nhanh
+        setIsPaid(true); 
       }
     } catch (error) {
-      console.error('Error updating payment status:', error);
+      console.error('Demo payment error', error);
     }
-
-    // Giả lập sau 2 giây hệ thống xác nhận thành công
-    setTimeout(() => {
-      setIsPaid(true);
-      toast.success('Thanh toán thành công!');
-      // Tự động chuyển trang sau 3 giây
-      setTimeout(() => {
-        router.push('/profile/orders');
-      }, 3000);
-    }, 2000);
   };
 
   if (isPaid) {
     return (
-      <div className="bg-white border-2 border-green-500 rounded-none p-10 text-center animate-bounce-in max-w-md mx-auto">
-        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-          <CheckCircle2 className="text-green-600 w-12 h-12" />
+      <div className="bg-green-50 border border-green-200 p-8 text-center animate-fade-in rounded-none">
+        <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle size={32} />
         </div>
-        <h3 className="text-2xl font-black uppercase italic tracking-tighter mb-2">Thanh toán thành công!</h3>
-        <p className="text-gray-500 text-sm font-medium mb-6">Hệ thống đã nhận được tiền. Đơn hàng của bạn đang được xử lý.</p>
-        <div className="flex items-center justify-center gap-2 text-primary font-bold text-xs uppercase tracking-widest">
-          <Loader2 className="animate-spin" size={16}/> Đang chuyển trang...
-        </div>
+        <h3 className="text-xl font-black text-green-700 uppercase tracking-tighter mb-2">Thanh toán thành công</h3>
+        <p className="text-green-600 font-medium mb-4">Đơn hàng của bạn đang được xử lý.</p>
+        <button 
+          onClick={() => router.push('/profile/orders')}
+          className="bg-green-600 text-white px-6 py-2 font-bold uppercase tracking-widest hover:bg-green-700 transition"
+        >
+          Xem đơn hàng
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="bg-white border border-blue-100 rounded-none overflow-hidden shadow-lg animate-fade-in-up max-w-md mx-auto">
-      <div className="bg-primary/10 p-4 border-b border-blue-100 text-center relative overflow-hidden">
-         {/* Hiệu ứng sóng quét cho thấy đang chờ */}
-         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
-         
-         <h3 className="font-black text-primary uppercase tracking-widest text-sm flex items-center justify-center gap-2 relative z-10">
-            <Clock size={16}/> Chờ thanh toán: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
-         </h3>
-         <div className="flex items-center justify-center gap-2 mt-1 relative z-10">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-            </span>
-            <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Hệ thống đang chờ bạn quét mã...</p>
+    <div className="bg-white border border-gray-200 shadow-xl p-6 max-w-sm mx-auto animate-fade-in-up rounded-none">
+      <div className="text-center mb-6">
+        <h3 className="text-lg font-black uppercase tracking-tighter text-primary flex items-center justify-center gap-2">
+           <Smartphone size={20}/> Quét mã thanh toán
+        </h3>
+        <p className="text-xs text-gray-500 font-bold uppercase mt-1">
+          Hỗ trợ MoMo / VNPay / App Ngân hàng
+        </p>
+      </div>
+
+      {/* QR Image */}
+      <div className="relative group mx-auto w-fit mb-6">
+         <div className="border-2 border-primary p-2 bg-white rounded-none">
+            <img 
+               src={qrUrl} 
+               alt="VietQR Payment" 
+               className="w-48 h-48 object-contain"
+            />
+         </div>
+         <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white px-2 py-1 border border-gray-200 shadow text-[10px] font-bold text-gray-500 whitespace-nowrap rounded-none">
+            Hết hạn sau: <span className="text-red-500">{formatTime(countdown)}</span>
          </div>
       </div>
-      
-      <div className="p-6">
-         {/* QR Code với overlay "Đang chờ" mờ nhẹ */}
-         <div className="bg-white p-2 border border-gray-200 rounded-none shadow-inner mb-6 mx-auto w-fit relative group">
-            <img src={qrUrl} alt="VietQR Payment" className="w-full max-w-[250px] object-contain block" />
-         </div>
-         
-         {/* Các trường thông tin copy giữ nguyên như cũ */}
-         <div className="space-y-4 text-sm mb-6">
-            <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-               <span className="text-gray-500 text-xs font-bold uppercase tracking-widest">Số tiền</span>
-               <span className="font-black text-primary text-lg">{amount.toLocaleString('vi-VN')}đ</span>
-            </div>
-            <div className="flex justify-between items-center bg-yellow-50 p-2 border border-yellow-100">
-               <span className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">Nội dung CK</span>
-               <span className="font-black text-red-500">{orderInfo}</span>
-            </div>
-         </div>
 
-         <button 
-            onClick={handleTransferred}
-            className="w-full bg-black text-white py-4 font-bold uppercase tracking-widest hover:bg-primary transition-all text-xs flex items-center justify-center gap-2"
-         >
-            Tôi đã chuyển tiền <Check size={16}/>
-         </button>
+      {/* Payment Details */}
+      <div className="space-y-3 text-sm bg-gray-50 p-4 rounded-none border border-gray-100 mb-6">
+        <div className="flex justify-between">
+          <span className="text-gray-500 font-medium">Ngân hàng:</span>
+          <span className="font-bold">{BANK_INFO.BANK_ID}</span>
+        </div>
+        <div className="flex justify-between">
+           <span className="text-gray-500 font-medium">Chủ TK:</span>
+           <span className="font-bold uppercase text-xs">{BANK_INFO.ACCOUNT_NAME}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-gray-500 font-medium">Số TK:</span>
+          <div className="flex items-center gap-2">
+             <span className="font-bold tracking-wider">{BANK_INFO.ACCOUNT_NO}</span>
+             <button 
+               onClick={() => { navigator.clipboard.writeText(BANK_INFO.ACCOUNT_NO); toast.success('Đã sao chép'); }}
+               className="text-primary hover:text-black"
+             >
+               <Copy size={12}/>
+             </button>
+          </div>
+        </div>
+        <div className="flex justify-between items-center border-t border-gray-200 pt-2 mt-2">
+          <span className="text-gray-500 font-medium">Số tiền:</span>
+          <span className="font-black text-lg text-primary">{formatCurrency(amount)}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-gray-500 font-medium">Nội dung:</span>
+          <div className="flex items-center gap-2">
+             <span className="font-bold text-black bg-yellow-100 px-2 py-0.5">{description}</span>
+             <button 
+               onClick={() => { navigator.clipboard.writeText(description); toast.success('Đã sao chép nội dung'); }}
+               className="text-primary hover:text-black"
+             >
+               <Copy size={12}/>
+             </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="text-center">
+        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-4">
+           Hệ thống tự động xác nhận sau 1-3 phút
+        </p>
+
+        {/* DEMO BUTTON - CHỈ HIỆN KHI DEV HOẶC DEMO */}
+        <button 
+           onClick={simulatePayment}
+           className="w-full border border-dashed border-gray-300 text-gray-400 py-2 text-xs font-bold hover:bg-gray-50 hover:text-black transition uppercase tracking-widest"
+           title="Click để giả lập thanh toán thành công (Demo Only)"
+        >
+           [Demo] Xác nhận đã thanh toán
+        </button>
       </div>
     </div>
   );

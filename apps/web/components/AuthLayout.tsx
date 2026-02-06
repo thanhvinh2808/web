@@ -54,7 +54,7 @@ export default function AuthLayout({ children, title, subtitle, image, side }: A
         <div className={`absolute bottom-8 hidden lg:block ${side === 'right' ? 'left-8' : 'right-8'}`}>
            <div className="flex items-center gap-3 text-gray-300">
               <div className="w-12 h-px bg-gray-200"></div>
-              <span className="text-[10px] font-black uppercase tracking-[0.4em]">Footmark Elite 2024</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.4em]">Footmark Elite 2026</span>
            </div>
         </div>
       </div>

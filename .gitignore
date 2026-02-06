@@ -20,10 +20,12 @@ node_modules/
 
 # production
 /build
+/dist
 
 # misc
 .DS_Store
 *.pem
+Thumbs.db
 
 # debug
 npm-debug.log*
@@ -31,8 +33,13 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files (NEVER COMMIT THIS)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env*
 
 # vercel
 .vercel
@@ -40,8 +47,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-.env
 
-# uploads
-# apps/api/uploads/*
+# uploads (Ignore uploaded files but keep directory structure)
+apps/api/uploads/*
 !apps/api/uploads/.gitkeep
+apps/api/uploads/products/*
+!apps/api/uploads/products/.gitkeep
+
+# IDE
+.idea
+.vscode

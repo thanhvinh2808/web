@@ -71,7 +71,8 @@ export default function CartPage() {
               {cart.map((item, index) => {
                 const productId = item.product._id || item.product.id || '';
                 const variantKey = item.selectedVariant?.name || null;
-                const itemKey = `${productId}-${variantKey || 'base'}-${index}`;
+                const colorKey = item.selectedColor || null; // ✅ Lấy Color
+                const itemKey = `${productId}-${variantKey || 'base'}-${colorKey || 'base'}-${index}`;
                 
                 return (
                   <div key={itemKey} className="flex gap-4 sm:gap-6 py-6 border-b border-gray-100 last:border-0">
@@ -94,7 +95,7 @@ export default function CartPage() {
                               </Link>
                            </h3>
                            <button 
-                              onClick={() => removeItem(productId, variantKey)}
+                              onClick={() => removeItem(productId, variantKey, colorKey)} // ✅ Pass color
                               className="text-gray-400 hover:text-red-500 transition p-1"
                            >
                               <Trash2 size={18}/>
@@ -103,17 +104,24 @@ export default function CartPage() {
                         
                         <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{item.product.brand}</p>
                         
-                        {item.selectedVariant && (
-                           <div className="inline-flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-none text-xs font-bold text-gray-700 border border-gray-200">
-                              <span>Size: {item.selectedVariant.name}</span>
-                           </div>
-                        )}
+                        <div className="flex flex-wrap gap-2">
+                           {item.selectedVariant && (
+                              <div className="inline-flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-none text-xs font-bold text-gray-700 border border-gray-200">
+                                 <span>Size: {item.selectedVariant.name}</span>
+                              </div>
+                           )}
+                           {item.selectedColor && (
+                              <div className="inline-flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-none text-xs font-bold text-gray-700 border border-gray-200">
+                                 <span>Màu: {item.selectedColor}</span>
+                              </div>
+                           )}
+                        </div>
                       </div>
 
                       <div className="flex justify-between items-end mt-4">
                          <div className="flex items-center border border-gray-300 rounded-none h-9">
                             <button 
-                               onClick={() => updateQuantity(productId, variantKey, item.quantity - 1)}
+                               onClick={() => updateQuantity(productId, variantKey, colorKey, item.quantity - 1)} // ✅ Pass color
                                className="px-3 hover:bg-gray-100 h-full flex items-center justify-center text-gray-600 disabled:opacity-50"
                                disabled={item.quantity <= 1}
                             >
@@ -124,7 +132,7 @@ export default function CartPage() {
                                onClick={() => {
                                   const maxStock = item.selectedVariant ? item.selectedVariant.stock : (item.product.stock || 0);
                                   if (item.quantity < maxStock) {
-                                     updateQuantity(productId, variantKey, item.quantity + 1);
+                                     updateQuantity(productId, variantKey, colorKey, item.quantity + 1); // ✅ Pass color
                                   } else {
                                      toast.error(`Sản phẩm này chỉ còn ${maxStock} cái trong kho`);
                                   }

@@ -215,7 +215,7 @@ export default function CheckoutPage() {
        try {
           const token = localStorage.getItem('token');
           // ✅ UPDATE API ENDPOINT
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/addresses`,
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/addresses`,
           {
              headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -327,7 +327,7 @@ export default function CheckoutPage() {
      try {
         const token = localStorage.getItem('token');
         // ✅ UPDATE API ENDPOINT
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/addresses`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/addresses`, {
            method: 'POST',
            headers: {
               'Content-Type': 'application/json',

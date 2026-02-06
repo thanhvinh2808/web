@@ -2,6 +2,7 @@ import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import { createNotification } from './adminController.js';
 import { sendNewOrderEmail } from '../services/emailService.js';
+import mongoose from 'mongoose';
 
 // ✅ CREATE ORDER (ATOMIC & SAFE)
 export const createOrder = async (req, res) => {
@@ -130,5 +131,145 @@ export const createOrder = async (req, res) => {
       success: false, 
       message: error.message || 'Lỗi xử lý đơn hàng' 
     });
+  }
+};
+
+// ✅ GET USER ORDERS
+export const getUserOrders = async (req, res) => {
+  try {
+    const orders = await Order.find({ userId: req.user.id })
+      .sort({ createdAt: -1 })
+      .lean();
+    
+    res.json({
+      success: true,
+      data: orders,
+      total: orders.length
+    });
+    
+  } catch (error) {
+    console.error('❌ Error fetching orders:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error: ' + error.message
+    });
+  }
+};
+
+// ✅ GET ORDER BY ID
+export const getOrderById = async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid order ID'
+      });
+    }
+    
+    const order = await Order.findById(req.params.id).populate('userId', 'name email');
+    
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      order
+    });
+    
+  } catch (error) {
+    console.error('❌ Error fetching order:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error: ' + error.message
+    });
+  }
+};
+
+// ✅ CANCEL ORDER
+export const cancelOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const { reason } = req.body; // Lý do hủy (optional)
+
+    const order = await Order.findOne({ _id: id, userId });
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
+    }
+
+    if (['shipped', 'delivered', 'cancelled', 'completed'].includes(order.status)) {
+      return res.status(400).json({ success: false, message: 'Không thể hủy đơn hàng ở trạng thái này' });
+    }
+
+    order.status = 'cancelled';
+    order.cancelReason = reason || 'Người dùng hủy';
+    await order.save();
+
+    // RESTOCK LẠI SỐ LƯỢNG (Nếu cần thiết - tùy nghiệp vụ)
+    // Ở đây tôi giữ đơn giản là chỉ đổi status, Admin sẽ xử lý restock nếu cần, 
+    // hoặc bạn có thể tự động restock tại đây.
+
+    if (global.io) {
+        global.io.to('admin').emit('orderStatusUpdated', {
+            orderId: order._id,
+            status: 'cancelled',
+            order
+        });
+    }
+
+    res.json({ success: true, message: 'Đã hủy đơn hàng thành công', order });
+
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ✅ MARK AS PAID (QR Code Payment Success)
+export const markOrderAsPaid = async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid order ID' });
+    }
+
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Check ownership
+    if (order.userId.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    order.paymentStatus = 'paid';
+    order.isPaid = true;
+    order.paidAt = new Date();
+    
+    // Nếu đơn đang pending -> processing luôn
+    if (order.status === 'pending') {
+      order.status = 'processing';
+    }
+
+    await order.save();
+    
+    // Notify
+    if (global.io) {
+       global.io.to(`user:${order.userId}`).emit('orderStatusUpdated', {
+          orderId: order._id,
+          status: order.status,
+          paymentStatus: 'paid',
+          order
+       });
+    }
+
+    res.json({ success: true, message: 'Order paid successfully', order });
+  } catch (error) {
+    console.error('❌ Error marking order as paid:', error);
+    res.status(500).json({ success: false, message: 'Server error: ' + error.message });
   }
 };

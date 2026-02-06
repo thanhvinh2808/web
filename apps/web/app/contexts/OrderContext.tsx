@@ -70,7 +70,8 @@ interface OrderContextType {
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
 
 // --- API URL ---
-const API_URL = process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api`;
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = BASE_URL.endsWith('/api') ? BASE_URL : `${BASE_URL}/api`;
 
 // --- PROVIDER ---
 export function OrderProvider({ children }: { children: ReactNode }) {
@@ -89,7 +90,10 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   try {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     
-    const response = await fetch(`${API_URL}/api/user/orders`, {
+    // Fix endpoint: API_URL đã có /api, nên chỉ cần /user/orders
+    // Nếu API_URL chưa có /api (do config sai), fetch sẽ fail.
+    // Logic trên đảm bảo API_URL luôn kết thúc bằng /api
+    const response = await fetch(`${API_URL}/user/orders`, {
       headers: token ? { 
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
