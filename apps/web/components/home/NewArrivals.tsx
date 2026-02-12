@@ -41,9 +41,14 @@ export default function NewArrivals() {
 
     if (activeTab === 'new') {
       filtered = filtered.sort((a, b) => {
-        if (a.isNew && !b.isNew) return -1;
-        if (!a.isNew && b.isNew) return 1;
-        return (new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        // Ưu tiên ngày tạo mới nhất lên đầu
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        
+        if (dateB !== dateA) return dateB - dateA;
+        
+        // Dự phòng bằng _id
+        return (b._id || '').localeCompare(a._id || '');
       });
     } else {
       filtered = filtered.sort((a, b) => {
@@ -138,19 +143,35 @@ export default function NewArrivals() {
               <ChevronLeft size={18} />
             </button>
             
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-              <button
-                key={page}
-                onClick={() => handlePageChange(page)}
-                className={`w-10 h-10 flex items-center justify-center font-bold text-xs transition rounded-none ${
-                  currentPage === page 
-                    ? 'bg-primary text-white border-2 border-primary' 
-                    : 'bg-white border-2 border-gray-100 text-gray-400 hover:border-primary hover:text-primary'
-                }`}
-              >
-                {page}
-              </button>
-            ))}
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => {
+              const isFirst = page === 1;
+              const isLast = page === totalPages;
+              const isNear = Math.abs(page - currentPage) <= 1;
+              const isEllipsis = page === currentPage - 2 || page === currentPage + 2;
+
+              if (isFirst || isLast || isNear) {
+                return (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`w-10 h-10 flex items-center justify-center font-bold text-xs transition rounded-none ${
+                      currentPage === page 
+                        ? 'bg-primary text-white border-2 border-primary' 
+                        : 'bg-white border-2 border-gray-100 text-gray-400 hover:border-primary hover:text-primary'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                );
+              } else if (isEllipsis) {
+                return (
+                  <span key={page} className="w-10 h-10 flex items-center justify-center text-gray-300 font-bold">
+                    ...
+                  </span>
+                );
+              }
+              return null;
+            })}
 
             <button 
               onClick={() => handlePageChange(currentPage + 1)}

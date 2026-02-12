@@ -7,32 +7,7 @@ import { useCart } from '../app/contexts/CartContext';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { getImageUrl } from '../lib/imageHelper';
-
-interface Product {
-  id?: string;
-  _id?: string;
-  name: string;
-  brand?: string;
-  categorySlug?: string;
-  price: number;
-  originalPrice?: number;
-  rating?: number;
-  image?: string;
-  images?: string[];
-  slug?: string;
-  specs?: {
-    condition?: string;
-    accessories?: string;
-  };
-  variants?: {
-    name: string;
-    options: { name: string; price: number; stock: number; sku?: string }[];
-  }[];
-  isNew?: boolean;
-  hasPromotion?: boolean;
-  stock?: number;
-  soldCount?: number;
-}
+import { Product } from '../lib/shared/types';
 
 interface ProductCardProps {
   product: Product;
@@ -69,8 +44,22 @@ export default function ProductCard({ product, showSoldCount = false }: ProductC
     ? Math.round(((product.originalPrice! - lowestPrice) / product.originalPrice!) * 100)
     : 0;
   
-  // ✅ Check Stock
-  const isOutOfStock = product.stock !== undefined && product.stock <= 0;
+  // ✅ Improved Check Stock Logic
+  const isOutOfStock = React.useMemo(() => {
+    // 1. Check main stock
+    const hasMainStock = product.stock !== undefined && product.stock > 0;
+    
+    // 2. Check variants stock
+    const hasVariantStock = product.variants && product.variants.length > 0 && 
+      product.variants.some(v => v.options.some(opt => opt.stock > 0));
+    
+    // Nếu có variants thì ưu tiên check theo variants, nếu không có variants thì check theo stock chính
+    if (product.variants && product.variants.length > 0) {
+      return !hasVariantStock;
+    }
+    
+    return !hasMainStock;
+  }, [product]);
 
   const sizeOptions = React.useMemo(() => {
     if (!product.variants) return [];
@@ -166,13 +155,35 @@ export default function ProductCard({ product, showSoldCount = false }: ProductC
         </div>
         
         <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
-          {product.isNew && (
-            <span className="bg-black text-white text-[10px] font-bold px-2 py-1 uppercase tracking-wider rounded-none">New</span>
-          )}
-          {product.specs?.condition && product.specs.condition !== 'New' && (
-            <span className="bg-white/90 backdrop-blur text-black text-[10px] font-bold px-2 py-1 border border-black uppercase tracking-wider rounded-none">
-              {product.specs.condition}
-            </span>
+          {product.tags && product.tags.length > 0 ? (
+            product.tags.map((tag, idx) => {
+              const isCondition = ['new', '2hand', 'used', 'brand new', '100%', '99%', '95%'].includes(tag.toLowerCase());
+              return (
+                <span 
+                  key={idx}
+                  className={`${
+                    tag.toLowerCase() === 'new' || tag.toLowerCase() === 'brand new' || tag.toLowerCase() === '100%'
+                    ? 'bg-black text-white' 
+                    : isCondition 
+                    ? 'bg-white/90 backdrop-blur text-black border border-black' 
+                    : 'bg-primary text-white'
+                  } text-[10px] font-bold px-2 py-1 uppercase tracking-wider rounded-none`}
+                >
+                  {tag}
+                </span>
+              );
+            })
+          ) : (
+            <>
+              {product.isNew && (
+                <span className="bg-black text-white text-[10px] font-bold px-2 py-1 uppercase tracking-wider rounded-none">New</span>
+              )}
+              {product.specs?.condition && product.specs.condition !== 'New' && (
+                <span className="bg-white/90 backdrop-blur text-black text-[10px] font-bold px-2 py-1 border border-black uppercase tracking-wider rounded-none">
+                  {product.specs.condition}
+                </span>
+              )}
+            </>
           )}
         </div>
 

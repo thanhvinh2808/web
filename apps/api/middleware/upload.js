@@ -30,6 +30,16 @@ if (isCloudinaryConfigured) {
   console.log('📂 Cloudinary NOT configured. Using Local Storage.');
 }
 
+// ✅ MIME TYPE MAPPING (SECURITY FIX)
+// Map MimeType to safe extensions
+const MIME_TYPE_MAP = {
+  'image/png': '.png',
+  'image/jpeg': '.jpg',
+  'image/jpg': '.jpg',
+  'image/webp': '.webp',
+  'image/gif': '.gif'
+};
+
 // ===== CẤU HÌNH STORAGE (HYBRID) =====
 let storage;
 
@@ -38,9 +48,16 @@ if (isCloudinaryConfigured) {
   storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
-      folder: 'footmark-products', // Tên folder trên Cloudinary
+      folder: 'footmark-products',
       allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'gif'],
-      // public_id: (req, file) => 'computed-filename-using-request',
+      format: async (req, file) => {
+        // Force format based on mimetype check implicit in allowed_formats
+        // Cloudinary handles this well, but we can be explicit
+        if (file.mimetype === 'image/png') return 'png';
+        if (file.mimetype === 'image/webp') return 'webp';
+        if (file.mimetype === 'image/gif') return 'gif';
+        return 'jpg'; 
+      },
     },
   });
 } else {
@@ -54,14 +71,18 @@ if (isCloudinaryConfigured) {
       cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      const ext = path.extname(file.originalname);
-      const nameWithoutExt = path.basename(file.originalname, ext);
-      const safeName = nameWithoutExt
+      // 🛡️ SECURITY FIX: Ignore user's extension, use safe extension from Map
+      const ext = MIME_TYPE_MAP[file.mimetype] || '.jpg';
+      
+      // Sanitize filename
+      const originalName = path.basename(file.originalname, path.extname(file.originalname));
+      const safeName = originalName
         .toLowerCase()
         .replace(/[^a-z0-9]/g, '-')
         .replace(/-+/g, '-')
         .substring(0, 50);
+        
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
       cb(null, `${safeName}-${uniqueSuffix}${ext}`);
     }
   });
@@ -69,8 +90,8 @@ if (isCloudinaryConfigured) {
 
 // ===== FILE FILTER =====
 const fileFilter = (req, file, cb) => {
-  const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-  if (allowedMimeTypes.includes(file.mimetype)) {
+  const allowed = Object.keys(MIME_TYPE_MAP);
+  if (allowed.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(new Error(`Chỉ chấp nhận file ảnh (JPEG, PNG, WEBP, GIF). File ${file.originalname} không hợp lệ.`), false);
@@ -109,19 +130,11 @@ export const handleUploadError = (err, req, res, next) => {
 
 // ===== HELPER FUNCTIONS =====
 
-/**
- * Get Public ID from Cloudinary URL
- * URL format: https://res.cloudinary.com/demo/image/upload/v1234567890/folder/filename.jpg
- * Public ID: folder/filename (no extension)
- */
 const getCloudinaryPublicId = (url) => {
   try {
     const parts = url.split('/');
     const filenameWithExt = parts.pop();
-    const folder = parts.pop(); // e.g., 'footmark-products'
-    // const version = parts.pop(); // e.g., 'v123456'
-    
-    // Nếu URL không chứa folder đúng config, có thể logic này cần điều chỉnh tùy cấu trúc
+    const folder = parts.pop(); 
     const publicId = `${folder}/${filenameWithExt.split('.')[0]}`;
     return publicId;
   } catch (e) {
@@ -129,17 +142,12 @@ const getCloudinaryPublicId = (url) => {
   }
 };
 
-/**
- * Xóa file (Local hoặc Cloudinary)
- */
 export const deleteFile = async (filePath) => {
   try {
     if (!filePath) return false;
 
-    // Case 1: Cloudinary URL
     if (filePath.startsWith('http')) {
       if (!isCloudinaryConfigured) return false;
-      
       const publicId = getCloudinaryPublicId(filePath);
       if (publicId) {
         await cloudinary.uploader.destroy(publicId);
@@ -147,13 +155,9 @@ export const deleteFile = async (filePath) => {
         return true;
       }
       return false;
-    } 
-    // Case 2: Local Path (e.g., /uploads/products/...)
-    else {
-      // Remove leading slash if present
+    } else {
       const cleanPath = filePath.startsWith('/') ? filePath.slice(1) : filePath;
       const fullPath = path.resolve(process.cwd(), cleanPath);
-      
       if (fs.existsSync(fullPath)) {
         fs.unlinkSync(fullPath);
         console.log('✅ Deleted local file:', fullPath);
@@ -170,16 +174,12 @@ export const deleteFile = async (filePath) => {
 export const deleteMultipleFiles = async (filePaths) => {
   let success = 0;
   let failed = 0;
-  // Use map to process async in parallel
   await Promise.all(filePaths.map(async (path) => {
     const result = await deleteFile(path);
     if (result) success++; else failed++;
   }));
   return { success, failed };
 };
-
-// Helper backward compatible (keep sync signature where possible, but delete is async now)
-// Note: Code using deleteFile needs to await it now if consistency matters.
 
 export default {
   uploadSingle,

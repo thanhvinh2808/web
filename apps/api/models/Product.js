@@ -93,6 +93,12 @@ const productSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  // ✅ TAGS (Phân loại: new, 2hand, limited, etc.)
+  tags: [{
+    type: String,
+    trim: true,
+    lowercase: true
+  }],
   categorySlug: {
     type: String,
     trim: true
@@ -192,6 +198,31 @@ productSchema.virtual('maxPrice').get(function() {
 // ===== MIDDLEWARE =====
 // Tự động set image từ images[0] nếu chưa có
 productSchema.pre('save', function(next) {
+  // 1. AUTO TAGGING LOGIC (New vs 2Hand)
+  if (this.specs && this.specs.condition) {
+    const condition = this.specs.condition.trim().toLowerCase();
+    
+    // Chuẩn hóa danh sách Tags (tạo mảng nếu chưa có)
+    if (!this.tags) this.tags = [];
+
+    // Logic: 100% hoặc New -> Tag 'new'. Còn lại -> Tag '2hand'
+    const isActuallyNew = condition === '100%' || condition === 'new' || condition === 'brand new';
+    const tagToAdd = isActuallyNew ? 'new' : '2hand';
+    const tagToRemove = isActuallyNew ? '2hand' : 'new';
+
+    // Xóa tag đối nghịch (tránh trường hợp vừa new vừa 2hand)
+    this.tags = this.tags.filter(t => t !== tagToRemove);
+
+    // Thêm tag đúng nếu chưa có
+    if (!this.tags.includes(tagToAdd)) {
+      this.tags.push(tagToAdd);
+    }
+
+    // ✅ Đồng bộ isNew property
+    this.isNew = isActuallyNew;
+  }
+
+  // 2. IMAGE HANDLING
   // Set image chính từ mảng images
   if (!this.image && this.images && this.images.length > 0) {
     this.image = this.images[0].url;

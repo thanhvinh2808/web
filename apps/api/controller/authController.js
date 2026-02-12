@@ -2,35 +2,42 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { getJwtSecret } from '../config/secrets.js';
-import { createNotification } from './adminController.js'; // Để thông báo cho Admin khi có user mới
+import { createNotification } from './adminController.js';
+import crypto from 'crypto'; // ✅ Secure Random
 
 const JWT_SECRET = getJwtSecret();
+
+// ✅ VALIDATION HELPER
+const isValidString = (value) => typeof value === 'string' && value.trim().length > 0;
 
 // ✅ REGISTER
 export const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
     
-    if (!name || !email || !password) {
-      return res.status(400).json({ success: false, message: 'Vui lòng điền đầy đủ thông tin' });
+    // 1. Sanitize & Validate Inputs
+    if (!isValidString(name) || !isValidString(email) || !isValidString(password)) {
+      return res.status(400).json({ success: false, message: 'Dữ liệu không hợp lệ' });
     }
 
     const trimmedEmail = email.trim().toLowerCase();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^S@]+@[^S@]+\.[^S@]+$/;
     
     if (!emailRegex.test(trimmedEmail)) {
-      return res.status(400).json({ success: false, message: 'Email không hợp lệ' });
+      return res.status(400).json({ success: false, message: 'Email không đúng định dạng' });
     }
 
     if (password.trim().length < 6) {
       return res.status(400).json({ success: false, message: 'Mật khẩu phải có ít nhất 6 ký tự' });
     }
 
+    // 2. Check Exists
     const existingUser = await User.findOne({ email: trimmedEmail });
     if (existingUser) {
       return res.status(400).json({ success: false, message: 'Email đã được sử dụng' });
     }
 
+    // 3. Hash & Create
     const hashedPassword = await bcrypt.hash(password.trim(), 10);
 
     const newUser = await User.create({
@@ -79,13 +86,14 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Vui lòng nhập email và mật khẩu' });
+    if (!isValidString(email) || !isValidString(password)) {
+      return res.status(400).json({ success: false, message: 'Vui lòng nhập email và mật khẩu hợp lệ' });
     }
 
     const trimmedEmail = email.trim().toLowerCase();
     const user = await User.findOne({ email: trimmedEmail });
     
+    // Security Best Practice: Generic Error Message
     if (!user) {
       return res.status(401).json({ success: false, message: 'Thông tin đăng nhập không chính xác' });
     }
@@ -96,16 +104,19 @@ export const login = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Thông tin đăng nhập không chính xác' });
     }
 
+    // Double Check: Prevent Banned User Login (Redundant but safe)
+    // Assuming we might add 'status' later, otherwise relying on existence is enough.
+
     const token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
       JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: '1h' } // Short lived access token
     );
 
     return res.json({
       success: true,
       token,
-      expiresIn: 604800,
+      expiresIn: 3600,
       user: {
         id: user._id,
         name: user.name,
@@ -122,18 +133,13 @@ export const login = async (req, res) => {
 
 // ✅ LOGOUT
 export const logout = async (req, res) => {
-  try {
-    // Với JWT stateless, logout chủ yếu xử lý ở client (xóa token).
-    // Server chỉ phản hồi thành công.
-    res.json({ success: true, message: 'Đăng xuất thành công' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Logout error: ' + error.message });
-  }
+  res.json({ success: true, message: 'Đăng xuất thành công' });
 };
 
 // ✅ GET USER PROFILE (ME)
 export const getMe = async (req, res) => {
   try {
+    // req.user is guaranteed to exist by auth middleware
     const user = await User.findById(req.user.id).select('-password');
     
     if (!user) {
@@ -153,11 +159,10 @@ export const getMe = async (req, res) => {
       addresses: user.addresses,
       bankAccounts: user.bankAccounts,
       createdAt: user.createdAt,
-      avatar: user.avatar // Thêm avatar
+      avatar: user.avatar
     });
     
   } catch (error) {
-    console.error('❌ Error getting user:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -170,21 +175,24 @@ export const updateProfile = async (req, res) => {
       city, district, ward, avatar 
     } = req.body;
 
-    if (name && name.trim().length < 2) {
-      return res.status(400).json({ success: false, message: 'Tên phải có ít nhất 2 ký tự' });
-    }
-
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    if (name) user.name = name.trim();
-    if (phone !== undefined) user.phone = phone.trim();
-    if (address !== undefined) user.address = address.trim();
+    if (name !== undefined) {
+        if (!isValidString(name) || name.trim().length < 2) {
+             return res.status(400).json({ success: false, message: 'Tên phải có ít nhất 2 ký tự' });
+        }
+        user.name = name.trim();
+    }
+    
+    // Update other fields if provided
+    if (phone !== undefined) user.phone = String(phone).trim();
+    if (address !== undefined) user.address = String(address).trim();
     if (dateOfBirth !== undefined) user.dateOfBirth = dateOfBirth;
     if (gender !== undefined) user.gender = gender;
-    if (city !== undefined) user.city = city.trim();
-    if (district !== undefined) user.district = district.trim();
-    if (ward !== undefined) user.ward = ward.trim();
+    if (city !== undefined) user.city = String(city).trim();
+    if (district !== undefined) user.district = String(district).trim();
+    if (ward !== undefined) user.ward = String(ward).trim();
     if (avatar !== undefined) user.avatar = avatar;
 
     await user.save();
@@ -207,8 +215,7 @@ export const updateProfile = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error updating user:', error);
-    res.status(500).json({ success: false, message: 'Server error: ' + error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -216,21 +223,25 @@ export const updateProfile = async (req, res) => {
 export const changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    const user = await User.findById(req.user.id);
+    
+    if (!isValidString(currentPassword) || !isValidString(newPassword)) {
+        return res.status(400).json({ success: false, message: 'Dữ liệu không hợp lệ' });
+    }
 
+    const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    const isMatch = await bcrypt.compare(currentPassword.trim(), user.password);
     if (!isMatch) {
       return res.status(400).json({ success: false, message: 'Mật khẩu hiện tại không đúng' });
     }
 
-    if (newPassword.length < 6) {
+    if (newPassword.trim().length < 6) {
       return res.status(400).json({ success: false, message: 'Mật khẩu mới phải có ít nhất 6 ký tự' });
     }
 
     const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(newPassword, salt);
+    user.password = await bcrypt.hash(newPassword.trim(), salt);
     await user.save();
 
     res.json({ success: true, message: 'Đổi mật khẩu thành công' });
@@ -244,23 +255,26 @@ export const changePassword = async (req, res) => {
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-    if (!email) return res.status(400).json({ success: false, message: 'Vui lòng nhập email' });
+    if (!isValidString(email)) {
+        return res.status(400).json({ success: false, message: 'Vui lòng nhập email' });
+    }
 
     const user = await User.findOne({ email: email.trim().toLowerCase() });
     if (!user) return res.status(404).json({ success: false, message: 'Email không tồn tại trong hệ thống' });
 
-    // Generate OTP
-    const token = Math.floor(100000 + Math.random() * 900000).toString();
+    // ✅ SECURE OTP GENERATION
+    const token = crypto.randomInt(100000, 999999).toString();
     
-    // TODO: HASH TOKEN NÀY TRƯỚC KHI LƯU DB ĐỂ BẢO MẬT (Security fix)
+    // Store OTP
     user.resetPasswordToken = token; 
     user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
     await user.save();
 
-    // TODO: Tích hợp Nodemailer/SendGrid để gửi email thực tế
-    // SECURITY WARNING: Không log token ra console ở môi trường production
+    // Dev Log
     if (process.env.NODE_ENV !== 'production') {
-        console.log(`\n📧 [DEV ONLY] OTP for ${email}: ${token}\n`);
+        console.log(`
+📧 [DEV ONLY] Secure OTP for ${email}: ${token}
+`);
     }
 
     res.json({ success: true, message: 'Mã OTP đã được gửi đến email của bạn (Check console nếu đang dev)' });
@@ -274,7 +288,7 @@ export const resetPassword = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
     
-    if (!email || !otp || !newPassword) {
+    if (!isValidString(email) || !isValidString(otp) || !isValidString(newPassword)) {
       return res.status(400).json({ success: false, message: 'Vui lòng điền đầy đủ thông tin' });
     }
 
@@ -286,6 +300,10 @@ export const resetPassword = async (req, res) => {
 
     if (!user) {
       return res.status(400).json({ success: false, message: 'Mã OTP không đúng hoặc đã hết hạn' });
+    }
+
+    if (newPassword.trim().length < 6) {
+        return res.status(400).json({ success: false, message: 'Mật khẩu mới phải có ít nhất 6 ký tự' });
     }
 
     const hashedPassword = await bcrypt.hash(newPassword.trim(), 10);

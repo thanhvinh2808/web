@@ -38,6 +38,7 @@ interface Product {
   description?: string;
   categorySlug?: string;
   slug?: string;
+  tags?: string[];
   specs?: ProductSpecs;
   stock?: number;
   soldCount?: number;
@@ -85,6 +86,7 @@ export default function ProductModal({
     isNew: false,
     hasPromotion: false,
     images: [],
+    tags: [],
     variants: [],
     specs: {
       condition: 'New',
@@ -131,6 +133,7 @@ export default function ProductModal({
         images: product.images && product.images.length > 0 
           ? product.images 
           : (product.image ? [product.image] : []),
+        tags: product.tags || [],
         variants: product.variants || [],
         specs: {
           condition: product.specs?.condition || 'New',
@@ -419,6 +422,41 @@ export default function ProductModal({
                   onChange={(e) => handleChange('brand', e.target.value)}
                   className="w-full px-4 py-3 bg-gray-50 border-none rounded-lg focus:ring-2 focus:ring-black outline-none"
                   placeholder="Nike, Adidas, MLB..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Tags (Phân loại)</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {formData.tags?.map((tag, idx) => (
+                    <span key={idx} className="bg-black text-white text-[10px] font-bold px-2 py-1 uppercase flex items-center gap-1">
+                      {tag}
+                      <button type="button" onClick={() => {
+                        setFormData(prev => ({
+                          ...prev,
+                          tags: prev.tags?.filter((_, i) => i !== idx)
+                        }));
+                      }} className="hover:text-red-400">✕</button>
+                    </span>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const value = (e.target as HTMLInputElement).value.trim();
+                      if (value && !formData.tags?.includes(value)) {
+                        setFormData(prev => ({
+                          ...prev,
+                          tags: [...(prev.tags || []), value]
+                        }));
+                        (e.target as HTMLInputElement).value = '';
+                      }
+                    }
+                  }}
+                  className="w-full px-4 py-3 bg-gray-50 border-none rounded-lg focus:ring-2 focus:ring-black outline-none"
+                  placeholder="Nhấn Enter để thêm tag (VD: Limited, Hot Deal...)"
                 />
               </div>
 

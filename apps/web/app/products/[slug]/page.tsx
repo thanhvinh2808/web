@@ -435,7 +435,21 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   }, [product]);
 
   const currentPrice = selectedSize ? selectedSize.price : (product?.price || 0);
-  const currentStock = selectedSize ? selectedSize.stock : (product?.stock || 0);
+  
+  // ✅ Improved Check Stock Logic for Product Detail
+  const isFullyOutOfStock = React.useMemo(() => {
+    if (!product) return true;
+    const hasMainStock = product.stock > 0;
+    const hasVariantStock = product.variants && product.variants.length > 0 && 
+      product.variants.some(v => v.options.some(opt => opt.stock > 0));
+    
+    if (product.variants && product.variants.length > 0) {
+      return !hasVariantStock;
+    }
+    return !hasMainStock;
+  }, [product]);
+
+  const currentStock = selectedSize ? selectedSize.stock : (isFullyOutOfStock ? 0 : 1); 
   
   // State cho màu sắc
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
@@ -640,7 +654,16 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                      )}
                   </div>
                   
-                  {/* ... (Giữ nguyên Out of Stock Alert) */}
+                  {/* ✅ Out of Stock Alert */}
+                  {isFullyOutOfStock && (
+                     <div className="mt-4 p-4 bg-red-50 border border-red-100 flex items-center gap-3">
+                        <XCircle className="text-red-500" size={24}/>
+                        <div>
+                           <p className="text-sm font-bold text-red-900 uppercase tracking-tight">Sản phẩm đã hết hàng</p>
+                           <p className="text-xs text-red-700 font-medium">Hiện tại chúng tôi không còn sản phẩm này trong kho. Vui lòng quay lại sau!</p>
+                        </div>
+                     </div>
+                  )}
                </div>
 
                {/* Size Selector */}

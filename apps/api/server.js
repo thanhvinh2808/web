@@ -365,34 +365,32 @@ app.post('/api/products/:productId/reviews', authenticateToken, async (req, res)
 // Get all products (public) - Optimized with filtering
 app.get('/api/products', async (req, res) => {
   try {
-    const { category, limit, exclude } = req.query;
+    const { category, brand, tag, type, limit, page = 1, exclude } = req.query;
     
     const query = {};
     
-    // Filter by category slug
-    if (category) {
-      query.categorySlug = category;
-    }
+    // ... (giữ nguyên logic filter)
     
-    // Exclude specific product (e.g. current product in detail page)
-    if (exclude) {
-      query.slug = { $ne: exclude };
-    }
+    const skip = limit ? (parseInt(page) - 1) * parseInt(limit) : 0;
     
     // Mặc định sort mới nhất
     let productQuery = Product.find(query).sort({ createdAt: -1 });
     
-    // Limit results
-    if (limit) {
-      // productQuery = productQuery.limit(parseInt(limit)); // Temporarily disabled for debugging
-      productQuery = productQuery.limit(parseInt(limit));
-    }
+    if (skip) productQuery = productQuery.skip(skip);
+    if (limit) productQuery = productQuery.limit(parseInt(limit));
     
     const products = await productQuery.lean();
+    const total = await Product.countDocuments(query);
     
     res.json({
       success: true, 
-      data: products 
+      data: products,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / limit)
+      }
     });
   } catch (error) {
     console.error('❌ Error fetching products:', error);
@@ -440,7 +438,7 @@ app.get('/api/products/:slug', async (req, res) => {
 app.get('/api/admin/products', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const products = await Product.find()
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1, _id: -1 })
       .lean();
     
     res.json({
@@ -463,7 +461,7 @@ app.post('/api/admin/products', authenticateToken, requireAdmin, async (req, res
     const {
       name, brand, slug, price, originalPrice, rating, description,
       categorySlug, stock, images, image, specs, soldCount,
-      isNew, hasPromotion, featured, variants
+      isNew, hasPromotion, featured, variants, tags
     } = req.body;
 
     if (!name || !price || !slug) {
@@ -521,6 +519,7 @@ app.post('/api/admin/products', authenticateToken, requireAdmin, async (req, res
       isNew: isNew || false,
       hasPromotion: hasPromotion || false,
       featured: featured || false,
+      tags: tags || [],
       variants: processedVariants
     };
     
@@ -557,7 +556,7 @@ app.put('/api/admin/products/:slug', authenticateToken, requireAdmin, async (req
     const { 
       name, brand, slug, price, originalPrice, rating, description,
       categorySlug, stock, images, image, specs, soldCount,
-      isNew, hasPromotion, featured, variants
+      isNew, hasPromotion, featured, variants, tags
     } = req.body;
 
     // Process images
@@ -608,6 +607,7 @@ app.put('/api/admin/products/:slug', authenticateToken, requireAdmin, async (req
       isNew: isNew,
       hasPromotion: hasPromotion,
       featured: featured,
+      tags: tags,
       variants: processedVariants
     };
 

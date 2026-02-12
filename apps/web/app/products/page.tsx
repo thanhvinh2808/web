@@ -2,36 +2,12 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Filter, SlidersHorizontal, X, Check, ChevronDown } from 'lucide-react';
+import { Filter, SlidersHorizontal, X, Check, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import ProductCard from '../../components/ProductCard';
+import { Product } from '../../lib/shared/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api`;
 const PRODUCTS_PER_PAGE = 12;
-
-interface Product {
-  id?: string;
-  _id?: string;
-  name: string;
-  brand?: string;
-  price: number;
-  originalPrice?: number;
-  rating?: number;
-  image?: string;
-  images?: string[];
-  description?: string;
-  categorySlug?: string;
-  slug?: string;
-  specs?: {
-    condition?: string;
-    accessories?: string;
-    styleCode?: string;
-  };
-  stock?: number;
-  soldCount?: number;
-  isNew?: boolean;
-  hasPromotion?: boolean;
-  variants?: any[];
-}
 
 interface Category {
   id?: string;
@@ -81,7 +57,9 @@ export default function ProductsPage() {
         const catData = await catRes.json();
         setCategories(Array.isArray(catData) ? catData : catData.data || []);
 
-        const prodRes = await fetch(`${API_URL}/api/products`);
+        // ✅ Truyền type vào API nếu có
+        const typeParam = productType !== 'all' ? `?tag=${productType}` : '';
+        const prodRes = await fetch(`${API_URL}/api/products${typeParam}`);
         const prodData = await prodRes.json();
         setProducts(Array.isArray(prodData) ? prodData : prodData.data || []);
       } catch (error) {
@@ -91,7 +69,7 @@ export default function ProductsPage() {
       }
     };
     fetchData();
-  }, []);
+  }, [productType]); // ✅ Fetch lại khi productType thay đổi
 
   useEffect(() => {
     const cat = searchParams.get('category');
@@ -112,9 +90,13 @@ export default function ProductsPage() {
         if (!matchesName && !matchesBrand && !matchesCategory) return false;
       }
 
-      // Filter by Type (New / 2Hand)
-      if (productType === 'new' && !product.isNew) return false;
-      if (productType === '2hand' && product.isNew) return false;
+      // ✅ Filter by Type/Tags (Cải tiến để dùng mảng tags)
+      if (productType !== 'all') {
+        const hasTag = product.tags?.includes(productType);
+        // Fallback check nếu data cũ chưa có mảng tags
+        const legacyCheck = productType === 'new' ? product.isNew : !product.isNew;
+        if (!hasTag && !legacyCheck) return false;
+      }
 
       if (selectedCategory !== 'all' && product.categorySlug !== selectedCategory) return false;
       
@@ -146,7 +128,13 @@ export default function ProductsPage() {
       case 'price-asc': sorted.sort((a, b) => a.price - b.price); break;
       case 'price-desc': sorted.sort((a, b) => b.price - a.price); break;
       case 'name-asc': sorted.sort((a, b) => a.name.localeCompare(b.name)); break;
-      case 'newest': sorted.sort((a, b) => (b._id || '').localeCompare(a._id || '')); break;
+      case 'newest': 
+        sorted.sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        });
+        break;
       default: break;
     }
     return sorted;
@@ -376,19 +364,56 @@ export default function ProductsPage() {
 
             {totalPages > 1 && (
               <div className="flex justify-center mt-20 gap-3">
-                 {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                    <button
-                      key={page}
-                      onClick={() => {setCurrentPage(page); window.scrollTo({top: 0, behavior: 'smooth'});}}
-                      className={`w-12 h-12 rounded-none flex items-center justify-center font-black text-xs transition ${
-                        currentPage === page 
-                          ? 'bg-primary text-white shadow-lg shadow-primary/30' 
-                          : 'bg-white border-2 border-gray-100 text-gray-400 hover:border-primary hover:text-primary'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                 ))}
+                {/* Nút Previous */}
+                <button 
+                  onClick={() => {setCurrentPage(prev => Math.max(1, prev - 1)); window.scrollTo({top: 0, behavior: 'smooth'});}}
+                  disabled={currentPage === 1}
+                  className="w-12 h-12 border-2 border-gray-100 flex items-center justify-center text-gray-400 hover:border-primary hover:text-primary transition disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft size={18}/>
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => {
+                  const isFirstPage = page === 1;
+                  const isLastPage = page === totalPages;
+                  const isNearCurrent = Math.abs(page - currentPage) <= 1;
+                  const isEllipsis = page === currentPage - 2 || page === currentPage + 2;
+
+                  if (isFirstPage || isLastPage || isNearCurrent) {
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => {setCurrentPage(page); window.scrollTo({top: 0, behavior: 'smooth'});}}
+                        className={`w-12 h-12 rounded-none flex items-center justify-center font-black text-xs transition ${
+                          currentPage === page 
+                            ? 'bg-primary text-white shadow-lg shadow-primary/30' 
+                            : 'bg-white border-2 border-gray-100 text-gray-400 hover:border-primary hover:text-primary'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  }
+                  
+                  if (isEllipsis) {
+                    return (
+                      <span key={page} className="w-12 h-12 flex items-center justify-center text-gray-400 font-bold">
+                        ...
+                      </span>
+                    );
+                  }
+
+                  return null;
+                })}
+
+                {/* Nút Next */}
+                <button 
+                  onClick={() => {setCurrentPage(prev => Math.min(totalPages, prev + 1)); window.scrollTo({top: 0, behavior: 'smooth'});}}
+                  disabled={currentPage === totalPages}
+                  className="w-12 h-12 border-2 border-gray-100 flex items-center justify-center text-gray-400 hover:border-primary hover:text-primary transition disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight size={18}/>
+                </button>
               </div>
             )}
           </main>

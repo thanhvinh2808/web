@@ -196,7 +196,7 @@ export default function AdminDashboard() {
       if(data.success) setOrders(data.data);
   };
   const fetchProducts = async () => { 
-      const res = await fetch(`${API_URL}/api/admin/products`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const res = await fetch(`${API_URL}/api/admin/products?t=${Date.now()}`, { headers: { 'Authorization': `Bearer ${token}` } });
       const data = await res.json();
       if (Array.isArray(data.data)) setProducts(data.data);
   };
