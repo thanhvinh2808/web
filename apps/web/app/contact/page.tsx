@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Phone, Mail, MapPin, Clock } from "lucide-react";
 
 // --- API URL ---
-const API_URL = process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api`;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 // --- TYPES ---
 interface ContactForm {

@@ -111,7 +111,7 @@ export default function ProductModal({
   const getImageUrl = (url: string) => {
     if (!url) return '';
     if (url.startsWith('http')) return url;
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}`;
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
@@ -199,7 +199,7 @@ export default function ProductModal({
     const newImages: string[] = [];
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}`;
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
       
       // Upload từng file một (hoặc dùng endpoint upload multiple nếu backend hỗ trợ)
       for (let i = 0; i < files.length; i++) {
@@ -346,7 +346,7 @@ export default function ProductModal({
     try {
       const uploadFormData = new FormData();
       uploadFormData.append('image', file);
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}`;
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
       const response = await fetch(`${API_URL}/api/upload/single`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },

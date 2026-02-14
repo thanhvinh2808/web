@@ -38,7 +38,7 @@ export const Header = ({ cartCount = 0 }: HeaderProps) => {
       }
 
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api`;
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
         const res = await fetch(`${API_URL}/api/products`);
         const data = await res.json();
         const allProducts = Array.isArray(data) ? data : data.data || [];

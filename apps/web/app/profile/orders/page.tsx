@@ -13,7 +13,7 @@ import {
   ShoppingBag
 } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}`;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 const ORDER_TABS = [
   { id: 'all', label: 'Tất cả' },
