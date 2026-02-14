@@ -26,7 +26,7 @@ export default function ProfilePage() {
       if (!token) return;
 
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/user/me'}`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/me`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {

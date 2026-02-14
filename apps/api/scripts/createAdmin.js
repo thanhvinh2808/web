@@ -17,7 +17,7 @@ const createAdmin = async () => {
     const existingAdmin = await User.findOne({ email: adminEmail });
     if (existingAdmin) {
       console.log('⚠️ Admin đã tồn tại!');
-      process.exit(0);
+      process.exit(0); 
     }
 
     // Hash password

@@ -120,7 +120,7 @@ export default function ContactPage() {
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-1">Email</h4>
                   <p className="text-gray-600 hover:text-purple-600 transition-colors break-all">
-                    <a href="mailto:support@techstore.vn">support@techstore.vn</a>
+                    <a href="mailto:support@footmark.vn">support@footmark.vn</a>
                   </p>
                 </div>
               </div>

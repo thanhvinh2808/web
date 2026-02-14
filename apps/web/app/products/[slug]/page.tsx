@@ -66,7 +66,7 @@ interface Product {
   variants?: Variant[];
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 // --- SUB COMPONENTS ---
 
@@ -175,6 +175,23 @@ const ProductReviews = ({ productId }: { productId: string }) => {
       }
    }, [productId, isAuthenticated]);
 
+   // ✅ Handle auto-scroll inside the component once it's ready
+   useEffect(() => {
+     if (!isLoading && productId) {
+        const searchParams = new URLSearchParams(window.location.search);
+        const hash = window.location.hash;
+        if (searchParams.get('review') === 'true' || hash === '#review') {
+           const el = document.getElementById('review');
+           if (el) {
+              setTimeout(() => {
+                el.scrollIntoView({ behavior: 'smooth' });
+                // If the user wants to review, and can review, maybe highlight the form
+              }, 300);
+           }
+        }
+     }
+   }, [isLoading, productId]);
+
    const handleSubmitReview = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!comment.trim()) return;
@@ -206,113 +223,115 @@ const ProductReviews = ({ productId }: { productId: string }) => {
       }
    };
 
-   if (isLoading) return <div className="py-10 text-center text-gray-400">Đang tải đánh giá...</div>;
-
    return (
-      <div id="review" className="mt-16 border-t border-gray-100 pt-12">
+      <div id="review" className="mt-16 border-t border-gray-100 pt-12 scroll-mt-24">
          <h3 className="text-2xl font-black italic uppercase mb-8 flex items-center gap-3">
             Đánh giá khách hàng <span className="text-gray-300 text-lg">({reviews.length})</span>
          </h3>
 
-         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-            {/* Form Section */}
-            <div className="lg:col-span-5">
-               {canReview ? (
-                  <div className="bg-gray-50 p-8 border border-gray-100 sticky top-24">
-                     <h4 className="font-bold uppercase tracking-widest text-sm mb-6">Viết đánh giá của bạn</h4>
-                     <form onSubmit={handleSubmitReview} className="space-y-6">
-                        <div>
-                           <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Mức độ hài lòng</label>
-                           <div className="flex gap-2">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                 <button 
-                                    key={star}
-                                    type="button"
-                                    onClick={() => setRating(star)}
-                                    className={`text-2xl transition ${star <= rating ? 'text-yellow-400' : 'text-gray-200'}`}
-                                 >
-                                    ★
-                                 </button>
-                              ))}
+         {isLoading ? (
+            <div className="py-10 text-center text-gray-400">Đang tải đánh giá...</div>
+         ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+               {/* Form Section */}
+               <div className="lg:col-span-5">
+                  {canReview ? (
+                     <div className="bg-gray-50 p-8 border border-gray-100 sticky top-24 ring-2 ring-primary/10">
+                        <h4 className="font-bold uppercase tracking-widest text-sm mb-6">Viết đánh giá của bạn</h4>
+                        <form onSubmit={handleSubmitReview} className="space-y-6">
+                           <div>
+                              <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Mức độ hài lòng</label>
+                              <div className="flex gap-2">
+                                 {[1, 2, 3, 4, 5].map((star) => (
+                                    <button 
+                                       key={star}
+                                       type="button"
+                                       onClick={() => setRating(star)}
+                                       className={`text-2xl transition ${star <= rating ? 'text-yellow-400' : 'text-gray-200'}`}
+                                    >
+                                       ★
+                                    </button>
+                                 ))}
+                              </div>
                            </div>
-                        </div>
 
-                        <div>
-                           <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Nội dung đánh giá</label>
-                           <textarea 
-                              value={comment}
-                              onChange={(e) => setComment(e.target.value)}
-                              placeholder="Chia sẻ trải nghiệm của bạn về đôi giày này..."
-                              className="w-full bg-white border-none p-4 text-sm font-medium focus:ring-2 focus:ring-primary outline-none min-h-[120px] resize-none"
-                              required
-                           />
-                        </div>
-
-                        <button 
-                           type="submit" 
-                           disabled={isSubmitting}
-                           className="w-full bg-black text-white py-4 font-black uppercase tracking-widest hover:bg-primary transition disabled:opacity-50"
-                        >
-                           {isSubmitting ? 'Đang gửi...' : 'Gửi đánh giá ngay'}
-                        </button>
-                     </form>
-                  </div>
-               ) : (
-                  <div className="bg-blue-50/50 p-8 border border-blue-100 text-center sticky top-24">
-                     <CheckCircle className="mx-auto mb-4 text-blue-600" size={32}/>
-                     <h4 className="font-bold uppercase tracking-widest text-sm text-blue-900 mb-2">Đánh giá sản phẩm</h4>
-                     <p className="text-xs text-blue-700 font-medium leading-relaxed">
-                        {!isAuthenticated 
-                           ? 'Vui lòng đăng nhập để thực hiện đánh giá' 
-                           : 'Chỉ những khách hàng đã hoàn thành đơn hàng mới có thể gửi đánh giá cho sản phẩm này.'}
-                     </p>
-                  </div>
-               )}
-            </div>
-
-            {/* List Section */}
-            <div className="lg:col-span-7">
-               {reviews.length === 0 ? (
-                  <div className="text-center py-20 bg-gray-50 border border-dashed border-gray-200">
-                     <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Chưa có đánh giá nào cho sản phẩm này</p>
-                  </div>
-               ) : (
-                  <div className="space-y-8">
-                     {reviews.map((rev) => (
-                        <div key={rev._id} className="border-b border-gray-100 pb-8 last:border-0">
-                           <div className="flex justify-between items-start mb-4">
-                              <div className="flex items-center gap-3">
-                                 <div className="w-10 h-10 bg-gray-200 rounded-none flex items-center justify-center font-black text-gray-400 uppercase">
-                                    {rev.userId?.avatar ? <img src={rev.userId.avatar} className="w-full h-full object-cover" /> : rev.userId?.name?.charAt(0)}
-                                 </div>
-                                 <div>
-                                    <div className="font-bold text-sm uppercase tracking-tight">{rev.userId?.name}</div>
-                                    <div className="text-yellow-400 text-xs">{'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}</div>
-                                 </div>
-                              </div>
-                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                 {new Date(rev.createdAt).toLocaleDateString()}
-                              </span>
+                           <div>
+                              <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">Nội dung đánh giá</label>
+                              <textarea 
+                                 value={comment}
+                                 onChange={(e) => setComment(e.target.value)}
+                                 placeholder="Chia sẻ trải nghiệm của bạn về đôi giày này..."
+                                 className="w-full bg-white border-none p-4 text-sm font-medium focus:ring-2 focus:ring-primary outline-none min-h-[120px] resize-none shadow-sm"
+                                 required
+                              />
                            </div>
-                           <p className="text-gray-600 text-sm leading-relaxed font-medium italic">"{rev.comment}"</p>
-                           {rev.isPurchased && (
-                              <div className="mt-3 flex items-center gap-1 text-green-600">
-                                 <ShieldCheck size={12}/>
-                                 <span className="text-[10px] font-black uppercase tracking-widest">Đã mua hàng tại FootMark</span>
+
+                           <button 
+                              type="submit" 
+                              disabled={isSubmitting}
+                              className="w-full bg-black text-white py-4 font-black uppercase tracking-widest hover:bg-primary transition disabled:opacity-50 shadow-lg shadow-black/10"
+                           >
+                              {isSubmitting ? 'Đang gửi...' : 'Gửi đánh giá ngay'}
+                           </button>
+                        </form>
+                     </div>
+                  ) : (
+                     <div className="bg-blue-50/50 p-8 border border-blue-100 text-center sticky top-24">
+                        <CheckCircle className="mx-auto mb-4 text-blue-600" size={32}/>
+                        <h4 className="font-bold uppercase tracking-widest text-sm text-blue-900 mb-2">Đánh giá sản phẩm</h4>
+                        <p className="text-xs text-blue-700 font-medium leading-relaxed">
+                           {!isAuthenticated 
+                              ? 'Vui lòng đăng nhập để thực hiện đánh giá' 
+                              : 'Chỉ những khách hàng đã hoàn thành đơn hàng mới có thể gửi đánh giá cho sản phẩm này.'}
+                        </p>
+                     </div>
+                  )}
+               </div>
+
+               {/* List Section */}
+               <div className="lg:col-span-7">
+                  {reviews.length === 0 ? (
+                     <div className="text-center py-20 bg-gray-50 border border-dashed border-gray-200">
+                        <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Chưa có đánh giá nào cho sản phẩm này</p>
+                     </div>
+                  ) : (
+                     <div className="space-y-8">
+                        {reviews.map((rev) => (
+                           <div key={rev._id} className="border-b border-gray-100 pb-8 last:border-0">
+                              <div className="flex justify-between items-start mb-4">
+                                 <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-gray-200 rounded-none flex items-center justify-center font-black text-gray-400 uppercase">
+                                       {rev.userId?.avatar ? <img src={rev.userId.avatar} className="w-full h-full object-cover" /> : rev.userId?.name?.charAt(0)}
+                                    </div>
+                                    <div>
+                                       <div className="font-bold text-sm uppercase tracking-tight">{rev.userId?.name}</div>
+                                       <div className="text-yellow-400 text-xs">{'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}</div>
+                                    </div>
+                                 </div>
+                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                    {new Date(rev.createdAt).toLocaleDateString()}
+                                 </span>
                               </div>
-                           )}
-                           {rev.reply?.content && (
-                              <div className="mt-4 ml-8 p-4 bg-gray-50 border-l-2 border-primary">
-                                 <div className="font-black text-[10px] uppercase tracking-widest text-primary mb-1">FootMark Team phản hồi:</div>
-                                 <p className="text-sm text-gray-500 font-medium">{rev.reply.content}</p>
-                              </div>
-                           )}
-                        </div>
-                     ))}
-                  </div>
-               )}
+                              <p className="text-gray-600 text-sm leading-relaxed font-medium italic">"{rev.comment}"</p>
+                              {rev.isPurchased && (
+                                 <div className="mt-3 flex items-center gap-1 text-green-600">
+                                    <ShieldCheck size={12}/>
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Đã mua hàng tại FootMark</span>
+                                 </div>
+                              )}
+                              {rev.reply?.content && (
+                                 <div className="mt-4 ml-8 p-4 bg-gray-50 border-l-2 border-primary">
+                                    <div className="font-black text-[10px] uppercase tracking-widest text-primary mb-1">FootMark Team phản hồi:</div>
+                                    <p className="text-sm text-gray-500 font-medium">{rev.reply.content}</p>
+                                 </div>
+                              )}
+                           </div>
+                        ))}
+                     </div>
+                  )}
+               </div>
             </div>
-         </div>
+         )}
       </div>
    );
 };
@@ -401,15 +420,6 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
 
     if (slug) fetchProduct();
   }, [slug]);
-
-  // ✅ Auto scroll to review
-  useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    if (searchParams.get('review') === 'true') {
-      const el = document.getElementById('review');
-      if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth' }), 500);
-    }
-  }, [product]);
 
   // --- LOGIC ---
   const toggleAccordion = (id: string) => {

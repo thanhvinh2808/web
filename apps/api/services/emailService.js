@@ -73,7 +73,7 @@ export const sendNewOrderEmail = async (order) => {
     `;
 
     await transporter.sendMail({
-      from: `"TechStore" <${process.env.ADMIN_EMAIL}>`,
+      from: `"FootMark" <${process.env.ADMIN_EMAIL}>`,
       to: process.env.ADMIN_EMAIL,
       subject: `🛒 Đơn hàng mới #${order._id.toString().slice(-6)} - ${order.customerInfo.fullName}`,
       html: emailContent,
@@ -122,7 +122,7 @@ export const sendNewContactEmail = async (contact) => {
     `;
 
     await transporter.sendMail({
-      from: `"TechStore" <${process.env.ADMIN_EMAIL}>`,
+      from: `"FootMark" <${process.env.ADMIN_EMAIL}>`,
       to: process.env.ADMIN_EMAIL,
       subject: `📧 Liên hệ mới từ ${contact.fullname}`,
       html: emailContent,
@@ -143,7 +143,7 @@ export const sendReplyEmail = async (customerEmail, customerName, replyMessage) 
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #0070f3;">Xin chào ${customerName},</h2>
         
-        <p>Cảm ơn bạn đã liên hệ với TechStore. Đây là phản hồi từ chúng tôi:</p>
+        <p>Cảm ơn bạn đã liên hệ với FootMark. Đây là phản hồi từ chúng tôi:</p>
         
         <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
           <p style="white-space: pre-wrap; line-height: 1.6;">${replyMessage}</p>
@@ -154,17 +154,17 @@ export const sendReplyEmail = async (customerEmail, customerName, replyMessage) 
         <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
         
         <p style="color: #666; font-size: 14px;">
-          <strong>TechStore</strong><br>
+          <strong>FootMark</strong><br>
           Email: ${process.env.ADMIN_EMAIL}<br>
-          © ${new Date().getFullYear()} TechStore. All rights reserved.
+          © ${new Date().getFullYear()} FootMark. All rights reserved.
         </p>
       </div>
     `;
 
     await transporter.sendMail({
-      from: `"TechStore Support" <${process.env.ADMIN_EMAIL}>`,
+      from: `"FootMark Support" <${process.env.ADMIN_EMAIL}>`,
       to: customerEmail,
-      subject: 'Phản hồi từ TechStore',
+      subject: 'Phản hồi từ FootMark',
       html: emailContent,
     });
 
@@ -238,7 +238,7 @@ export const sendTradeInUpdateEmail = async (tradeIn, replyMessage) => {
 
         <div style="background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666;">
             <p>Đây là email tự động, vui lòng không trả lời trực tiếp email này.</p>
-            <p>© 2026 FootMark - TechStore Inc.</p>
+            <p>© 2026 FootMark - Authentic Sneakers & Streetwear</p>
         </div>
       </div>
     `;

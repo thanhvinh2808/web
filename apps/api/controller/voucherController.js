@@ -79,6 +79,28 @@ export const createVoucher = async (req, res) => {
       isActive: true
     });
 
+    // 🔔 Create System Notifications for all users
+    try {
+      const User = (await import('../models/User.js')).default;
+      const Notification = (await import('../models/Notification.js')).default;
+      const users = await User.find({ role: 'user' }, '_id');
+      
+      const notifications = users.map(user => ({
+        user_id: user._id,
+        type: 'system',
+        title: 'Voucher mới từ FootMark!',
+        message: `Mã ${newVoucher.code} đã sẵn sàng: ${description || 'Ưu đãi cực khủng dành cho bạn'}. Sử dụng ngay!`,
+        referenceId: newVoucher._id,
+        referenceModel: 'Voucher' // Note: Ensure Voucher is added to enum in Notification.js if needed
+      }));
+
+      if (notifications.length > 0) {
+        await Notification.insertMany(notifications);
+      }
+    } catch (notiError) {
+      console.error('⚠️ Error creating voucher notifications:', notiError);
+    }
+
     res.status(201).json({
       success: true,
       message: 'Tạo voucher thành công',

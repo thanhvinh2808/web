@@ -48,6 +48,8 @@ import addressRoutes from './routes/addresses.js';
 import sizeGuideRoutes from './routes/sizeGuides.js';
 import orderRoutes from './routes/orders.js'; // ✅ Imported Order Routes
 import authRoutes from './routes/auth.js'; // ✅ Auth Routes
+import notificationRoutes from './routes/notifications.js';
+import productRoutes from './routes/products.js';
 
 import { getJwtSecret } from './config/secrets.js';
 
@@ -83,6 +85,8 @@ app.use('/api/brands', brandRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/size-guides', sizeGuideRoutes);
 app.use('/api/orders', orderRoutes); // ✅ Use Order Routes
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/products', productRoutes);
 app.use('/api', authRoutes); // ✅ Use Auth Routes
 
 // ✅ Socket.io setup
@@ -362,73 +366,7 @@ app.post('/api/products/:productId/reviews', authenticateToken, async (req, res)
 // PRODUCT ROUTES (PUBLIC)
 // ============================================ 
 
-// Get all products (public) - Optimized with filtering
-app.get('/api/products', async (req, res) => {
-  try {
-    const { category, brand, tag, type, limit, page = 1, exclude } = req.query;
-    
-    const query = {};
-    
-    // ... (giữ nguyên logic filter)
-    
-    const skip = limit ? (parseInt(page) - 1) * parseInt(limit) : 0;
-    
-    // Mặc định sort mới nhất
-    let productQuery = Product.find(query).sort({ createdAt: -1 });
-    
-    if (skip) productQuery = productQuery.skip(skip);
-    if (limit) productQuery = productQuery.limit(parseInt(limit));
-    
-    const products = await productQuery.lean();
-    const total = await Product.countDocuments(query);
-    
-    res.json({
-      success: true, 
-      data: products,
-      pagination: {
-        total,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        pages: Math.ceil(total / limit)
-      }
-    });
-  } catch (error) {
-    console.error('❌ Error fetching products:', error);
-    res.status(500).json({
-      success: false, 
-      message: error.message 
-    });
-  }
-});
-
-// Get product by slug (public)
-app.get('/api/products/:slug', async (req, res) => {
-  try {
-    let product;
-
-    // 1. Try finding by ID if it's a valid ObjectId
-    if (mongoose.Types.ObjectId.isValid(req.params.slug)) {
-       product = await Product.findById(req.params.slug);
-    }
-
-    // 2. If not found by ID, try finding by Slug
-    if (!product) {
-       product = await Product.findOne({ slug: req.params.slug }).populate('brandId', 'name logo slug');
-    } else {
-       // Nếu tìm thấy bằng ID thì cũng cần populate
-       await product.populate('brandId', 'name logo slug');
-    }
-    
-    if (product) {
-      res.json(product);
-    } else {
-      res.status(404).json({ error: 'Product not found' });
-    }
-  } catch (error) {
-    console.error('❌ Error fetching product:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
+// Routes are now handled by routes/products.js
 
 // ============================================ 
 // ADMIN PRODUCT ROUTES
@@ -1082,6 +1020,27 @@ app.put('/api/admin/orders/:id/status', authenticateToken, requireAdmin, async (
     }
 
     await order.save();
+
+    // 🔔 Create Notification for User
+    if (order.userId) {
+      const NotificationModel = mongoose.model('Notification');
+      const statusLabels = {
+        'pending': 'Chờ xử lý',
+        'processing': 'Đang chuẩn bị hàng',
+        'shipped': 'Đang giao hàng',
+        'delivered': 'Giao hàng thành công',
+        'cancelled': 'Đã hủy'
+      };
+
+      await NotificationModel.create({
+        user_id: order.userId._id,
+        type: 'order',
+        title: 'Cập nhật đơn hàng',
+        message: `Đơn hàng #${order._id.toString().slice(-6).toUpperCase()} đã được cập nhật trạng thái: ${statusLabels[status] || status}`,
+        referenceId: order._id,
+        referenceModel: 'Order'
+      });
+    }
     
     if (global.io) {
       const updateData = {
@@ -1269,6 +1228,30 @@ app.post('/api/admin/contacts/:id/reply', authenticateToken, requireAdmin, async
 
     contact.status = 'replied';
     await contact.save();
+
+    // 🔔 Create Notification for User if they exist
+    const targetUser = await User.findOne({ email: contact.email.toLowerCase() });
+    if (targetUser) {
+      const NotificationModel = mongoose.model('Notification');
+      await NotificationModel.create({
+        user_id: targetUser._id,
+        type: 'contact',
+        title: 'Phản hồi liên hệ',
+        message: `Admin đã phản hồi tin nhắn của bạn: "${replyMessage.substring(0, 50)}${replyMessage.length > 50 ? '...' : ''}"`,
+        referenceId: contact._id,
+        referenceModel: 'Contact'
+      });
+
+      // Emit socket event if user is online
+      if (global.io) {
+        global.io.to(`user:${targetUser._id}`).emit('newNotification', {
+          type: 'contact',
+          title: 'Phản hồi liên hệ',
+          message: 'Admin đã phản hồi tin nhắn của bạn',
+          createdAt: new Date()
+        });
+      }
+    }
 
     res.json({
       success: true, 
@@ -1474,9 +1457,9 @@ app.use('/api/blogs', blogRoutes);
 
 app.get('/api/about', (req, res) => {
   res.json({
-    title: 'Về TechStore',
-    description: 'TechStore là cửa hàng công nghệ uy tín với hơn 10 năm kinh nghiệm trong ngành. Chúng tôi cung cấp các sản phẩm chất lượng cao với giá cả hợp lý.',
-    mission: 'Mang đến những sản phẩm công nghệ tốt nhất cho người tiêu dùng Việt Nam'
+    title: 'Về FootMark',
+    description: 'FootMark là hệ thống bán lẻ giày sneakers và streetwear chính hãng uy tín với đa dạng các dòng sản phẩm từ New đến Secondhand tuyển chọn.',
+    mission: 'Mang đến những đôi giày chất lượng và phong cách nhất cho cộng đồng yêu sneakers Việt Nam'
   });
 });
 

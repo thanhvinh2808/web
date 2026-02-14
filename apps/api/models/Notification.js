@@ -24,7 +24,7 @@ const notificationSchema = new mongoose.Schema({
   },
   referenceModel: {
     type: String,
-    enum: ['Order', 'User', 'Contact', 'TradeIn']
+    enum: ['Order', 'User', 'Contact', 'TradeIn', 'Voucher']
   },
   isRead: {
     type: Boolean,
