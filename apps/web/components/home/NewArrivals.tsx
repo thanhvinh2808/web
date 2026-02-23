@@ -17,7 +17,8 @@ export default function NewArrivals() {
     const fetchProducts = async () => {
       setIsLoading(true);
       try {
-        const res = await fetch(`${API_URL}/api/products`);
+        // ✅ Thêm tham số sort và limit để chắc chắn lấy sản phẩm mới nhất từ server
+        const res = await fetch(`${API_URL}/api/products?sort=newest&limit=20`);
         const data = await res.json();
         const allProducts = Array.isArray(data) ? data : data.data || [];
         setProducts(allProducts);

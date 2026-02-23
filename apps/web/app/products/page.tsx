@@ -57,9 +57,10 @@ export default function ProductsPage() {
         const catData = await catRes.json();
         setCategories(Array.isArray(catData) ? catData : catData.data || []);
 
-        // ✅ Truyền type vào API nếu có
+        // ✅ Truyền type, sort và tăng limit để lấy nhiều dữ liệu hơn cho Client-side filtering
         const typeParam = productType !== 'all' ? `?tag=${productType}` : '';
-        const prodRes = await fetch(`${API_URL}/api/products${typeParam}`);
+        const sortParam = typeParam ? '&sort=newest&limit=50' : '?sort=newest&limit=50';
+        const prodRes = await fetch(`${API_URL}/api/products${typeParam}${sortParam}`);
         const prodData = await prodRes.json();
         setProducts(Array.isArray(prodData) ? prodData : prodData.data || []);
       } catch (error) {
@@ -90,12 +91,15 @@ export default function ProductsPage() {
         if (!matchesName && !matchesBrand && !matchesCategory) return false;
       }
 
-      // ✅ Filter by Type/Tags (Cải tiến để dùng mảng tags)
+      // ✅ Filter by Type/Tags (Cải tiến để tương thích ngược)
       if (productType !== 'all') {
         const hasTag = product.tags?.includes(productType);
-        // Fallback check nếu data cũ chưa có mảng tags
-        const legacyCheck = productType === 'new' ? product.isNew : !product.isNew;
-        if (!hasTag && !legacyCheck) return false;
+        // Kiểm tra isNew: nếu type là 'new' thì isNew phải true, nếu '2hand' thì isNew phải false
+        const isNewFlag = product.isNew === true;
+        const matchLegacy = productType === 'new' ? isNewFlag : !isNewFlag;
+        
+        // Chỉ cần khớp 1 trong 2 (tag hoặc flag isNew) là đạt
+        if (!hasTag && !matchLegacy) return false;
       }
 
       if (selectedCategory !== 'all' && product.categorySlug !== selectedCategory) return false;

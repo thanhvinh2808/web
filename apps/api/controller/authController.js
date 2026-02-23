@@ -21,7 +21,7 @@ export const register = async (req, res) => {
     }
 
     const trimmedEmail = email.trim().toLowerCase();
-    const emailRegex = /^[^S@]+@[^S@]+\.[^S@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     
     if (!emailRegex.test(trimmedEmail)) {
       return res.status(400).json({ success: false, message: 'Email không đúng định dạng' });

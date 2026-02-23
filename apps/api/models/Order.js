@@ -1,17 +1,21 @@
 // backend/models/Order.js
 import mongoose from 'mongoose';
 
-// Schema cho item trong giỏ hàng
+// Schema cho item trong đơn hàng
 const OrderItemSchema = new mongoose.Schema({
-  productId: { 
-    type: String, // Giữ String vì bạn đang dùng slug làm ID
-    required: true
+  productId: {
+    type: mongoose.Schema.Types.ObjectId, // ✅ FIX: Dùng ObjectId thay vì String để query/populate được
+    ref: 'Product',
+    required: true,
   },
   productName: { type: String, required: true },
   productBrand: { type: String },
   productImage: { type: String },
   price: { type: Number, required: true },
   quantity: { type: Number, required: true, min: 1 },
+  variant: {
+    name: { type: String }, // VD: "42", "Red/Black"
+  },
 });
 
 // Schema cho thông tin khách hàng
@@ -21,146 +25,148 @@ const CustomerInfoSchema = new mongoose.Schema({
   phone: { type: String, required: true },
   address: { type: String, required: true },
   city: { type: String },
-  district: { type: String },
+  district: { type: String }, 
   ward: { type: String },
-  notes: { type: String }
+  notes: { type: String },
 });
 
 // Schema chính cho Đơn hàng
-const OrderSchema = new mongoose.Schema({
-  userId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User',
-    required: true 
+const OrderSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    items: [OrderItemSchema],
+    customerInfo: CustomerInfoSchema,
+    paymentMethod: {
+      type: String,
+      enum: ['cod', 'banking', 'momo', 'card'],
+      default: 'cod',
+    },
+    orderNumber: {
+      type: String,
+      unique: true,
+    },
+    totalAmount: {
+      type: Number,
+      required: true,
+    },
+    voucherCode: {
+      type: String,
+      default: null,
+    },
+    discountAmount: {
+      type: Number,
+      default: 0,
+    },
+    shippingFee: {
+      type: Number,
+      default: 0,
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
+      default: 'pending',
+    },
+    paymentStatus: {
+      type: String,
+      enum: ['unpaid', 'paid'],
+      default: 'unpaid',
+    },
+    // ✅ FIX: Thêm isPaid và paidAt — orderController gọi order.isPaid & order.paidAt nhưng schema thiếu
+    isPaid: {
+      type: Boolean,
+      default: false,
+    },
+    paidAt: {
+      type: Date,
+      default: null,
+    },
+    // Thông tin hủy đơn
+    cancelledAt: {
+      type: Date,
+      default: null,
+    },
+    cancelledBy: {
+      type: String,
+      enum: ['user', 'admin', 'system', null],
+      default: null,
+    },
+    cancelReason: {
+      type: String,
+      default: null,
+    },
   },
-  items: [OrderItemSchema],
-  customerInfo: CustomerInfoSchema,
-  paymentMethod: { 
-    type: String, 
-    enum: ['cod', 'banking', 'momo', 'card'],
-    default: 'cod' 
-  },
-  orderNumber: {
-    type: String,
-    unique: true
-  },
-  totalAmount: { 
-    type: Number, 
-    required: true 
-  },
-  voucherCode: { 
-    type: String, 
-    default: null 
-  },
-  discountAmount: { 
-    type: Number, 
-    default: 0 
-  },
-  shippingFee: {
-    type: Number,
-    default: 0
-  },
-  status: { 
-    type: String,
-    enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
-    default: 'pending'
-  },
-  // ✅ ĐỔI TỪ isPaid SANG paymentStatus
-  paymentStatus: {
-    type: String,
-    enum: ['unpaid', 'paid'],
-    default: 'unpaid'
-  },
-  // ✅ THÔNG TIN HỦY ĐƠN HÀNG
-  cancelledAt: {
-    type: Date,
-    default: null
-  },
-  cancelledBy: {
-    type: String,
-    enum: ['user', 'admin', 'system'],
-    default: null
-  },
-  cancelReason: {
-    type: String,
-    default: null
-  },
-  createdAt: { 
-    type: Date, 
-    default: Date.now 
-  },
-}, {
-  timestamps: true // Tự động tạo createdAt và updatedAt
-});
+  {
+    timestamps: true,
+  }
+);
 
-// ✅ INDEX ĐỂ TỐI ƯU QUERY
+// ===== INDEXES =====
 OrderSchema.index({ userId: 1, createdAt: -1 });
 OrderSchema.index({ status: 1 });
+OrderSchema.index({ orderNumber: 1 });
 OrderSchema.index({ 'customerInfo.email': 1 });
 
-// ✅ VIRTUAL FIELD: Kiểm tra có thể hủy không
-OrderSchema.virtual('canCancel').get(function() {
+// ===== VIRTUALS =====
+OrderSchema.virtual('canCancel').get(function () {
   return ['pending', 'processing'].includes(this.status);
 });
 
-// ✅ VIRTUAL FIELD: Kiểm tra có thể hoàn tiền không
-OrderSchema.virtual('canRefund').get(function() {
+OrderSchema.virtual('canRefund').get(function () {
   return this.status === 'cancelled' && this.paymentStatus === 'paid';
 });
 
-// ✅ METHOD: Hủy đơn hàng
-OrderSchema.methods.cancel = function(cancelledBy, reason = null) {
+// ===== METHODS =====
+OrderSchema.methods.cancel = function (cancelledBy, reason = null) {
   if (!this.canCancel) {
     throw new Error(`Không thể hủy đơn hàng ở trạng thái "${this.status}"`);
   }
-  
   this.status = 'cancelled';
   this.cancelledAt = new Date();
   this.cancelledBy = cancelledBy;
-  if (reason) {
-    this.cancelReason = reason;
-  }
-  
+  if (reason) this.cancelReason = reason;
   return this.save();
 };
 
-// ✅ STATIC METHOD: Lấy đơn hàng có thể hủy của user
-OrderSchema.statics.getCancellableOrders = function(userId) {
+OrderSchema.statics.getCancellableOrders = function (userId) {
   return this.find({
-    userId: userId,
-    status: { $in: ['pending', 'processing'] }
+    userId,
+    status: { $in: ['pending', 'processing'] },
   }).sort({ createdAt: -1 });
 };
 
-// ✅ PRE-SAVE HOOK: Validate logic
-OrderSchema.pre('save', function(next) {
-  // Nếu đơn hàng bị hủy, đảm bảo có thông tin hủy
+// ===== PRE-SAVE HOOK =====
+OrderSchema.pre('save', function (next) {
+  // Đơn hàng hủy: đảm bảo có thông tin hủy
   if (this.status === 'cancelled') {
-    if (!this.cancelledAt) {
-      this.cancelledAt = new Date();
-    }
-    if (!this.cancelledBy) {
-      this.cancelledBy = 'system';
-    }
-  }
-  
-  // Nếu đã giao hàng, tự động chuyển sang đã thanh toán
-  if (this.status === 'delivered' && this.paymentStatus === 'unpaid') {
-    this.paymentStatus = 'paid';
+    if (!this.cancelledAt) this.cancelledAt = new Date();
+    if (!this.cancelledBy) this.cancelledBy = 'system';
   }
 
-  // ✅ AUTO GENERATE ORDER NUMBER
+  // Đã giao: tự động đánh dấu đã thanh toán
+  if (this.status === 'delivered' && this.paymentStatus === 'unpaid') {
+    this.paymentStatus = 'paid';
+    this.isPaid = true;
+    this.paidAt = this.paidAt || new Date();
+  }
+
+  // ✅ FIX: Dùng slice(-2) thay vì substr(-2) (bị deprecated)
   if (!this.orderNumber) {
     const date = new Date();
-    const dateStr = `${date.getFullYear().toString().substr(-2)}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
-    const randomSuffix = Math.floor(1000 + Math.random() * 9000); // 4 digit random
-    this.orderNumber = `FM${dateStr}-${randomSuffix}`;
+    const yy = date.getFullYear().toString().slice(-2);
+    const mm = (date.getMonth() + 1).toString().padStart(2, '0');
+    const dd = date.getDate().toString().padStart(2, '0');
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    this.orderNumber = `FM${yy}${mm}${dd}-${randomSuffix}`;
   }
-  
+
   next();
 });
 
-// ✅ ENABLE VIRTUALS IN JSON
+// Cho phép virtual trong JSON output
 OrderSchema.set('toJSON', { virtuals: true });
 OrderSchema.set('toObject', { virtuals: true });
 

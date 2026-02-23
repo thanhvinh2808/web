@@ -1,6 +1,6 @@
-// backend/middleware/upload.js
+// middleware/upload.js
 import multer from 'multer';
-import path from 'path';
+import nodePath from 'path'; // ✅ FIX: Đổi tên import để tránh shadow với param 'filePath'
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -11,57 +11,52 @@ import dotenv from 'dotenv';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load env vars specifically if not already loaded
-dotenv.config({ path: path.resolve(process.cwd(), 'apps/api/.env') });
+dotenv.config({ path: nodePath.resolve(process.cwd(), 'apps/api/.env') });
 
 // ===== CONFIG CLOUDINARY =====
-const isCloudinaryConfigured = process.env.CLOUDINARY_CLOUD_NAME && 
-                               process.env.CLOUDINARY_API_KEY && 
-                               process.env.CLOUDINARY_API_SECRET;
+const isCloudinaryConfigured =
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET;
 
 if (isCloudinaryConfigured) {
   cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
+    api_secret: process.env.CLOUDINARY_API_SECRET,
   });
   console.log('☁️  Cloudinary Configured');
 } else {
   console.log('📂 Cloudinary NOT configured. Using Local Storage.');
 }
 
-// ✅ MIME TYPE MAPPING (SECURITY FIX)
-// Map MimeType to safe extensions
+// ===== MIME TYPE WHITELIST =====
 const MIME_TYPE_MAP = {
   'image/png': '.png',
   'image/jpeg': '.jpg',
   'image/jpg': '.jpg',
   'image/webp': '.webp',
-  'image/gif': '.gif'
+  'image/gif': '.gif',
 };
 
-// ===== CẤU HÌNH STORAGE (HYBRID) =====
+// ===== STORAGE =====
 let storage;
 
 if (isCloudinaryConfigured) {
-  // --- Cloudinary Storage ---
   storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
+    cloudinary,
     params: {
       folder: 'footmark-products',
       allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'gif'],
       format: async (req, file) => {
-        // Force format based on mimetype check implicit in allowed_formats
-        // Cloudinary handles this well, but we can be explicit
         if (file.mimetype === 'image/png') return 'png';
         if (file.mimetype === 'image/webp') return 'webp';
         if (file.mimetype === 'image/gif') return 'gif';
-        return 'jpg'; 
+        return 'jpg';
       },
     },
   });
 } else {
-  // --- Local Disk Storage (Fallback) ---
   storage = multer.diskStorage({
     destination: (req, file, cb) => {
       const uploadDir = 'uploads/products';
@@ -71,41 +66,42 @@ if (isCloudinaryConfigured) {
       cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
-      // 🛡️ SECURITY FIX: Ignore user's extension, use safe extension from Map
+      // 🛡️ SECURITY: Bỏ qua extension từ client, dùng extension từ MIME type
       const ext = MIME_TYPE_MAP[file.mimetype] || '.jpg';
-      
-      // Sanitize filename
-      const originalName = path.basename(file.originalname, path.extname(file.originalname));
+      const originalName = nodePath.basename(file.originalname, nodePath.extname(file.originalname));
       const safeName = originalName
         .toLowerCase()
         .replace(/[^a-z0-9]/g, '-')
         .replace(/-+/g, '-')
         .substring(0, 50);
-        
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
       cb(null, `${safeName}-${uniqueSuffix}${ext}`);
-    }
+    },
   });
 }
 
 // ===== FILE FILTER =====
 const fileFilter = (req, file, cb) => {
-  const allowed = Object.keys(MIME_TYPE_MAP);
-  if (allowed.includes(file.mimetype)) {
+  if (Object.keys(MIME_TYPE_MAP).includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error(`Chỉ chấp nhận file ảnh (JPEG, PNG, WEBP, GIF). File ${file.originalname} không hợp lệ.`), false);
+    cb(
+      new Error(
+        `Chỉ chấp nhận file ảnh (JPEG, PNG, WEBP, GIF). File "${file.originalname}" không hợp lệ.`
+      ),
+      false
+    );
   }
 };
 
-// ===== MULTER CONFIG =====
+// ===== MULTER INSTANCE =====
 const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
+  storage,
+  fileFilter,
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB
-    files: 10
-  }
+    files: 10,
+  },
 });
 
 // ===== MIDDLEWARE EXPORTS =====
@@ -113,31 +109,33 @@ export const uploadSingle = upload.single('image');
 export const uploadMultiple = upload.array('images', 10);
 export const uploadFields = upload.fields([
   { name: 'thumbnail', maxCount: 1 },
-  { name: 'gallery', maxCount: 10 }
+  { name: 'gallery', maxCount: 10 },
 ]);
 
-// ===== ERROR HANDLER =====
+// ===== UPLOAD ERROR HANDLER =====
 export const handleUploadError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
-    if (err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ success: false, message: 'File quá lớn (Max 5MB).' });
-    if (err.code === 'LIMIT_FILE_COUNT') return res.status(400).json({ success: false, message: 'Quá nhiều file (Max 10).' });
+    if (err.code === 'LIMIT_FILE_SIZE')
+      return res.status(400).json({ success: false, message: 'File quá lớn (tối đa 5MB).' });
+    if (err.code === 'LIMIT_FILE_COUNT')
+      return res.status(400).json({ success: false, message: 'Quá nhiều file (tối đa 10).' });
     return res.status(400).json({ success: false, message: 'Lỗi upload: ' + err.message });
-  } else if (err) {
+  }
+  if (err) {
     return res.status(400).json({ success: false, message: err.message });
   }
   next();
 };
 
-// ===== HELPER FUNCTIONS =====
-
+// ===== HELPER: Lấy Cloudinary public_id từ URL =====
 const getCloudinaryPublicId = (url) => {
   try {
     const parts = url.split('/');
     const filenameWithExt = parts.pop();
-    const folder = parts.pop(); 
+    const folder = parts.pop();
     const publicId = `${folder}/${filenameWithExt.split('.')[0]}`;
     return publicId;
-  } catch (e) {
+  } catch {
     return null;
   }
 };
@@ -157,7 +155,7 @@ export const deleteFile = async (filePath) => {
       return false;
     } else {
       const cleanPath = filePath.startsWith('/') ? filePath.slice(1) : filePath;
-      const fullPath = path.resolve(process.cwd(), cleanPath);
+      const fullPath = nodePath.resolve(process.cwd(), cleanPath);
       if (fs.existsSync(fullPath)) {
         fs.unlinkSync(fullPath);
         console.log('✅ Deleted local file:', fullPath);
@@ -171,13 +169,11 @@ export const deleteFile = async (filePath) => {
   }
 };
 
+// ===== HELPER: Xóa nhiều file =====
 export const deleteMultipleFiles = async (filePaths) => {
-  let success = 0;
-  let failed = 0;
-  await Promise.all(filePaths.map(async (path) => {
-    const result = await deleteFile(path);
-    if (result) success++; else failed++;
-  }));
+  const results = await Promise.allSettled(filePaths.map((filePath) => deleteFile(filePath)));
+  const success = results.filter((r) => r.status === 'fulfilled' && r.value === true).length;
+  const failed = results.length - success;
   return { success, failed };
 };
 
@@ -185,5 +181,5 @@ export default {
   uploadSingle,
   uploadMultiple,
   handleUploadError,
-  deleteFile
+  deleteFile,
 };

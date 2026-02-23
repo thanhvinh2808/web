@@ -22,11 +22,15 @@ export default function SecondHandZone() {
     const fetch2Hand = async () => {
       setIsLoading(true);
       try {
-        const res = await fetch(`${API_URL}/api/products`);
+        // Lấy danh sách sản phẩm mới nhất, sau đó lọc 2hand ở client để đảm bảo không sót sản phẩm chưa gắn tag
+        const res = await fetch(`${API_URL}/api/products?sort=newest&limit=50`);
         const data = await res.json();
         const allProds = Array.isArray(data) ? data : data.data || [];
-        // Lọc lấy hàng 2Hand (isNew === false)
-        const secondhand = allProds.filter((p: any) => p.isNew === false);
+        
+        // Lọc lấy hàng 2Hand (dựa trên flag isNew hoặc tag 2hand)
+        const secondhand = allProds.filter((p: any) => 
+           p.isNew === false || p.tags?.includes('2hand')
+        );
         setProducts(secondhand);
       } catch (error) {
         console.error('Error fetching 2hand products:', error);
