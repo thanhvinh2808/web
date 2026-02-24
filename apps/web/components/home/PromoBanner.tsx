@@ -11,11 +11,11 @@ export default function PromoBanner() {
              
              {/* Background Image Overlay */}
              <div className="absolute inset-0 z-0">
-                <img 
+                {/* <img 
                    src="https://images.unsplash.com/photo-1556906781-9a412961d289?auto=format&fit=crop&q=80&w=2000" 
                    alt="Sneaker Promo" 
                    className="w-full h-full object-cover opacity-60 mix-blend-overlay"
-                />
+                /> */}
              </div>
 
              {/* Content */}
