@@ -41,7 +41,7 @@ interface Order {
   address?: string;
   totalAmount: number;
   status: string;
-  paymentStatus?: 'paid' | 'unpaid';
+  paymentStatus?: 'paid' | 'unpaid' | 'refunded';
   paymentMethod: 'cod' | 'banking' | 'momo' | 'card';
   items?: OrderItem[];
   createdAt?: string;
@@ -93,7 +93,7 @@ export default function OrderDetailPage({ params }: PageProps) {
         finalTotal: order?.totalAmount || 0
       };
     }
-
+    
     const subtotal = order.items.reduce((total, item) => {
       return total + (item.price * item.quantity);
     }, 0);
@@ -108,7 +108,7 @@ export default function OrderDetailPage({ params }: PageProps) {
     const shippingFee = calculateShippingFee();
 
     const discountAmount = order.discountAmount || 0;
-    const finalTotal = subtotal + shippingFee + vatAmount - discountAmount;
+   const finalTotal = order.totalAmount - discountAmount + vatAmount + shippingFee;
 
     return {
       subtotal,
@@ -669,13 +669,19 @@ export default function OrderDetailPage({ params }: PageProps) {
 
                      <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Trạng thái:</span>
 
-                     <span className={`text-[10px] font-black px-3 py-1 uppercase tracking-widest ${
+                    <span className={`text-[10px] font-black px-3 py-1 uppercase tracking-widest ${
+  order.paymentStatus === 'paid'
+    ? 'bg-green-100 text-green-700'
+    : order.paymentStatus === 'refunded'
+    ? 'bg-blue-100 text-blue-700'
+    : 'bg-red-100 text-red-700'
+}`}>
 
-                        order.paymentStatus === 'paid' || order.status === 'delivered' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-
-                     }`}>
-
-                        {order.paymentStatus === 'paid' || order.status === 'delivered' ? 'ĐÃ THANH TOÁN' : 'CHƯA THANH TOÁN'}
+                        {order.paymentStatus === 'paid'
+    ? 'ĐÃ THANH TOÁN'
+    : order.paymentStatus === 'refunded'
+    ? 'ĐÃ HOÀN TIỀN'
+    : 'CHƯA THANH TOÁN'}
 
                      </span>
 

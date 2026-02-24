@@ -132,7 +132,7 @@ import mongoose from 'mongoose';
       items: trustedItems,
       totalAmount: grandTotal,
       status: 'pending',
-      paymentStatus: 'pending',
+      paymentStatus: 'unpaid',
     };
 
     const savedOrder = await Order.create(finalOrderData);
@@ -201,6 +201,40 @@ import mongoose from 'mongoose';
 // =============================================================================
 // GET USER ORDERS
 // =============================================================================
+// Khi admin cập nhật status → delivered
+export const updateOrderStatus = async (req, res) => {
+  try {
+    const { status, paymentStatus } = req.body;
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ success: false, message: 'Không tìm thấy đơn' });
+
+    order.status = status;
+
+    // ✅ Tự động mark paid khi giao hàng thành công (cho COD)
+    if (status === 'delivered' && order.paymentStatus === 'unpaid') {
+      order.paymentStatus = 'paid';
+      order.isPaid = true;
+      order.paidAt = new Date();
+    }
+
+    // Hoặc cho phép admin set paymentStatus thủ công
+    if (paymentStatus) {
+      order.paymentStatus = paymentStatus;
+      if (paymentStatus === 'paid') {
+        order.isPaid = true;
+        order.paidAt = order.paidAt || new Date();
+      }
+    }
+
+    await order.save();
+
+    // ... socket emit, notification...
+
+    return res.json({ success: true, order });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
 export const getUserOrders = async (req, res) => {
   try {
     const orders = await Order.find({ userId: req.user.id })

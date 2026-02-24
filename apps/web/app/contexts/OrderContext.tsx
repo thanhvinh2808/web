@@ -36,6 +36,7 @@ export interface Order {
   };
   paymentMethod: 'cod' | 'banking' | 'momo' | 'card';
   totalAmount: number;
+  vat: number;
   shippingFee?: number;
   discountAmount?: number;
   voucherCode?: string | null;
