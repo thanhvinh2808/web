@@ -189,7 +189,7 @@ export const deleteProduct = async (req, res) => {
   }
 };
 
-// ✅ LẤY SẢN PHẨM LIÊN QUAN
+//  LẤY SẢN PHẨM LIÊN QUAN
 export const getRelatedProducts = async (req, res) => {
   try {
     const { slug } = req.params;

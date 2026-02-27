@@ -178,7 +178,7 @@ export default function CheckoutPage() {
   };
 
   const subtotal = getTotalPrice();
-  const vatAmount = subtotal * 0.01; // 10% VAT
+  const vatAmount = subtotal * 0.1; // 10% VAT
   const shippingFee = subtotal >= 1000000 ? 0 : (subtotal >= 500000 ? 30000 : 50000);
   
   // Calculate discount
