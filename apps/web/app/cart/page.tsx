@@ -144,11 +144,11 @@ export default function CartPage() {
                          </div>
                          <div className="text-right">
                             <span className="block font-black text-lg italic">
-                               {formatCurrency((item.selectedVariant?.price || item.product.price) * item.quantity)}
+                               {formatCurrency((item.product.price + (item.selectedVariant?.price || 0)) * item.quantity)}
                             </span>
                             {item.quantity > 1 && (
                                <span className="text-xs text-gray-500 font-medium">
-                                  {formatCurrency(item.selectedVariant?.price || item.product.price)} / đôi
+                                  {formatCurrency(item.product.price + (item.selectedVariant?.price || 0))} / đôi
                                </span>
                             )}
                          </div>

@@ -77,9 +77,12 @@ This project is a full-stack e-commerce application ("TechStore") organized as a
     *   Backend serves static files from `uploads/` via `app.use('/uploads', ...)`
     *   Frontend constructs URLs relative to the API URL.
 
-## Database Models
-*   **User:** Roles (`user`, `admin`), profile info.
-*   **Product:** Slug-based, supports variants, multiple images, specs.
-*   **Order:** Status workflow (`pending` -> `processing` -> `shipped` -> `delivered`), supports guest checkout info.
-*   **Category:** Hierarchical organization for products.
-*   **Blog:** Content management system for posts.
+## Pricing Architecture (FootMark)
+*   **Model:** `Total Price = Base Product Price + Variant Surcharge(s)`.
+*   **Backend Verification (`orderController.js`):** Implements Zero Trust price verification. The server fetches the base price from the DB and adds verified surcharges from the selected variant options during order creation.
+*   **Variant Logic:** Variant prices are treated as **surcharges (offsets)** relative to the base price, not absolute prices.
+*   **Frontend Calculation:** 
+    *   `CartContext.tsx`: `getTotalPrice` sums `(item.product.price + surcharge) * quantity`.
+    *   `ProductCard.tsx`: `getLowestPrice` calculates the minimum total price (Base + minimum surcharges).
+    *   `ProductModal.tsx` (Admin): Input fields for variant prices are labeled and treated as surcharges (e.g., `+ 100,000đ`).
+*   **Consistency:** All order items saved to the database (`Order` model) store the final calculated price (Base + Surcharge) in the `item.price` field for historical accuracy.

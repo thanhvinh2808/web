@@ -196,9 +196,16 @@ export default function AdminDashboard() {
       if(data.success) setOrders(data.data);
   };
   const fetchProducts = async () => { 
-      const res = await fetch(`${API_URL}/api/admin/products?t=${Date.now()}`, { headers: { 'Authorization': `Bearer ${token}` } });
+      // Thêm limit=all và sort=newest để lấy toàn bộ dữ liệu đã được sắp xếp từ Server
+      const res = await fetch(`${API_URL}/api/admin/products?limit=all&sort=newest&t=${Date.now()}`, { 
+          headers: { 'Authorization': `Bearer ${token}` } 
+      });
       const data = await res.json();
-      if (Array.isArray(data.data)) setProducts(data.data);
+      if (data.success && Array.isArray(data.data)) {
+        setProducts(data.data);
+      } else if (Array.isArray(data)) {
+        setProducts(data);
+      }
   };
   const fetchCategories = async () => { 
       const res = await fetch(`${API_URL}/api/categories`);

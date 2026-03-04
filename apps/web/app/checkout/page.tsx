@@ -395,7 +395,7 @@ export default function CheckoutPage() {
               productName: item.product.name,
               productBrand: item.product.brand || 'N/A',
               productImage: productImage,
-              price: item.selectedVariant?.price || item.product.price,
+              price: item.product.price + (item.selectedVariant?.price || 0),
               quantity: item.quantity,
               variant: item.selectedVariant ? {
                  name: item.selectedVariant.name,
@@ -703,7 +703,7 @@ export default function CheckoutPage() {
                                   <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">Size: <span className="text-primary">{item.selectedVariant.name}</span></p>
                                )}
                                <p className="text-sm font-black mt-1 text-black italic">
-                                  {formatCurrency(item.selectedVariant?.price || item.product.price)}
+                                  {formatCurrency(item.product.price + (item.selectedVariant?.price || 0))}
                                </p>
                             </div>
                          </div>

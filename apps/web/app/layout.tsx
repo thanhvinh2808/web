@@ -10,7 +10,7 @@ import { Toaster } from 'react-hot-toast';
 import "./globals.css";
 
 const inter = Inter({ 
-  subsets: ["latin"],
+  subsets: ["latin", "vietnamese"], // Thêm vietnamese để hỗ trợ dấu tiếng Việt
   variable: "--font-inter",
   display: "swap",
 });
@@ -27,7 +27,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="vi" className={inter.variable}>
-      <body className="min-h-screen bg-gray-50 font-sans">
+      <body className={`${inter.className} min-h-screen bg-gray-50 antialiased`}>
         <SocketProvider>
           <AuthProvider>
             <ClientProviders>

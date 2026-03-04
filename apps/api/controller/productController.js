@@ -3,7 +3,9 @@ import Category from '../models/Category.js';
 import { deleteFile, deleteMultipleFiles } from '../middleware/upload.js';
 import mongoose from 'mongoose';
 
-// ✅ LẤY TẤT CẢ SẢN PHẨM (CÓ PHÂN TRANG & FILTER)
+/**
+ * LẤY DANH SÁCH SẢN PHẨM (CÓ PHÂN TRANG & BỘ LỌC)
+ */
 export const getProducts = async (req, res) => {
   try {
     const { 
@@ -13,55 +15,55 @@ export const getProducts = async (req, res) => {
       category, 
       brand, 
       tag, 
-      type, // ✅ Hỗ trợ thêm alias 'type'
+      type,
       minPrice, 
       maxPrice, 
-      sort 
+      sort,
+      exclude // Bỏ qua sản phẩm cụ thể (dùng cho Related)
     } = req.query;
 
     const query = { status: 'active' };
 
-    // Tìm kiếm theo tên
+    // 1. Tìm kiếm văn bản
     if (search) {
-      query.name = { $regex: search, $options: 'i' };
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { brand: { $regex: search, $options: 'i' } }
+      ];
     }
 
-    // Lọc theo danh mục (slug)
-    if (category) {
-      query.categorySlug = category;
-    }
+    // 2. Lọc theo danh mục & thương hiệu
+    if (category) query.categorySlug = category;
+    if (brand) query.brand = brand;
+    if (exclude) query.slug = { $ne: exclude };
 
-    // Lọc theo thương hiệu
-    if (brand) {
-      query.brand = brand;
-    }
+    // 3. Lọc theo Tag (new, 2hand, etc.)
+    const filterTag = tag || type;
+    if (filterTag) query.tags = filterTag.toLowerCase();
 
-    // ✅ LỌC THEO TAG (Hỗ trợ cả 'tag' và 'type')
-    const filterTag = tag || type; // Ưu tiên tag, fallback sang type
-    if (filterTag) {
-      query.tags = filterTag.toLowerCase();
-    }
-
-    // Lọc theo giá
+    // 4. Lọc theo giá cơ sở
     if (minPrice || maxPrice) {
       query.price = {};
       if (minPrice) query.price.$gte = Number(minPrice);
       if (maxPrice) query.price.$lte = Number(maxPrice);
     }
 
-    // Sắp xếp
+    // 5. Sắp xếp
     let sortOptions = { createdAt: -1 };
     if (sort === 'price_asc') sortOptions = { price: 1 };
     if (sort === 'price_desc') sortOptions = { price: -1 };
-    if (sort === 'oldest') sortOptions = { createdAt: 1 };
+    if (sort === 'popular') sortOptions = { soldCount: -1 };
+    if (sort === 'rating') sortOptions = { rating: -1 };
 
     const skip = (Number(page) - 1) * Number(limit);
     
+    // Thực thi query
     const products = await Product.find(query)
+      .populate('brandId', 'name logo slug') // Lấy thêm info Brand
       .sort(sortOptions)
       .skip(skip)
-      .limit(Number(limit))
-      .lean();
+      .limit(Number(limit));
 
     const total = await Product.countDocuments(query);
 
@@ -80,30 +82,36 @@ export const getProducts = async (req, res) => {
   }
 };
 
-// ✅ LẤY CHI TIẾT SẢN PHẨM THEO SLUG
+/**
+ * LẤY CHI TIẾT SẢN PHẨM THEO SLUG
+ */
 export const getProductBySlug = async (req, res) => {
   try {
-    const product = await Product.findOne({ slug: req.params.slug, status: 'active' });
+    const product = await Product.findOne({ slug: req.params.slug, status: 'active' })
+      .populate('brandId'); // Lấy full info Brand để hiện Logo/SizeGuide
+
     if (!product) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
     }
-    res.json({ success: true, product });
+
+    res.json({ success: true, data: product });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ✅ TẠO SẢN PHẨM MỚI (DÀNH CHO ADMIN)
+/**
+ * TẠO SẢN PHẨM MỚI (ADMIN)
+ */
 export const createProduct = async (req, res) => {
   try {
     const productData = req.body;
 
-    // 1. Kiểm tra các trường bắt buộc
     if (!productData.name || !productData.price) {
       return res.status(400).json({ success: false, message: 'Tên và giá là bắt buộc' });
     }
 
-    // 2. Tự động tạo slug nếu thiếu
+    // Xử lý slug tự động
     if (!productData.slug) {
       productData.slug = productData.name
         .toLowerCase()
@@ -111,21 +119,9 @@ export const createProduct = async (req, res) => {
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/[^\w\s-]/g, '')
         .replace(/[\s_-]+/g, '-')
-        .replace(/^-+|-+$/g, '');
+        .trim();
     }
 
-    // Kiểm tra slug trùng
-    const existingProduct = await Product.findOne({ slug: productData.slug });
-    if (existingProduct) {
-      productData.slug = `${productData.slug}-${Date.now().toString().slice(-4)}`;
-    }
-
-    // 3. Xử lý Tags (Chuẩn hóa mảng)
-    if (productData.tags && typeof productData.tags === 'string') {
-      productData.tags = productData.tags.split(',').map(t => t.trim().toLowerCase());
-    }
-
-    // 4. Lưu vào DB
     const newProduct = new Product(productData);
     await newProduct.save();
 
@@ -135,22 +131,16 @@ export const createProduct = async (req, res) => {
   }
 };
 
-// ✅ CẬP NHẬT SẢN PHẨM
+/**
+ * CẬP NHẬT SẢN PHẨM
+ */
 export const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: 'ID không hợp lệ' });
-    }
-
-    // Xử lý Tags nếu có gửi lên dưới dạng string
-    if (updateData.tags && typeof updateData.tags === 'string') {
-      updateData.tags = updateData.tags.split(',').map(t => t.trim().toLowerCase());
-    }
-
-    const updatedProduct = await Product.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+    const updatedProduct = await Product.findByIdAndUpdate(id, req.body, { 
+      new: true, 
+      runValidators: true 
+    });
 
     if (!updatedProduct) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
@@ -162,7 +152,9 @@ export const updateProduct = async (req, res) => {
   }
 };
 
-// ✅ XÓA SẢN PHẨM (SOFT DELETE HOẶC HARD DELETE)
+/**
+ * XÓA SẢN PHẨM
+ */
 export const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
@@ -172,44 +164,31 @@ export const deleteProduct = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
     }
 
-    // Xóa ảnh liên quan (nếu có)
-    if (product.images && product.images.length > 0) {
-      const imageUrls = product.images.map(img => img.url);
-      await deleteMultipleFiles(imageUrls);
-    }
-    if (product.image) {
-      await deleteFile(product.image);
-    }
+    // Xóa file ảnh vật lý
+    const allImages = [product.image, ...(product.images?.map(img => img.url) || [])].filter(Boolean);
+    if (allImages.length > 0) await deleteMultipleFiles(allImages);
 
     await Product.findByIdAndDelete(id);
 
-    res.json({ success: true, message: 'Đã xóa sản phẩm và các tệp liên quan' });
+    res.json({ success: true, message: 'Đã xóa sản phẩm thành công' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-//  LẤY SẢN PHẨM LIÊN QUAN
-export const getRelatedProducts = async (req, res) => {
+/**
+ * LẤY ĐÁNH GIÁ SẢN PHẨM
+ */
+export const getProductReviews = async (req, res) => {
   try {
-    const { slug } = req.params;
-    const product = await Product.findOne({ slug }).lean();
-    
-    if (!product) return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
+    const { id } = req.params;
+    // Giả định Review model đã tồn tại
+    const Review = mongoose.model('Review');
+    const reviews = await Review.find({ productId: id, status: 'approved' })
+      .populate('userId', 'name avatar')
+      .sort({ createdAt: -1 });
 
-    const related = await Product.find({
-      status: 'active',
-      _id: { $ne: product._id },
-      $or: [
-        { categorySlug: product.categorySlug },
-        { brand: product.brand },
-        { tags: { $in: product.tags } } // Tìm theo tag chung
-      ]
-    })
-    .limit(4)
-    .lean();
-
-    res.json({ success: true, data: related });
+    res.json({ success: true, reviews });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

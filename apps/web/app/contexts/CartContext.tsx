@@ -135,8 +135,11 @@ export const CartProvider = ({
 
   const getTotalPrice = () => {
     return cart.reduce((total, item) => {
-      const price = item.selectedVariant?.price || item.product.price;
-      return total + (price * item.quantity);
+      // ✅ Logic mới: Giá gốc + Phụ phí cấu hình
+      const basePrice = item.product.price || 0;
+      const surcharge = item.selectedVariant?.price || 0;
+      const finalPrice = basePrice + surcharge;
+      return total + (finalPrice * item.quantity);
     }, 0);
   };
 

@@ -375,8 +375,9 @@ app.post('/api/products/:productId/reviews', authenticateToken, async (req, res)
 // Get all products (admin)
 app.get('/api/admin/products', authenticateToken, requireAdmin, async (req, res) => {
   try {
+    // Sắp xếp theo _id giảm dần là cách chính xác nhất để lấy hàng mới nhất trong MongoDB
     const products = await Product.find()
-      .sort({ createdAt: -1, _id: -1 })
+      .sort({ _id: -1 })
       .lean();
     
     res.json({
@@ -440,6 +441,13 @@ app.post('/api/admin/products', authenticateToken, requireAdmin, async (req, res
       }));
     }
 
+    // Tính toán lại tổng tồn kho từ các biến thể (nếu có)
+    let finalStock = parseInt(stock) || 0;
+    if (processedVariants.length > 0) {
+      finalStock = processedVariants.reduce((total, v) => 
+        total + v.options.reduce((sum, opt) => sum + (parseInt(opt.stock) || 0), 0), 0);
+    }
+
     const productData = {
       name: name.trim(),
       brand: brand?.trim() || '',
@@ -449,7 +457,7 @@ app.post('/api/admin/products', authenticateToken, requireAdmin, async (req, res
       rating: rating || 5,
       description: description?.trim() || '',
       categorySlug: categorySlug?.trim() || '',
-      stock: parseInt(stock) || 0,
+      stock: finalStock, // ✅ Luôn là tổng của các variants
       images: processedImages,
       image: processedImages.length > 0 ? processedImages[0].url : '',
       specs: specs || {},
@@ -528,6 +536,13 @@ app.put('/api/admin/products/:slug', authenticateToken, requireAdmin, async (req
       }));
     }
 
+    // ✅ TÍNH TOÁN LẠI TỒN KHO TỔNG (Tránh lỗi tồn kho bằng 0)
+    let finalStock = stock !== undefined ? parseInt(stock) : 0;
+    if (processedVariants.length > 0) {
+      finalStock = processedVariants.reduce((total, v) => 
+        total + v.options.reduce((sum, opt) => sum + (parseInt(opt.stock) || 0), 0), 0);
+    }
+
     const updateData = {
       name: name?.trim(),
       brand: brand?.trim(),
@@ -537,7 +552,7 @@ app.put('/api/admin/products/:slug', authenticateToken, requireAdmin, async (req
       rating: rating || 5,
       description: description?.trim(),
       categorySlug: categorySlug?.trim(),
-      stock: stock !== undefined ? parseInt(stock) : undefined,
+      stock: finalStock, // ✅ Cập nhật stock đã tính toán
       images: processedImages.length > 0 ? processedImages : undefined,
       image: processedImages.length > 0 ? processedImages[0].url : undefined,
       specs: specs,

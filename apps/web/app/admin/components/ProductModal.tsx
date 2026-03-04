@@ -183,8 +183,9 @@ export default function ProductModal({
     if (!formData.name?.trim()) newErrors.name = 'Tên sản phẩm không được để trống';
     if (!formData.categorySlug) newErrors.categorySlug = 'Vui lòng chọn danh mục';
     if (!formData.price || formData.price <= 0) newErrors.price = 'Giá phải lớn hơn 0';
-    if (formData.originalPrice && formData.originalPrice < (formData.price || 0)) {
-      newErrors.originalPrice = 'Giá gốc phải lớn hơn hoặc bằng giá bán';
+    // Chỉ validate giá gốc nếu người dùng có nhập (lớn hơn 0)
+    if (formData.originalPrice && formData.originalPrice > 0 && formData.originalPrice < (formData.price || 0)) {
+      newErrors.originalPrice = 'Giá niêm yết (giá cũ) phải lớn hơn hoặc bằng giá bán hiện tại';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -490,7 +491,7 @@ export default function ProductModal({
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Giá gốc (VNĐ)</label>
                 <input
                   type="number"
-                  value={formData.originalPrice || ''}
+                  value={formData.originalPrice !== undefined ? formData.originalPrice : 0}
                   onChange={(e) => handleChange('originalPrice', Number(e.target.value))}
                   className="w-full px-4 py-3 bg-gray-50 border-none rounded-lg focus:ring-2 focus:ring-black outline-none"
                   placeholder="0"
@@ -624,7 +625,7 @@ export default function ProductModal({
                   onClick={() => {
                     const newSize = {
                       name: '',
-                      price: formData.price || 0,
+                      price: 0,
                       stock: 1,
                       sku: '',
                       image: ''
@@ -651,7 +652,7 @@ export default function ProductModal({
                      <thead className="bg-gray-100 border-b border-gray-200">
                         <tr>
                            <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Kích thước (Size)</th>
-                           <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Giá bán (VNĐ)</th>
+                           <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Phụ phí (+ VNĐ)</th>
                            <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-500 uppercase">Tồn kho</th>
                            <th className="px-4 py-3 text-center text-[10px] font-bold text-gray-500 uppercase">Thao tác</th>
                         </tr>
@@ -673,16 +674,20 @@ export default function ProductModal({
                                  />
                               </td>
                               <td className="px-4 py-3">
-                                 <input 
-                                    type="number" 
-                                    value={opt.price}
-                                    onChange={(e) => {
-                                       const updated = [...variants];
-                                       updated[0].options[idx].price = Number(e.target.value);
-                                       updateAllVariants(updated);
-                                    }}
-                                    className="w-full bg-transparent border-none focus:ring-0 font-medium"
-                                 />
+                                 <div className="flex items-center gap-1">
+                                    <span className="text-gray-400 font-bold">+</span>
+                                    <input 
+                                       type="number" 
+                                       value={opt.price}
+                                       onChange={(e) => {
+                                          const updated = [...variants];
+                                          updated[0].options[idx].price = Number(e.target.value);
+                                          updateAllVariants(updated);
+                                       }}
+                                       className="w-full bg-transparent border-none focus:ring-0 font-medium"
+                                       placeholder="0"
+                                    />
+                                 </div>
                               </td>
                               <td className="px-4 py-3">
                                  <input 
@@ -723,7 +728,7 @@ export default function ProductModal({
                   <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Chưa có thông tin Size</p>
                   <button 
                      type="button"
-                     onClick={() => updateAllVariants([{ name: 'Size', options: [{ name: '42', price: formData.price || 0, stock: 1, sku: '', image: '' }] }])}
+                     onClick={() => updateAllVariants([{ name: 'Size', options: [{ name: '42', price: 0, stock: 1, sku: '', image: '' }] }])}
                      className="mt-4 text-blue-600 text-xs font-bold uppercase hover:underline"
                   >
                      Tạo nhanh bảng Size

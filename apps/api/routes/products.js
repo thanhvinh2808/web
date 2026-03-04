@@ -7,12 +7,30 @@ const router = express.Router();
 // 📋 Lấy tất cả sản phẩm (Public)
 router.get('/', async (req, res) => {
   try {
-    const { category, brand, tag, limit, page = 1, exclude, type } = req.query;
-    const query = {};
+    const { category, brand, tag, limit, page = 1, exclude, type, search } = req.query;
+    const query = { status: 'active' };
 
-    if (category) query.categorySlug = category;
+    // 1. Lọc theo danh mục
+    if (category && category !== 'all') query.categorySlug = category;
+    
+    // 2. Lọc theo thương hiệu
     if (brand) query.brand = brand;
-    if (tag) query.tags = tag;
+    
+    // 3. Lọc theo Tag hoặc Type
+    const filterTag = tag || type;
+    if (filterTag && filterTag !== 'all') {
+       query.tags = filterTag.toLowerCase();
+    }
+
+    // 4. Tìm kiếm nâng cao
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { brand: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // 5. Loại trừ sản phẩm (Related)
     if (exclude) {
        if (mongoose.Types.ObjectId.isValid(exclude)) {
           query._id = { $ne: exclude };
@@ -20,21 +38,19 @@ router.get('/', async (req, res) => {
           query.slug = { $ne: exclude };
        }
     }
-    
-    // Hỗ trợ lọc theo loại (new/2hand) qua tag
-    if (type) {
-       query.tags = type.toLowerCase();
-    }
 
-    const skip = limit ? (parseInt(page) - 1) * parseInt(limit) : 0;
-    
+    // ✅ LUÔN SẮP XẾP MỚI NHẤT LÊN ĐẦU (Server-side)
     let productQuery = Product.find(query).sort({ createdAt: -1 });
     
-    if (skip) productQuery = productQuery.skip(skip);
-    if (limit) productQuery = productQuery.limit(parseInt(limit));
-    
-    const products = await productQuery.populate('brandId', 'name logo').lean();
+    // 6. Phân trang Server-side (Chỉ áp dụng nếu có limit)
     const total = await Product.countDocuments(query);
+    if (limit && limit !== 'all') {
+       const pageSize = parseInt(limit);
+       const currentPage = parseInt(page);
+       productQuery = productQuery.skip((currentPage - 1) * pageSize).limit(pageSize);
+    }
+    
+    const products = await productQuery.populate('brandId', 'name logo slug').lean();
     
     res.json({
       success: true, 
@@ -42,8 +58,8 @@ router.get('/', async (req, res) => {
       pagination: {
         total,
         page: parseInt(page),
-        limit: parseInt(limit),
-        pages: limit ? Math.ceil(total / limit) : 1
+        limit: limit === 'all' ? total : parseInt(limit || total),
+        pages: (limit && limit !== 'all') ? Math.ceil(total / parseInt(limit)) : 1
       }
     });
   } catch (error) {
@@ -57,27 +73,20 @@ router.get('/:identifier', async (req, res) => {
     const { identifier } = req.params;
     let product = null;
 
-    console.log(`🔍 Đang tìm sản phẩm với định danh: ${identifier}`);
-
-    // 1. Thử tìm theo ID nếu identifier là ObjectId hợp lệ
     if (mongoose.Types.ObjectId.isValid(identifier)) {
       product = await Product.findById(identifier).populate('brandId', 'name logo slug');
     }
 
-    // 2. Nếu không tìm thấy hoặc không phải ID, thử tìm theo Slug
     if (!product) {
       product = await Product.findOne({ slug: identifier }).populate('brandId', 'name logo slug');
     }
 
     if (product) {
-      // Đảm bảo trả về format object trực tiếp (tương thích frontend hiện tại)
       res.json(product);
     } else {
-      console.warn(`❌ Không tìm thấy sản phẩm: ${identifier}`);
       res.status(404).json({ error: 'Sản phẩm không tồn tại' });
     }
   } catch (error) {
-    console.error('❌ Lỗi API chi tiết sản phẩm:', error);
     res.status(500).json({ error: 'Lỗi máy chủ nội bộ' });
   }
 });
