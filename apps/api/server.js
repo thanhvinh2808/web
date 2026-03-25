@@ -77,17 +77,17 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static('uploads'));
 
 // Routes
+app.use('/api', authRoutes); // ✅ Auth Routes first
 app.use('/api/trade-in', tradeInRoutes);
 app.use('/api/blogs', blogRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 // ✅ Register New Routes
 app.use('/api/brands', brandRoutes);
-app.use('/api/addresses', addressRoutes);
+app.use('/api/user/addresses', addressRoutes);
 app.use('/api/size-guides', sizeGuideRoutes);
-app.use('/api/orders', orderRoutes); // ✅ Use Order Routes
+app.use('/api/orders', orderRoutes); 
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/products', productRoutes);
-app.use('/api', authRoutes); // ✅ Use Auth Routes
 
 // ✅ Socket.io setup
 const io = new Server(server, {

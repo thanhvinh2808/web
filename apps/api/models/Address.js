@@ -22,7 +22,7 @@ const addressSchema = new mongoose.Schema({
   },
   district: {
     type: String,
-    required: true
+    default: ''
   },
   ward: {
     type: String,

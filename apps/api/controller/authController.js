@@ -318,3 +318,70 @@ export const resetPassword = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// ✅ GOOGLE LOGIN
+export const googleLogin = async (req, res) => {
+  try {
+    const { email, name, image, googleId } = req.body;
+
+    if (!isValidString(email)) {
+      return res.status(400).json({ success: false, message: 'Dữ liệu Google không hợp lệ' });
+    }
+
+    const trimmedEmail = email.trim().toLowerCase();
+    let user = await User.findOne({ email: trimmedEmail });
+
+    if (!user) {
+      // Create new user if not exists
+      // Generate a random password since password is required in Schema
+      const randomPassword = crypto.randomBytes(16).toString('hex');
+      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+      user = await User.create({
+        name: name || 'Google User',
+        email: trimmedEmail,
+        password: hashedPassword,
+        avatar: image || '',
+        role: 'user'
+      });
+
+      // 🔔 Notify Admin
+      try {
+        if (typeof createNotification === 'function') {
+          await createNotification('user', `Người dùng mới từ Google: ${user.name}`, user._id, 'User');
+        }
+      } catch (notiError) {
+        console.error('⚠️ Notification error:', notiError);
+      }
+    } else {
+      // Update avatar if it's empty
+      if (!user.avatar && image) {
+        user.avatar = image;
+        await user.save();
+      }
+    }
+
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    return res.json({
+      success: true,
+      token,
+      expiresIn: 604800,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Google Login error:', error);
+    return res.status(500).json({ success: false, message: 'Lỗi server: ' + error.message });
+  }
+};

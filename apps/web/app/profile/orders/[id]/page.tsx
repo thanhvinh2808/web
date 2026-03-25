@@ -212,6 +212,38 @@ export default function OrderDetailPage() {
       <div className="container mx-auto px-4 max-w-5xl">
 
         {/* Header */}
+        <div className="relative flex justify-between mt-10 px-2">
+                {['pending', 'processing', 'shipped', 'delivered'].map((step, idx) => {
+                  const currentIdx = ['pending', 'processing', 'shipped', 'delivered'].indexOf(order.status);
+                  const isCompleted = idx <= currentIdx;
+                  const isCancelled = order.status === 'cancelled';
+                  return (
+                    <div key={step} className="flex flex-col items-center relative z-10">
+                      <div className={`w-6 h-6 flex items-center justify-center border-2 transition-all rotate-45 ${
+                        isCancelled ? 'border-gray-200 bg-gray-100' :
+                        isCompleted  ? 'border-primary bg-primary' : 'border-gray-200 bg-white'
+                      }`}>
+                        {isCompleted && <div className="w-2 h-2 bg-white" />}
+                      </div>
+                      <span className={`text-[8px] font-bold uppercase mt-4 tracking-widest ${
+                        isCompleted && !isCancelled ? 'text-primary' : 'text-gray-400'
+                      }`}>
+                        {getStatusLabel(step)}
+                      </span>
+                    </div>
+                  );
+                })}
+                <div className="absolute top-3 left-0 w-full h-0.5 bg-gray-100 -z-0">
+                  <div
+                    className="h-full bg-primary transition-all duration-500"
+                    style={{
+                      width: order.status === 'cancelled'
+                        ? '0%'
+                        : `${(['pending','processing','shipped','delivered'].indexOf(order.status) / 3) * 100}%`,
+                    }}
+                  />
+                </div>
+              </div>
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={() => router.back()}
@@ -247,38 +279,7 @@ export default function OrderDetailPage() {
               </div>
 
               {/* Progress bar */}
-              <div className="relative flex justify-between mt-10 px-2">
-                {['pending', 'processing', 'shipped', 'delivered'].map((step, idx) => {
-                  const currentIdx = ['pending', 'processing', 'shipped', 'delivered'].indexOf(order.status);
-                  const isCompleted = idx <= currentIdx;
-                  const isCancelled = order.status === 'cancelled';
-                  return (
-                    <div key={step} className="flex flex-col items-center relative z-10">
-                      <div className={`w-6 h-6 flex items-center justify-center border-2 transition-all rotate-45 ${
-                        isCancelled ? 'border-gray-200 bg-gray-100' :
-                        isCompleted  ? 'border-primary bg-primary' : 'border-gray-200 bg-white'
-                      }`}>
-                        {isCompleted && <div className="w-2 h-2 bg-white" />}
-                      </div>
-                      <span className={`text-[8px] font-bold uppercase mt-4 tracking-widest ${
-                        isCompleted && !isCancelled ? 'text-primary' : 'text-gray-400'
-                      }`}>
-                        {getStatusLabel(step)}
-                      </span>
-                    </div>
-                  );
-                })}
-                <div className="absolute top-3 left-0 w-full h-0.5 bg-gray-100 -z-0">
-                  <div
-                    className="h-full bg-primary transition-all duration-500"
-                    style={{
-                      width: order.status === 'cancelled'
-                        ? '0%'
-                        : `${(['pending','processing','shipped','delivered'].indexOf(order.status) / 3) * 100}%`,
-                    }}
-                  />
-                </div>
-              </div>
+              
             </div>
 
             {/* Items */}
@@ -314,7 +315,22 @@ export default function OrderDetailPage() {
                 ))}
               </div>
             </div>
+<div className="bg-white shadow-sm border border-gray-100 p-6 space-y-4">
+              <h3 className="font-black text-gray-900 mb-2 uppercase tracking-wide text-sm">Thông tin nhận hàng</h3>
 
+              <div className="flex items-start gap-3">
+                <MapPin className="text-gray-400 mt-0.5 flex-shrink-0" size={16} />
+                <div>
+                  <p className="font-bold text-sm uppercase tracking-wide">{order.customerInfo.fullName}</p>
+                  <p className="text-xs text-gray-500 mt-1 font-medium leading-relaxed">{order.customerInfo.address}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Phone className="text-gray-400 flex-shrink-0" size={16} />
+                <p className="text-xs font-bold tracking-wider">{order.customerInfo.phone}</p>
+              </div>
+            </div>
           </div>
 
           {/* ── RIGHT ────────────────────────────────────── */}
@@ -443,22 +459,7 @@ export default function OrderDetailPage() {
             </div>
 
             {/* Delivery info */}
-            <div className="bg-white shadow-sm border border-gray-100 p-6 space-y-4">
-              <h3 className="font-black text-gray-900 mb-2 uppercase tracking-wide text-sm">Thông tin nhận hàng</h3>
-
-              <div className="flex items-start gap-3">
-                <MapPin className="text-gray-400 mt-0.5 flex-shrink-0" size={16} />
-                <div>
-                  <p className="font-bold text-sm uppercase tracking-wide">{order.customerInfo.fullName}</p>
-                  <p className="text-xs text-gray-500 mt-1 font-medium leading-relaxed">{order.customerInfo.address}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Phone className="text-gray-400 flex-shrink-0" size={16} />
-                <p className="text-xs font-bold tracking-wider">{order.customerInfo.phone}</p>
-              </div>
-            </div>
+            
 
           </div>
         </div>

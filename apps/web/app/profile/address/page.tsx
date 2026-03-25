@@ -79,9 +79,28 @@ export default function AddressPage() {
 
   // 1. Initial Load
   useEffect(() => {
+    // Tạm thời lấy từ local để hiển thị nhanh
     const localUser = JSON.parse(localStorage.getItem('user') || '{}');
     if (localUser.addresses) {
       setAddresses(localUser.addresses);
+    }
+
+    // Lấy dữ liệu mới nhất từ server để đồng bộ
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/addresses`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.success) {
+          setAddresses(data.addresses);
+          const u = JSON.parse(localStorage.getItem('user') || '{}');
+          u.addresses = data.addresses;
+          localStorage.setItem('user', JSON.stringify(u));
+        }
+      })
+      .catch(err => console.error('Error fetching addresses:', err));
     }
     
     // Fetch Provinces
@@ -161,7 +180,7 @@ export default function AddressPage() {
   const handleDelete = async (id: string) => {
     if(!confirm('Xóa địa chỉ này?')) return;
     const token = localStorage.getItem('token');
-    const res = await fetch(`$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/addresses/${id}`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/addresses/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -176,7 +195,7 @@ export default function AddressPage() {
 
   const handleSetDefault = async (id: string) => {
     const token = localStorage.getItem('token');
-    const res = await fetch(`$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/addresses/${id}/default`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/addresses/${id}/default`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -223,7 +242,7 @@ export default function AddressPage() {
                             <span className="text-gray-500">{addr.phone}</span>
                         </div>
                         <div className="text-sm text-gray-600">
-                            <p>{addr.address}</p>
+                            <p>{addr.specificAddress || addr.address}</p>
                             <p>{addr.ward}, {addr.city}</p>
                         </div>
                         {addr.isDefault && (

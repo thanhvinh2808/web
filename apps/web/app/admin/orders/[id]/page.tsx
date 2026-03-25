@@ -437,7 +437,7 @@ export default function OrderDetailPage({ params }: PageProps) {
 
                           )}
 
-                          <span className="absolute top-0 left-0 bg-black text-white text-[9px] font-bold px-1.5 py-0.5 uppercase">Elite</span>
+                          {/* <span className="absolute top-0 left-0 bg-black text-white text-[9px] font-bold px-1.5 py-0.5 uppercase">Elite</span> */}
 
                         </div>
 
@@ -489,7 +489,7 @@ export default function OrderDetailPage({ params }: PageProps) {
 
               {/* ORDER OVERVIEW & TOTALS */}
 
-              <section className="bg-black text-white p-8 md:p-12 relative overflow-hidden">
+              <section className="border-2 border-black  p-8 md:p-12 relative overflow-hidden">
 
                  {/* Decorative background element */}
 
@@ -695,7 +695,7 @@ export default function OrderDetailPage({ params }: PageProps) {
 
               {/* ORDER ACTION CENTER */}
 
-              <div className="bg-primary p-1 md:p-1.5 shadow-xl">
+              <div className="bg-primary p-1 md:p-1 shadow-xl">
 
                  <div className="bg-white p-8 border border-primary/20">
 
