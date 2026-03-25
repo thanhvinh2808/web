@@ -85,7 +85,7 @@ export default function ProductsTab({
 
   // ✅ Helper function để lấy URL ảnh
   const getImageUrl = (product: Product): string => {
-    const BASE_URL = (API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}`).replace('/api', '');
+    const BASE_URL = API_URL.replace(/\/api\/?$/, '') || API_URL;
     let rawUrl: any = '';
 
     if (product.images && Array.isArray(product.images) && product.images.length > 0) {

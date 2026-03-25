@@ -22,7 +22,8 @@ interface Blog {
 }
 
 // --- API URL ---
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+const API_URL = CLEAN_API_URL;
 
 // --- BLOG DETAIL PAGE COMPONENT ---
 export default function BlogDetailPage() {

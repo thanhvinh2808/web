@@ -42,7 +42,7 @@ const OrderSchema = new mongoose.Schema(
     customerInfo: CustomerInfoSchema,
     paymentMethod: {
       type: String,
-      enum: ['cod', 'banking', 'momo', 'card'],
+      enum: ['cod', 'banking', 'momo', 'card', 'vnpay'],
       default: 'cod',
     },
     orderNumber: {
@@ -95,6 +95,10 @@ const OrderSchema = new mongoose.Schema(
       default: null,
     },
     cancelReason: {
+      type: String,
+      default: null,
+    },
+    vnpayTransactionId: {
       type: String,
       default: null,
     },

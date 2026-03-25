@@ -1,10 +1,14 @@
 // apps/api/seedFootMark.js
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import Category from './models/Category.js';
 import Product from './models/Product.js';
 
-dotenv.config();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
+dotenv.config({ path: path.join(__dirname, '.env'), override: false });
 
 const categories = [
   { name: "Nike", slug: "nike", icon: "👟", description: "Thương hiệu giày thể thao hàng đầu thế giới." },

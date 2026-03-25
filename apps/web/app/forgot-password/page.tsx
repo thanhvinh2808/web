@@ -7,7 +7,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+const API_URL = CLEAN_API_URL;
 
 export default function ForgotPasswordPage() {
   const router = useRouter();

@@ -1,10 +1,12 @@
 // ✅ COMPLETE VERSION - server.js (With ALL Admin Routes)
+// Load .env BEFORE any config/service imports (ES module hoisting)
+import './env.js';
+
 import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
@@ -50,27 +52,54 @@ import orderRoutes from './routes/orders.js'; // ✅ Imported Order Routes
 import authRoutes from './routes/auth.js'; // ✅ Auth Routes
 import notificationRoutes from './routes/notifications.js';
 import productRoutes from './routes/products.js';
+import vnpayRoutes from './routes/vnpay.js';
 
 import { getJwtSecret } from './config/secrets.js';
+import { getVnpay } from './config/vnpay.js';
 
-// ✅ Load environment variables
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.join(__dirname, '.env') });
 
 // ✅ App setup
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 const JWT_SECRET = getJwtSecret();
 
 // ✅ Create HTTP server
 const server = createServer(app);
 
-// ✅ Middleware - NO DUPLICATES
+// ✅ CORS: allow frontend origin(s) and preflight for register/login
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3001'
+].filter(Boolean);
+
+const isLocalOrigin = (origin) => {
+  if (!origin) return false;
+  try {
+    const u = new URL(origin);
+    return u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+  } catch {
+    return false;
+  }
+};
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
-  credentials: true
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin) || isLocalOrigin(origin)) {
+      callback(null, origin || true);
+    } else {
+      callback(null, true);
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  credentials: true,
+  optionsSuccessStatus: 204
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -88,6 +117,7 @@ app.use('/api/size-guides', sizeGuideRoutes);
 app.use('/api/orders', orderRoutes); 
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/vnpay', vnpayRoutes);
 
 // ✅ Socket.io setup
 const io = new Server(server, {
@@ -1482,7 +1512,9 @@ app.get('/api/about', (req, res) => {
 server.listen(PORT, () => {
   console.log(`\n🚀 Server is running on port ${PORT}`);
   console.log(`🔗 API URL: http://localhost:${PORT}`);
-  console.log(`🔌 Socket.io is ready\n`);
+  console.log(`🔌 Socket.io is ready`);
+  getVnpay();
+  console.log('');
 });
 
 export default app;

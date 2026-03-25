@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation';
 import { Upload, CheckCircle, HelpCircle, ArrowRight, RefreshCw, Truck, Wallet, Loader2, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+
+const API_URL = CLEAN_API_URL;
 
 export default function TradeInPage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -91,12 +94,12 @@ export default function TradeInPage() {
           data.append('images', file);
       });
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/trade-in`, {
+      const res = await fetch(`${API_URL}/api/trade-in`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}` 
         },
-        body: data // Sending FormData, so Content-Type header is auto-set
+        body: data
       });
 
       const result = await res.json();

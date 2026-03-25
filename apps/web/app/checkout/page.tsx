@@ -11,6 +11,9 @@ import { Voucher } from '../types/voucher';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { getImageUrl } from '../../lib/imageHelper';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+
+const API_URL = CLEAN_API_URL;
 
 // --- Helper: Xóa dấu tiếng Việt ---
 function removeAccents(str: string) {
@@ -215,7 +218,7 @@ export default function CheckoutPage() {
        try {
           const token = localStorage.getItem('token');
           // ✅ UPDATE API ENDPOINT
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/addresses`,
+          const res = await fetch(`${API_URL}/api/user/addresses`,
           {
              headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -327,7 +330,7 @@ export default function CheckoutPage() {
      try {
         const token = localStorage.getItem('token');
         // ✅ UPDATE API ENDPOINT
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/addresses`, {
+        const res = await fetch(`${API_URL}/api/user/addresses`, {
            method: 'POST',
            headers: {
               'Content-Type': 'application/json',
@@ -416,7 +419,7 @@ export default function CheckoutPage() {
               ...customerInfo,
               address: fullAddress,
            },
-           paymentMethod: paymentMethod as 'cod' | 'banking' | 'momo' | 'card',
+           paymentMethod: paymentMethod as 'cod' | 'banking' | 'momo' | 'card' | 'vnpay',
            totalAmount,
            shippingFee,
            discountAmount,
@@ -425,10 +428,9 @@ export default function CheckoutPage() {
            paymentStatus: 'unpaid' as 'paid' | 'unpaid'
         };
 
-        const API_URL = process.env.NEXT_PUBLIC_API_URL;
         const token = localStorage.getItem('token');
 
-        if (API_URL && token) {
+        if (token) {
            const res = await fetch(`${API_URL}/api/orders`, {
               method: 'POST',
               headers: {
@@ -446,8 +448,14 @@ export default function CheckoutPage() {
            
            const orderId = data.order?._id || data.order?.id || data._id || data.id;
            
-           setIsOrderPlaced(true); // ✅ Flag to prevent redirect
+           setIsOrderPlaced(true);
            clearCart();
+
+           if (paymentMethod === 'vnpay' && data.paymentUrl) {
+              window.location.href = data.paymentUrl;
+              return;
+           }
+
            router.push(`/order-success?orderId=${orderId}`);
         } else {
            setIsOrderPlaced(true);
@@ -669,6 +677,19 @@ export default function CheckoutPage() {
                          </div>
                          <CreditCard className="text-gray-400"/>
                       </label>
+
+                      <label className={`flex items-center gap-4 p-5 border rounded-none cursor-pointer transition ${paymentMethod === 'vnpay' ? 'border-primary bg-blue-50/30' : 'border-gray-200 hover:border-gray-300'}`}>
+                         <input type="radio" name="payment" value="vnpay" checked={paymentMethod === 'vnpay'} onChange={() => setPaymentMethod('vnpay')} className="w-5 h-5 text-primary focus:ring-primary"/>
+                         <div className="flex-1">
+                            <span className="font-bold block text-sm uppercase tracking-wide">Thanh toán VNPay</span>
+                            <span className="text-xs text-gray-500 font-medium italic">ATM / Visa / MasterCard / JCB / QR Pay qua VNPay</span>
+                         </div>
+                         <svg className="w-8 h-8 text-gray-400" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                            <path d="M2 10h20" stroke="currentColor" strokeWidth="1.5"/>
+                            <path d="M6 15h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                         </svg>
+                      </label>
                    </div>
                 </section>
 
@@ -790,7 +811,14 @@ export default function CheckoutPage() {
                       disabled={isProcessing}
                       className="w-full bg-primary text-white py-4 rounded-none font-bold uppercase tracking-widest hover:bg-primary-dark transition shadow-xl shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                    >
-                      {isProcessing ? 'Đang xử lý...' : (paymentMethod === 'banking' ? 'Thanh toán & Đặt hàng' : 'Đặt hàng ngay')} <CheckCircle size={20}/>
+                      {isProcessing
+                        ? 'Đang xử lý...'
+                        : paymentMethod === 'vnpay'
+                          ? 'Thanh toán qua VNPay'
+                          : paymentMethod === 'banking'
+                            ? 'Thanh toán & Đặt hàng'
+                            : 'Đặt hàng ngay'
+                      } <CheckCircle size={20}/>
                    </button>
                    
                    <p className="text-center text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-6 flex items-center justify-center gap-1">

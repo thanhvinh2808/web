@@ -1,10 +1,8 @@
-﻿// app/admin/orders/[id]/page.tsx
+// app/admin/orders/[id]/page.tsx
 'use client';
 import React, { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
-
-// ✅ QUAN TRỌNG: Hardcode trực tiếp để tránh nhầm lẫn
-const BACKEND_API_URL = 'http://localhost:5000';
+import { CLEAN_API_URL } from '@lib/shared/constants';
 
 interface OrderItem {
   productId: string;
@@ -69,8 +67,7 @@ export default function OrderDetailPage({ params }: PageProps) {
   const router = useRouter();
   const orderId = params.id;
   
-  // ✅ ĐẢM BẢO KHÔNG THỂ SAI PORT - ƯU TIÊN BACKEND 5000
-  const API_URL = 'http://localhost:5000';
+  const API_URL = CLEAN_API_URL;
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);

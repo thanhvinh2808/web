@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { X, Ruler } from 'lucide-react';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+
+const API_URL = CLEAN_API_URL;
 
 interface SizeGuideModalProps {
   brandId: string;
@@ -13,10 +16,7 @@ interface SizeGuideModalProps {
 export default function SizeGuideModal({ brandId, brandName, isOpen, onClose }: SizeGuideModalProps) {
   const [sizeGuide, setSizeGuide] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [activeGender, setActiveGender] = useState('Men'); // Mặc định Men
-  
-  // API URL
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const [activeGender, setActiveGender] = useState('Men');
 
   useEffect(() => {
     if (isOpen && brandId) {

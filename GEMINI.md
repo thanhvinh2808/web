@@ -14,7 +14,7 @@ This project is a full-stack e-commerce application ("TechStore") organized as a
 
 ### Backend (`apps/api`)
 *   **Framework:** Express.js
-*   **Database:** MongoDB (using Mongoose)
+*   **Database:** MongoDB (using Mongoose).
 *   **Authentication:** JWT (JSON Web Tokens) with `bcrypt` for password hashing.
 *   **Real-time:** `socket.io` for order status updates.
 *   **File Uploads:** `multer` (stores files locally in `uploads/`).

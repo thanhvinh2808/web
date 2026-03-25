@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { Order } from '../contexts/OrderContext';
 import { CheckCircle, ShoppingBag, Truck, Receipt } from 'lucide-react';
 import QRCodePayment from '../../components/QRCodePayment';
+import { CLEAN_API_URL } from '@lib/shared/constants';
 
 // ─── Đồng bộ với OrderDetailPage & OrdersPage ─────────────────────────────────
 function calcSummary(order: any) {
@@ -47,8 +48,7 @@ export default function OrderSuccessPage() {
     const cleanUrl = typeof url === 'string' ? url : (url.url || '');
     if (!cleanUrl || cleanUrl.includes('[object')) return '/placeholder.png';
     if (cleanUrl.startsWith('http')) return cleanUrl;
-    const base = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace('/api', '');
-    return `${base}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`;
+    return `${CLEAN_API_URL}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`;
   };
 
   // Fetch order
@@ -59,9 +59,8 @@ export default function OrderSuccessPage() {
       try {
         let foundOrder = getOrderById(orderId);
         if (!foundOrder) {
-          const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
           const token = localStorage.getItem('token');
-          const res = await fetch(`${API_URL}/api/orders/${orderId}`, {
+          const res = await fetch(`${CLEAN_API_URL}/api/orders/${orderId}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (res.ok) {
@@ -129,10 +128,22 @@ export default function OrderSuccessPage() {
             </div>
           )}
 
+          {/* VNPay pending */}
+          {order.paymentMethod === 'vnpay' && order.paymentStatus === 'unpaid' && (
+            <div className="mb-10 bg-yellow-50 p-4 border border-yellow-200 text-yellow-700 font-bold uppercase tracking-widest text-sm flex items-center justify-center gap-2">
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M2 10h20" stroke="currentColor" strokeWidth="1.5"/>
+              </svg>
+              Đang chờ thanh toán VNPay
+            </div>
+          )}
+
           {/* Đã thanh toán */}
           {(order.paymentStatus === 'paid' || (order as any).isPaid) && (
             <div className="mb-10 bg-green-50 p-4 border border-green-200 text-green-700 font-bold uppercase tracking-widest text-sm flex items-center justify-center gap-2">
-              <CheckCircle size={18} /> Đơn hàng đã được thanh toán
+              <CheckCircle size={18} />
+              {order.paymentMethod === 'vnpay' ? 'Đã thanh toán qua VNPay' : 'Đơn hàng đã được thanh toán'}
             </div>
           )}
 

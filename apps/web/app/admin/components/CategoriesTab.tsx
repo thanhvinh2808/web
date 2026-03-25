@@ -2,8 +2,11 @@
 'use client';
 import React, { useState } from 'react';
 import { API_URL } from '../config/constants';
+import { CLEAN_API_URL } from '@lib/shared/constants';
 import { Category } from '../types';
 import { FolderTree, Plus, Pencil, Trash2, X, Image as ImageIcon } from 'lucide-react';
+
+const BASE_URL = CLEAN_API_URL;
 
 interface CategoriesTabProps {
   categories: Category[];
@@ -43,9 +46,7 @@ export default function CategoriesTab({ categories, token, onRefresh, showMessag
     try {
       const uploadFormData = new FormData();
       uploadFormData.append('image', file);
-      
-      const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}`).replace('/api', '');
-      
+
       const res = await fetch(`${BASE_URL}/api/upload/single`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },

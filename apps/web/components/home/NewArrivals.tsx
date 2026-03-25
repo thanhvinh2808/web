@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import ProductCard from '../ProductCard';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+const API_URL = CLEAN_API_URL;
 const ITEMS_PER_PAGE = 4; // Số sản phẩm mỗi trang
 
 export default function NewArrivals() {

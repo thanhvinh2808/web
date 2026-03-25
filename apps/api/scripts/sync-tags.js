@@ -1,10 +1,12 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import Product from '../models/Product.js';
 
-// Load Environment Variables
-dotenv.config({ path: path.resolve(process.cwd(), 'apps/api/.env') });
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, '..', '..', '.env') });
+dotenv.config({ path: path.join(__dirname, '..', '.env'), override: false });
 
 const MONGODB_URI = process.env.MONGODB_URI;
 

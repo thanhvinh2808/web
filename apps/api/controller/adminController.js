@@ -1,4 +1,4 @@
-﻿import User from '../models/User.js';
+import User from '../models/User.js';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import Notification from '../models/Notification.js';
@@ -6,10 +6,18 @@ import bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
 
 // ðŸ”” Create Notification (Helper for internal use)
-export const createNotification = async (type, message, referenceId, referenceModel) => {
+const NOTIFICATION_TITLE_MAP = {
+  order: 'Đơn hàng mới',
+  user: 'Người dùng mới',
+  contact: 'Liên hệ mới',
+  system: 'Thông báo hệ thống',
+};
+
+export const createNotification = async (type, message, referenceId, referenceModel, title) => {
   try {
     const notification = await Notification.create({
       type,
+      title: title || NOTIFICATION_TITLE_MAP[type] || 'Thông báo',
       message,
       referenceId,
       referenceModel

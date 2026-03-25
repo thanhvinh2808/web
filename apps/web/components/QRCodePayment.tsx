@@ -3,8 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle, Copy, RefreshCw, Smartphone } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useSocket } from '../app/contexts/SocketContext'; // Đảm bảo bạn đã có SocketContext
+import { useSocket } from '../app/contexts/SocketContext';
 import { useRouter } from 'next/navigation';
+import { CLEAN_API_URL } from '@lib/shared/constants';
 
 // ✅ CẤU HÌNH TÀI KHOẢN NGÂN HÀNG NHẬN TIỀN (THAY CỦA BẠN VÀO ĐÂY)
 const BANK_INFO = {
@@ -75,7 +76,7 @@ export default function QRCodePayment({ orderId, orderCode, amount, onSuccess }:
   const simulatePayment = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/orders/${orderId}/pay`, {
+      const res = await fetch(`${CLEAN_API_URL}/api/orders/${orderId}/pay`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });

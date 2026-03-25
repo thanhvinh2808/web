@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { CLEAN_API_URL as API_URL } from '../../lib/shared/constants'; // ✅ Dùng hằng số chuẩn
+import { CLEAN_API_URL as API_URL } from '@lib/shared/constants'; // ✅ Dùng hằng số chuẩn
 import toast from 'react-hot-toast';
 
 interface User {

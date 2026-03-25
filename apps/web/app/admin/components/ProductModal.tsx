@@ -1,6 +1,9 @@
 // app/admin/components/ProductModal.tsx
 'use client';
 import React, { useState, useEffect } from 'react';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+
+const baseUrl = CLEAN_API_URL;
 
 
 
@@ -107,11 +110,9 @@ export default function ProductModal({
     options: [{ name: '', price: 0, stock: 0, sku: '', image: '' }]
   });
 
-  // ✅ Hàm hỗ trợ lấy URL ảnh đầy đủ
   const getImageUrl = (url: string) => {
     if (!url) return '';
     if (url.startsWith('http')) return url;
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
@@ -200,8 +201,8 @@ export default function ProductModal({
     const newImages: string[] = [];
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      
+      const API_BASE = baseUrl;
+
       // Upload từng file một (hoặc dùng endpoint upload multiple nếu backend hỗ trợ)
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -214,7 +215,7 @@ export default function ProductModal({
         const uploadFormData = new FormData();
         uploadFormData.append('image', file);
 
-        const response = await fetch(`${API_URL}/api/upload/single`, {
+        const response = await fetch(`${API_BASE}/api/upload/single`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` },
           body: uploadFormData
@@ -347,8 +348,7 @@ export default function ProductModal({
     try {
       const uploadFormData = new FormData();
       uploadFormData.append('image', file);
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const response = await fetch(`${API_URL}/api/upload/single`, {
+      const response = await fetch(`${baseUrl}/api/upload/single`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: uploadFormData

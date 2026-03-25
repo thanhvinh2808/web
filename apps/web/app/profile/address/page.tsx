@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, MapPin, Trash2, CheckCircle2, ChevronDown, X } from 'lucide-react';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+
+const API_URL = CLEAN_API_URL;
 
 // --- Reusable Component: Autocomplete Select (Copied from ProfilePage) ---
 function removeAccents(str: string) {
@@ -144,7 +147,7 @@ export default function AddressPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch( `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/addresses`, {
+      const res = await fetch(`${API_URL}/api/user/addresses`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

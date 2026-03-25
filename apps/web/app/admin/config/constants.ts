@@ -1,2 +1,2 @@
-// Cấu hình URL API cho trang quản trị
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+export const API_URL = CLEAN_API_URL;

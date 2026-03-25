@@ -3,8 +3,9 @@ import React, { useState, useEffect } from "react";
 import { MessageSquare, X, Send, User, Mail, Minus } from "lucide-react";
 import { useAuth } from "../app/contexts/AuthContext";
 import toast from "react-hot-toast";
+import { CLEAN_API_URL } from "@lib/shared/constants";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_URL = CLEAN_API_URL;
 
 export default function ContactWidget() {
   const { user, isAuthenticated } = useAuth();

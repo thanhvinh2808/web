@@ -14,7 +14,8 @@ interface Product {
   slug?: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL' || 'http://localhost:5000';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+const API_URL = CLEAN_API_URL;
 
 export const SearchBar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -200,7 +201,7 @@ export const SearchBar = () => {
     const url = typeof imgData === 'string' ? imgData : (imgData.url || '');
     if (!url || url.includes('[object')) return '/placeholder-product.jpg';
     if (url.startsWith('http') || url.startsWith('data:')) return url;
-    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}`).replace('/api', '');
+    const baseUrl = API_URL;
     return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 

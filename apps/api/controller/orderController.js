@@ -3,6 +3,8 @@ import Product from '../models/Product.js';
 import { createNotification } from './adminController.js';
 import { sendNewOrderEmail } from '../services/emailService.js';
 import mongoose from 'mongoose';
+import { ProductCode, VnpLocale } from 'vnpay';
+import { getVnpay } from '../config/vnpay.js';
 
 /**
  * TẠO ĐƠN HÀNG (CREATE ORDER)
@@ -141,6 +143,35 @@ export const createOrder = async (req, res) => {
 
     if (global.io) {
       global.io.to('admin').emit('newOrder', savedOrder);
+    }
+
+    // 6. VNPay: generate payment URL if paymentMethod is vnpay
+    const vnpayInstance = getVnpay();
+    if (savedOrder.paymentMethod === 'vnpay' && vnpayInstance) {
+      const clientIp =
+        req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+        req.socket?.remoteAddress ||
+        req.ip ||
+        '127.0.0.1';
+
+      const txnRef = `${savedOrder.orderNumber}-${Date.now()}`;
+
+      const paymentUrl = vnpayInstance.buildPaymentUrl({
+        vnp_Amount: savedOrder.totalAmount,
+        vnp_IpAddr: clientIp,
+        vnp_TxnRef: txnRef,
+        vnp_OrderInfo: `Thanh toan don hang ${savedOrder.orderNumber}`,
+        vnp_OrderType: ProductCode.Other,
+        vnp_ReturnUrl: process.env.VNPAY_RETURN_URL || 'http://localhost:3000/payment/vnpay-return',
+        vnp_Locale: VnpLocale.VN,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: 'Đặt hàng thành công',
+        order: savedOrder,
+        paymentUrl,
+      });
     }
 
     return res.status(201).json({

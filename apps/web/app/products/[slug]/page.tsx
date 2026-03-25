@@ -68,7 +68,8 @@ interface Product {
   maxPrice?: number;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+const API_URL = CLEAN_API_URL;
 
 export default function ProductDetailPage({ params }: { params: { slug: string } }) {
   const { slug } = params;

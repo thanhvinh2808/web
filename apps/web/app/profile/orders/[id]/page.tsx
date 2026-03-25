@@ -28,7 +28,8 @@ import {
 import { useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+const API_URL = CLEAN_API_URL;
 
 // ── Tính chi phí đơn hàng ────────────────────────────────────────────────────
 function calculateOrderSummary(order: Order | null) {
@@ -108,8 +109,9 @@ export default function OrderDetailPage() {
     const fetchFreshOrder = async () => {
       if (!user) return;
       try {
+        const token = localStorage.getItem('token');
         const res = await fetch(`${API_URL}/api/orders/${orderId}`, {
-          headers: { Authorization: `Bearer ${user._id}` },
+          headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
           const data = await res.json();
@@ -145,9 +147,10 @@ export default function OrderDetailPage() {
     if (!order || !cancelReason.trim()) return;
     setIsCancelling(true);
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch(`${API_URL}/api/orders/${orderId}/cancel`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user?._id}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ cancelReason }),
       });
       if (!res.ok) throw new Error('Không thể hủy đơn hàng');

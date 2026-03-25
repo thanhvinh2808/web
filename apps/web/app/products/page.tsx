@@ -5,8 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Filter, SlidersHorizontal, X, Check, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import ProductCard from '../../components/ProductCard';
 import { Product } from '../../lib/shared/types';
+import { CLEAN_API_URL } from '@lib/shared/constants';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = CLEAN_API_URL;
 const PRODUCTS_PER_PAGE = 12;
 
 interface Category {

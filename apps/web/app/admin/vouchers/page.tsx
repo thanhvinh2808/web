@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, Tag, Calendar, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { CLEAN_API_URL } from '@lib/shared/constants';
 
 interface Voucher {
   _id: string;
@@ -44,7 +45,7 @@ export default function AdminVouchersPage() {
   const fetchVouchers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/vouchers?search=${searchTerm}`, {
+      const res = await fetch(`${CLEAN_API_URL}/api/admin/vouchers?search=${searchTerm}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -70,8 +71,8 @@ export default function AdminVouchersPage() {
     
     try {
       const url = editingVoucher 
-        ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/vouchers/${editingVoucher._id}`
-        : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/vouchers`;
+        ? `${CLEAN_API_URL}/api/admin/vouchers/${editingVoucher._id}`
+        : `${CLEAN_API_URL}/api/admin/vouchers`;
       
       const method = editingVoucher ? 'PUT' : 'POST';
 
@@ -104,7 +105,7 @@ export default function AdminVouchersPage() {
     
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/vouchers/${id}`, {
+      const res = await fetch(`${CLEAN_API_URL}/api/admin/vouchers/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
