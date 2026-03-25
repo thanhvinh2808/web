@@ -71,8 +71,8 @@ interface Product {
 import { CLEAN_API_URL } from '@lib/shared/constants';
 const API_URL = CLEAN_API_URL;
 
-export default function ProductDetailPage({ params }: { params: { slug: string } }) {
-  const { slug } = params;
+export default function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = React.use(params);
   const router = useRouter();
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();

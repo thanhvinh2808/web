@@ -12,6 +12,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { getImageUrl } from '../../lib/imageHelper';
 import { CLEAN_API_URL } from '@lib/shared/constants';
+import QRCodePayment from '../../components/QRCodePayment';
 
 const API_URL = CLEAN_API_URL;
 
@@ -160,6 +161,8 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isOrderPlaced, setIsOrderPlaced] = useState(false); // ✅ Fix Redirect Loop
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [activeOrderData, setActiveOrderData] = useState<any>(null);
 
   // Address State
   const [provinces, setProvinces] = useState<Province[]>([]);
@@ -184,7 +187,7 @@ export default function CheckoutPage() {
   const vatAmount = subtotal * 0.1; // 10% VAT
   const shippingFee = subtotal >= 1000000 ? 0 : (subtotal >= 500000 ? 30000 : 50000);
   
-  // Calculate discount
+ 
   useEffect(() => {
      if (selectedVoucher) {
         if (selectedVoucher.discountType === 'percentage') {
@@ -200,9 +203,9 @@ export default function CheckoutPage() {
 
   const totalAmount = Math.max(0, subtotal + shippingFee + vatAmount - discountAmount);
 
-  // Redirect Logic
+
   useEffect(() => {
-    if (isOrderPlaced) return; // ✅ Stop redirect if order placed
+    if (isOrderPlaced) return; 
     if (cart && cart.length === 0) router.push('/cart');
     if (!isAuthenticated) {
       sessionStorage.setItem('redirectAfterLogin', '/checkout');
@@ -217,7 +220,6 @@ export default function CheckoutPage() {
 
        try {
           const token = localStorage.getItem('token');
-          // ✅ UPDATE API ENDPOINT
           const res = await fetch(`${API_URL}/api/user/addresses`,
           {
              headers: { 'Authorization': `Bearer ${token}` }
@@ -241,7 +243,6 @@ export default function CheckoutPage() {
           console.error("Failed to fetch addresses:", error);
        }
        
-       // Fallback to basic user info if no addresses found
        setCustomerInfo(prev => ({
           ...prev,
           fullName: user.name || '',
@@ -254,7 +255,6 @@ export default function CheckoutPage() {
     initData();
   }, [user]);
 
-  // Fetch Provinces
   useEffect(() => {
     fetch('https://provinces.open-api.vn/api/p/')
       .then(res => res.json())
@@ -262,7 +262,6 @@ export default function CheckoutPage() {
       .catch(err => console.error(err));
   }, []);
 
-  // Fetch Wards when Province selected
   useEffect(() => {
     if (selectedProvince) {
       fetch(`https://provinces.open-api.vn/api/p/${selectedProvince}?depth=3`)
@@ -292,7 +291,6 @@ export default function CheckoutPage() {
         fullName: addr.name || addr.fullName,
         email: addr.email || user?.email || '',
         phone: addr.phone,
-        // ✅ Handle fields mapping
         address: addr.specificAddress || addr.address || addr.streetAddress,
         city: addr.city,
         district: addr.district || '',
@@ -311,7 +309,6 @@ export default function CheckoutPage() {
 
      const provinceName = provinces.find(p => p.code == +selectedProvince)?.name || '';
      const wardName = wards.find(w => w.code == +selectedWard)?.name || '';
-     // Tách wardName: "Phường X (Quận Y)" -> lấy district nếu cần thiết
      let districtName = '';
      if (wardName.includes('(')) {
         districtName = wardName.match(/\(([^)]+)\)/)?.[1] || '';
@@ -320,7 +317,7 @@ export default function CheckoutPage() {
      const newAddr = {
         name: customerInfo.fullName,
         phone: customerInfo.phone,
-        specificAddress: streetAddress, // ✅ Map to schema
+        specificAddress: streetAddress, 
         city: provinceName,
         district: districtName || 'Other',
         ward: wardName.split('(')[0].trim(),
@@ -329,7 +326,6 @@ export default function CheckoutPage() {
 
      try {
         const token = localStorage.getItem('token');
-        // ✅ UPDATE API ENDPOINT
         const res = await fetch(`${API_URL}/api/user/addresses`, {
            method: 'POST',
            headers: {
@@ -377,14 +373,12 @@ export default function CheckoutPage() {
            return;
         }
 
-        // Tạo chuỗi địa chỉ đầy đủ
         let fullAddress = '';
         if (isEditingAddress) {
            const provinceName = provinces.find(p => p.code == +selectedProvince)?.name || '';
            const wardName = wards.find(w => w.code == +selectedWard)?.name || '';
            fullAddress = `${streetAddress}, ${wardName}, ${provinceName}`;
         } else {
-           // Sử dụng địa chỉ đã lưu (đã bao gồm ward và city)
            fullAddress = `${customerInfo.address}, ${customerInfo.ward}, ${customerInfo.city}`;
         }
 
@@ -447,15 +441,29 @@ export default function CheckoutPage() {
            }
            
            const orderId = data.order?._id || data.order?.id || data._id || data.id;
+           const orderCode = data.order?.orderCode || (orderId && orderId.slice(-6).toUpperCase()) || 'ORD';
            
-           setIsOrderPlaced(true);
-           clearCart();
-
            if (paymentMethod === 'vnpay' && data.paymentUrl) {
+              setIsOrderPlaced(true);
+              clearCart();
               window.location.href = data.paymentUrl;
               return;
            }
 
+           if (paymentMethod === 'banking') {
+              setActiveOrderData({
+                 orderId,
+                 orderCode,
+                 totalAmount
+              });
+              setShowQRCode(true);
+              // Lưu ý: Không clearCart() ở đây, chỉ clear khi onSuccess ở QRCodePayment
+              return;
+           }
+
+           // Đối với các phương thức khác (như COD) hoặc khi đã tạo đơn xong
+           setIsOrderPlaced(true);
+           clearCart();
            router.push(`/order-success?orderId=${orderId}`);
         } else {
            setIsOrderPlaced(true);
@@ -477,6 +485,30 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-white font-sans text-gray-900 pb-20">
        
+       {/* QR CODE OVERLAY */}
+       {showQRCode && activeOrderData && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+             <div className="relative max-w-sm w-full">
+                <button 
+                   onClick={() => setShowQRCode(false)}
+                   className="absolute -top-12 right-0 text-white hover:text-primary transition-colors flex items-center gap-2 font-bold uppercase text-xs tracking-widest"
+                >
+                   Hủy / Quay lại <X size={20}/>
+                </button>
+                <QRCodePayment 
+                   orderId={activeOrderData.orderId}
+                   orderCode={activeOrderData.orderCode}
+                   amount={activeOrderData.totalAmount}
+                   onSuccess={() => {
+                      setIsOrderPlaced(true);
+                      clearCart();
+                      router.push(`/order-success?orderId=${activeOrderData.orderId}`);
+                   }}
+                />
+             </div>
+          </div>
+       )}
+
        <div className="border-b border-gray-100 bg-white sticky top-0 z-20">
          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
            <Link href="/" className="font-black text-xl italic tracking-tighter">FOOTMARK.</Link>

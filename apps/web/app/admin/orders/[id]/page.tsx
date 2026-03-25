@@ -60,12 +60,12 @@ const statusLabels: { [key: string]: string } = {
 };
 
 interface PageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default function OrderDetailPage({ params }: PageProps) {
   const router = useRouter();
-  const orderId = params.id;
+  const { id: orderId } = use(params);
   
   const API_URL = CLEAN_API_URL;
 

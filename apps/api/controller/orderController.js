@@ -130,19 +130,23 @@ export const createOrder = async (req, res) => {
     const savedOrder = await Order.create(finalOrderData);
 
     // 5. XỬ LÝ SAU KHI ĐẶT HÀNG (Thông báo, Email...)
-    if (typeof createNotification === 'function') {
-      createNotification(
-        'order',
-        `Đơn hàng mới #${savedOrder._id.toString().slice(-6).toUpperCase()} - ${grandTotal.toLocaleString('vi-VN')}đ`,
-        savedOrder._id,
-        'Order'
-      ).catch(err => console.error('Lỗi thông báo:', err));
-    }
+    // ✅ CHỈ GỬI THÔNG BÁO NGAY NẾU LÀ COD (Thanh toán khi nhận hàng)
+    // Đối với Banking/VNPay, sẽ gửi sau khi markOrderAsPaid được gọi (khi tiền đã vào)
+    if (savedOrder.paymentMethod === 'cod') {
+      if (typeof createNotification === 'function') {
+        createNotification(
+          'order',
+          `Đơn hàng mới #${savedOrder._id.toString().slice(-6).toUpperCase()} - ${grandTotal.toLocaleString('vi-VN')}đ`,
+          savedOrder._id,
+          'Order'
+        ).catch(err => console.error('Lỗi thông báo:', err));
+      }
 
-    sendNewOrderEmail(savedOrder).catch(err => console.error('Lỗi gửi email:', err));
+      sendNewOrderEmail(savedOrder).catch(err => console.error('Lỗi gửi email:', err));
 
-    if (global.io) {
-      global.io.to('admin').emit('newOrder', savedOrder);
+      if (global.io) {
+        global.io.to('admin').emit('newOrder', savedOrder);
+      }
     }
 
     // 6. VNPay: generate payment URL if paymentMethod is vnpay
@@ -386,6 +390,36 @@ export const markOrderAsPaid = async (req, res) => {
     if (order.status === 'pending') order.status = 'processing';
 
     await order.save();
+
+    // ✅ CHỈ GỬI THÔNG BÁO CHO ADMIN & EMAIL CHO KHÁCH SAU KHI ĐÃ THANH TOÁN XONG (Đối với Banking/VNPay)
+    if (order.paymentMethod !== 'cod') {
+        if (typeof createNotification === 'function') {
+            createNotification(
+              'order',
+              `Đơn hàng mới đã thanh toán #${order._id.toString().slice(-6).toUpperCase()} - ${order.totalAmount.toLocaleString('vi-VN')}đ`,
+              order._id,
+              'Order'
+            ).catch(err => console.error('Lỗi thông báo:', err));
+        }
+    
+        sendNewOrderEmail(order).catch(err => console.error('Lỗi gửi email:', err));
+        
+        if (global.io) {
+            global.io.to('admin').emit('newOrder', order);
+        }
+    }
+
+    // Thông báo cho người dùng qua Socket
+    if (global.io) {
+      const updateData = {
+        orderId: order._id,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        isPaid: true
+      };
+      global.io.to(`user:${order.userId}`).emit('orderStatusUpdated', updateData);
+      global.io.to('admin').emit('orderStatusUpdated', updateData);
+    }
 
     return res.json({ success: true, message: 'Thanh toán thành công', order });
   } catch (error) {

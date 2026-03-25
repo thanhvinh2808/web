@@ -111,9 +111,13 @@ export default function OrderSuccessPage() {
           <div className="w-24 h-24 bg-green-50 flex items-center justify-center mx-auto mb-6 border-2 border-green-100">
             <CheckCircle className="text-green-600 w-12 h-12" />
           </div>
-          <h1 className="text-4xl font-black italic tracking-tighter mb-2 uppercase">ĐẶT HÀNG THÀNH CÔNG!</h1>
+          <h1 className="text-4xl font-black italic tracking-tighter mb-2 uppercase">
+            {order.paymentStatus === 'paid' || (order as any).isPaid ? 'THANH TOÁN THÀNH CÔNG!' : 'ĐẶT HÀNG THÀNH CÔNG!'}
+          </h1>
           <p className="text-gray-500 mb-10 font-medium italic uppercase">
-            Cảm ơn {order.customerInfo.fullName}, đơn hàng của bạn đang được xử lý.
+            {order.paymentStatus === 'paid' || (order as any).isPaid 
+              ? `Cảm ơn ${order.customerInfo.fullName}, đơn hàng của bạn đang được chuẩn bị để giao.`
+              : `Cảm ơn ${order.customerInfo.fullName}, vui lòng hoàn tất thanh toán để đơn hàng được xử lý.`}
           </p>
 
           {/* QR banking */}

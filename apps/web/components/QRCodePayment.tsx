@@ -58,10 +58,15 @@ export default function QRCodePayment({ orderId, orderCode, amount, onSuccess }:
 
     const handleOrderStatus = (data: any) => {
       // Check đúng đơn hàng và trạng thái đã thanh toán
+      // Chỉ kích hoạt khi paymentStatus là 'paid' hoặc isPaid là true
       if (data.orderId === orderId && (data.paymentStatus === 'paid' || data.isPaid)) {
         setIsPaid(true);
-        toast.success('Thanh toán thành công! Cảm ơn bạn.');
-        if (onSuccess) onSuccess();
+        toast.success('Thanh toán thành công! Đang chuyển hướng...');
+        
+        // Đợi 2 giây để người dùng thấy thông báo thành công trước khi gọi onSuccess
+        setTimeout(() => {
+          if (onSuccess) onSuccess();
+        }, 2000);
       }
     };
 

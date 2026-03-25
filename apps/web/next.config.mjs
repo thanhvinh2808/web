@@ -28,11 +28,12 @@ const nextConfig = {
     return [
       {
         source: '/uploads/:path*',
-        destination: `${API_URL}/uploads/:path*`, // ? D�ng bi?n m�i tru?ng
+        destination: `${API_URL}/uploads/:path*`,
       },
+      // Khng proxy cc route auth c?a NextAuth (ch? proxy cc API khc sang backend)
       {
-        source: '/api/:path*',
-        destination: `${API_URL}/api/:path*`, // ? Proxy API lu�n cho ch?c
+        source: '/api/((?!auth).*)', 
+        destination: `${API_URL}/api/:1`,
       },
     ];
   },
