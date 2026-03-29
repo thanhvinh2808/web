@@ -145,7 +145,7 @@ export default function VouchersTab({ token, showMessage }: VouchersTabProps) {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h2 className="text-2xl font-black italic tracking-tighter text-black uppercase flex items-center gap-2">
-            <Tag /> Quản Lý Voucher
+             Quản Lý Voucher
           </h2>
           <p className="text-gray-500 text-sm font-medium">Chiến dịch khuyến mãi FootMark</p>
         </div>

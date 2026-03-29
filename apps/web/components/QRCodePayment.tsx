@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { CheckCircle, Copy, RefreshCw, Smartphone } from 'lucide-react';
-import toast from 'react-hot-toast';
 import { useSocket } from '../app/contexts/SocketContext';
 import { useRouter } from 'next/navigation';
 import { CLEAN_API_URL } from '@lib/shared/constants';
@@ -61,7 +60,6 @@ export default function QRCodePayment({ orderId, orderCode, amount, onSuccess }:
       // Chỉ kích hoạt khi paymentStatus là 'paid' hoặc isPaid là true
       if (data.orderId === orderId && (data.paymentStatus === 'paid' || data.isPaid)) {
         setIsPaid(true);
-        toast.success('Thanh toán thành công! Đang chuyển hướng...');
         
         // Đợi 2 giây để người dùng thấy thông báo thành công trước khi gọi onSuccess
         setTimeout(() => {
@@ -153,7 +151,7 @@ export default function QRCodePayment({ orderId, orderCode, amount, onSuccess }:
           <div className="flex items-center gap-2">
              <span className="font-bold tracking-wider">{BANK_INFO.ACCOUNT_NO}</span>
              <button 
-               onClick={() => { navigator.clipboard.writeText(BANK_INFO.ACCOUNT_NO); toast.success('Đã sao chép'); }}
+               onClick={() => { navigator.clipboard.writeText(BANK_INFO.ACCOUNT_NO); }}
                className="text-primary hover:text-black"
              >
                <Copy size={12}/>
@@ -169,7 +167,7 @@ export default function QRCodePayment({ orderId, orderCode, amount, onSuccess }:
           <div className="flex items-center gap-2">
              <span className="font-bold text-black bg-yellow-100 px-2 py-0.5">{description}</span>
              <button 
-               onClick={() => { navigator.clipboard.writeText(description); toast.success('Đã sao chép nội dung'); }}
+               onClick={() => { navigator.clipboard.writeText(description); }}
                className="text-primary hover:text-black"
              >
                <Copy size={12}/>

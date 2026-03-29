@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Upload, CheckCircle, HelpCircle, ArrowRight, RefreshCw, Truck, Wallet, Loader2, X } from 'lucide-react';
-import { toast } from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { CLEAN_API_URL } from '@lib/shared/constants';
 
@@ -30,7 +29,6 @@ export default function TradeInPage() {
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
         sessionStorage.setItem('redirectAfterLogin', '/trade-in');
-        toast.error('Vui lòng đăng nhập để sử dụng tính năng Trade-In');
         router.push('/login');
     } else if (user) {
         setFormData(prev => ({
@@ -47,7 +45,6 @@ export default function TradeInPage() {
           const newFiles = Array.from(e.target.files);
           
           if (selectedFiles.length + newFiles.length > 5) {
-              toast.error('Chỉ được tải lên tối đa 5 ảnh');
               return;
           }
 
@@ -74,7 +71,6 @@ export default function TradeInPage() {
     if (!isAuthenticated) return;
     
     if (selectedFiles.length === 0) {
-        toast.error('Vui lòng tải lên ít nhất 1 hình ảnh sản phẩm');
         return;
     }
 
@@ -105,7 +101,6 @@ export default function TradeInPage() {
       const result = await res.json();
 
       if (result.success) {
-        toast.success('Gửi yêu cầu thành công! Chúng tôi sẽ liên hệ sớm.');
         // Reset form
         setFormData({
             name: user?.name || '',
@@ -118,11 +113,10 @@ export default function TradeInPage() {
         setSelectedFiles([]);
         setPreviewUrls([]);
       } else {
-        toast.error(result.message || 'Có lỗi xảy ra, vui lòng thử lại.');
+        // Handle error
       }
     } catch (error) {
       console.error('Submit error:', error);
-      toast.error('Lỗi kết nối server.');
     } finally {
       setLoading(false);
     }

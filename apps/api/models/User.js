@@ -18,7 +18,7 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, 'Mật khẩu là bắt buộc'],
+    // required: [true, 'Mật khẩu là bắt buộc'], // Removed to support social login
     minlength: [6, 'Mật khẩu phải có ít nhất 6 ký tự']
   },
   role: {

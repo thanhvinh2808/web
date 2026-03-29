@@ -2,33 +2,10 @@ import express from 'express';
 import TradeIn from '../models/TradeIn.js';
 import { uploadMultiple } from '../middleware/upload.js';
 import { sendTradeInUpdateEmail } from '../services/emailService.js';
-// Giả sử có middleware auth
-import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
-import { getJwtSecret } from '../config/secrets.js';
+import { authenticateToken } from '../middleware/auth.js';
+import { isAdmin } from '../middleware/isAdmin.js';
 
 const router = express.Router();
-
-// Middleware xác thực (Tạm thời viết ở đây nếu chưa export từ middleware/auth.js)
-const authenticateToken = (req, res, next) => {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ success: false, message: 'Token required' });
-  
-    try {
-      const decoded = jwt.verify(token, getJwtSecret());
-      req.user = decoded;
-      next();
-    } catch (error) {
-      return res.status(403).json({ success: false, message: 'Invalid token' });
-    }
-};
-
-const requireAdmin = async (req, res, next) => {
-    if (req.user.role !== 'admin') {
-        return res.status(403).json({ success: false, message: 'Admin only' });
-    }
-    next();
-};
 
 // Tạo yêu cầu Trade-In mới
 router.post('/', uploadMultiple, async (req, res) => {
@@ -88,7 +65,7 @@ router.post('/', uploadMultiple, async (req, res) => {
 });
 
 // Lấy danh sách Trade-In (Admin Only)
-router.get('/', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/', authenticateToken, isAdmin, async (req, res) => {
     try {
         const items = await TradeIn.find()
             .populate('userId', 'name email')
@@ -100,7 +77,7 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
 });
 
 // Admin trả lời / Cập nhật trạng thái
-router.put('/:id/reply', authenticateToken, requireAdmin, async (req, res) => {
+router.put('/:id/reply', authenticateToken, isAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const { status, finalPrice, adminNote } = req.body;

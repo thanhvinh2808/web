@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import { MessageSquare, X, Send, User, Mail, Minus } from "lucide-react";
 import { useAuth } from "../app/contexts/AuthContext";
-import toast from "react-hot-toast";
 import { CLEAN_API_URL } from "@lib/shared/constants";
 
 const API_URL = CLEAN_API_URL;
@@ -48,15 +47,13 @@ export default function ContactWidget() {
       const data = await response.json();
 
       if (response.ok) {
-        toast.success("Cảm ơn bạn! Chúng tôi đã nhận được tin nhắn.");
         setFormData((prev) => ({ ...prev, message: "" }));
         setIsOpen(false);
       } else {
-        toast.error(data.error || "Có lỗi xảy ra, vui lòng thử lại.");
+        // Error handled silently or could be console.logged
       }
     } catch (error) {
       console.error("Error sending contact:", error);
-      toast.error("Không thể kết nối đến máy chủ.");
     } finally {
       setIsSending(false);
     }

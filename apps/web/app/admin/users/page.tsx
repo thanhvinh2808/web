@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { Search, Edit2, Trash2, User, UserCheck, Shield, Lock, RotateCcw } from 'lucide-react';
-import toast from 'react-hot-toast';
 import { CLEAN_API_URL } from '@lib/shared/constants';
 
 interface UserData {
@@ -35,8 +34,7 @@ export default function AdminUsersPage() {
         setTotalPages(data.pagination.pages);
       }
     } catch (error) {
-      console.error(error);
-      toast.error('Lỗi tải danh sách user');
+      console.error('Lỗi tải danh sách user', error);
     } finally {
       setLoading(false);
     }
@@ -59,13 +57,12 @@ export default function AdminUsersPage() {
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(`Đã cập nhật quyền thành ${newRole}`);
         fetchUsers();
       } else {
-        toast.error('Lỗi cập nhật quyền');
+        console.error('Lỗi cập nhật quyền');
       }
     } catch (error) {
-      toast.error('Lỗi kết nối');
+      console.error('Lỗi kết nối', error);
     }
   };
 
@@ -80,13 +77,12 @@ export default function AdminUsersPage() {
       });
       
       if (res.ok) {
-        toast.success('Đã xóa user');
         fetchUsers();
       } else {
-        toast.error('Lỗi xóa user');
+        console.error('Lỗi xóa user');
       }
     } catch (error) {
-      toast.error('Lỗi kết nối');
+      console.error('Lỗi kết nối', error);
     }
   };
    // 🔑 Xử lý Reset Password
@@ -108,15 +104,14 @@ export default function AdminUsersPage() {
       const data = await res.json();
 
       if (data.success) {
-        toast.success('Đã reset mật khẩu thành công!');
         setResetModalOpen(false);
         setNewPassword('');
         setSelectedUser(null);
       } else {
-        toast.error(data.message || 'Lỗi reset mật khẩu');
+        console.error(data.message || 'Lỗi reset mật khẩu');
       }
     } catch (error) {
-      toast.error('Lỗi kết nối server');
+      console.error('Lỗi kết nối server', error);
     }
   };
 

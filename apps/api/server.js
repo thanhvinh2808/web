@@ -53,6 +53,7 @@ import authRoutes from './routes/auth.js'; // ✅ Auth Routes
 import notificationRoutes from './routes/notifications.js';
 import productRoutes from './routes/products.js';
 import vnpayRoutes from './routes/vnpay.js';
+import chatRoutes from './routes/chat.js';
 
 import { getJwtSecret } from './config/secrets.js';
 import { getVnpay } from './config/vnpay.js';
@@ -63,7 +64,7 @@ const __dirname = path.dirname(__filename);
 
 // ✅ App setup
 const app = express();
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5000;
 const JWT_SECRET = getJwtSecret();
 
 // ✅ Create HTTP server
@@ -107,6 +108,7 @@ app.use('/uploads', express.static('uploads'));
 
 // Routes
 app.use('/api', authRoutes); // ✅ Auth Routes first
+app.use('/api/chat', chatRoutes); // ✅ AI Chat Route
 app.use('/api/trade-in', tradeInRoutes);
 app.use('/api/blogs', blogRoutes);
 app.use('/api/wishlist', wishlistRoutes);
@@ -118,6 +120,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/vnpay', vnpayRoutes);
+app.use('/api/chat', chatRoutes);
 
 // ✅ Socket.io setup
 const io = new Server(server, {

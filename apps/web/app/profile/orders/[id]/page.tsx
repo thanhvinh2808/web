@@ -26,7 +26,6 @@ import {
   Receipt
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
-import toast from "react-hot-toast";
 
 import { CLEAN_API_URL } from '@lib/shared/constants';
 const API_URL = CLEAN_API_URL;
@@ -134,7 +133,6 @@ export default function OrderDetailPage() {
           prev ? { ...prev, status: data.status, paymentStatus: data.paymentStatus } : null
         );
         updateOrderInContext(orderId, { status: data.status, paymentStatus: data.paymentStatus });
-        toast.success(`Trạng thái đơn hàng: ${data.status}`);
       }
     };
 
@@ -157,10 +155,9 @@ export default function OrderDetailPage() {
       const data = await res.json();
       setOrder(data.order);
       updateOrderInContext(orderId, data.order);
-      toast.success('Đã hủy đơn hàng thành công');
       setShowCancelConfirm(false);
     } catch {
-      toast.error('Lỗi khi hủy đơn hàng');
+      console.error('Lỗi khi hủy đơn hàng');
     } finally {
       setIsCancelling(false);
     }
@@ -180,7 +177,6 @@ export default function OrderDetailPage() {
         variants: [],
       }, item.quantity);
     });
-    toast.success('Đã thêm vào giỏ hàng!');
     setTimeout(() => router.push('/cart'), 500);
     setReorderingId(null);
   };

@@ -1,4 +1,4 @@
-// app/admin/orders/[id]/page.tsx
+﻿// app/admin/orders/[id]/page.tsx
 'use client';
 import React, { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
@@ -105,7 +105,7 @@ export default function OrderDetailPage({ params }: PageProps) {
     const shippingFee = calculateShippingFee();
 
     const discountAmount = order.discountAmount || 0;
-   const finalTotal = order.totalAmount - discountAmount + vatAmount + shippingFee;
+    const finalTotal = order.totalAmount;
 
     return {
       subtotal,
@@ -137,7 +137,7 @@ export default function OrderDetailPage({ params }: PageProps) {
         return;
       }
 
-      const fetchUrl = `${BACKEND_API_URL}/api/admin/orders/${orderId}`;
+      const fetchUrl = `${API_URL}/api/admin/orders/${orderId}`;
       console.log('🌐 Calling Backend:', fetchUrl);
       
       const res = await fetch(fetchUrl, {
@@ -192,7 +192,7 @@ export default function OrderDetailPage({ params }: PageProps) {
         return;
       }
 
-      const updateUrl = `${BACKEND_API_URL}/api/admin/orders/${orderId}/status`;
+      const updateUrl = `${API_URL}/api/admin/orders/${orderId}/status`;
       console.log('📤 Gửi request cập nhật trạng thái:', {
         orderId,
         newStatus,
@@ -269,6 +269,14 @@ export default function OrderDetailPage({ params }: PageProps) {
 
   const formatPrice = (price: number) => {
     return price.toLocaleString('vi-VN') + 'đ';
+  };
+
+  const getImageUrl = (url: any): string => {
+    if (!url) return '/placeholder.png';
+    const cleanUrl = typeof url === 'string' ? url : (url.url || '');
+    if (!cleanUrl || cleanUrl.includes('[object')) return '/placeholder.png';
+    if (cleanUrl.startsWith('http')) return cleanUrl;
+    return `${API_URL}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`;
   };
 
   const orderDetails = calculateOrderDetails(order);
@@ -426,7 +434,7 @@ export default function OrderDetailPage({ params }: PageProps) {
 
                           {item.productImage ? (
 
-                            <img src={item.productImage} alt={item.productName} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" />
+                            <img src={getImageUrl(item.productImage)} alt={item.productName} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" />
 
                           ) : (
 

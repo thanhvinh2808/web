@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import { Lock, KeyRound, ChevronRight, CheckCircle, Mail } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import toast from "react-hot-toast";
 
 import { CLEAN_API_URL } from '@lib/shared/constants';
 const API_URL = CLEAN_API_URL;
@@ -25,7 +24,6 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     if (!emailFromQuery) {
-      toast.error('Vui lòng bắt đầu từ trang quên mật khẩu!');
       router.push('/forgot-password');
     }
   }, [emailFromQuery, router]);
@@ -34,7 +32,6 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     
     if (formData.newPassword !== formData.confirmPassword) {
-      toast.error('Mật khẩu xác nhận không khớp!');
       return;
     }
 
@@ -53,13 +50,12 @@ export default function ResetPasswordPage() {
 
       const data = await res.json();
       if (res.ok) {
-        toast.success('Đổi mật khẩu thành công! Vui lòng đăng nhập lại.');
         setTimeout(() => router.push('/login'), 2000);
       } else {
-        toast.error(data.message || 'Mã xác thực không đúng hoặc đã hết hạn!');
+        console.error(data.message || 'Mã xác thực không đúng hoặc đã hết hạn!');
       }
     } catch (error) {
-      toast.error('Lỗi kết nối server!');
+      console.error('Lỗi kết nối server!', error);
     } finally {
       setIsLoading(false);
     }

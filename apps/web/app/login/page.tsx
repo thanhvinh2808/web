@@ -3,20 +3,33 @@
 
 import { useEffect, useState } from "react";
 import { User, Lock, Mail, ChevronRight, Eye, EyeOff } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../contexts/AuthContext";
 import Link from "next/link";
 import AuthLayout from "../../components/AuthLayout";
-import toast from "react-hot-toast";
 
 import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const authError = searchParams.get("error");
   const { login, isAuthenticated } = useAuth();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (authError) {
+      if (authError === "OAuthSignin" || authError === "OAuthCallback") {
+        console.error("Lỗi xác thực với Google. Vui lòng thử lại.");
+      } else if (authError === "OAuthAccountNotLinked") {
+        console.error("Email này đã được đăng ký bằng phương thức khác.");
+      } else {
+        console.error(`Lỗi đăng nhập: ${authError}`);
+      }
+    }
+  }, [authError]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -33,9 +46,8 @@ export default function LoginPage() {
 
     try {
       await login(formData.email, formData.password);
-      toast.success("Chào mừng trở lại FootMark!");
     } catch (error: any) {
-      toast.error(error.message || "Email hoặc mật khẩu không đúng");
+      console.error(error.message || "Email hoặc mật khẩu không đúng");
       setIsLoading(false);
     }
   };
@@ -127,7 +139,42 @@ export default function LoginPage() {
         </div>
 
         <div className="pt-4">
-          <button
+         <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-black text-white py-6 rounded-none font-black uppercase tracking-[0.3em] hover:bg-primary transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 group relative overflow-hidden"
+          >
+            <span className="relative z-10 flex items-center gap-3">
+              {isLoading ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Đang xác thực...
+                </>
+              ) : (
+                <>
+                  Đăng nhập ngay{" "}
+                  <ChevronRight
+                    size={20}
+                    className="group-hover:translate-x-1 transition-transform"
+                  />
+                </>
+              )}
+            </span>
+            <div className="absolute inset-0 bg-primary translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+          </button>
+        </div>
+
+        <div className="relative py-4">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-100"></div>
+          </div>
+          <div className="relative flex justify-center text-[10px] font-black uppercase tracking-widest">
+            <span className="bg-white px-4 text-gray-400">Hoặc sử dụng email</span>
+          </div>
+        </div>
+
+        <div className="pt-2">
+           <button
             type="button"
             onClick={() => signIn("google")}
             disabled={isLoading}
@@ -154,41 +201,6 @@ export default function LoginPage() {
               </svg>
               Đăng nhập bằng Google
             </span>
-          </button>
-        </div>
-
-        <div className="relative py-4">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-100"></div>
-          </div>
-          <div className="relative flex justify-center text-[10px] font-black uppercase tracking-widest">
-            <span className="bg-white px-4 text-gray-400">Hoặc sử dụng email</span>
-          </div>
-        </div>
-
-        <div className="pt-2">
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-black text-white py-6 rounded-none font-black uppercase tracking-[0.3em] hover:bg-primary transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 group relative overflow-hidden"
-          >
-            <span className="relative z-10 flex items-center gap-3">
-              {isLoading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Đang xác thực...
-                </>
-              ) : (
-                <>
-                  Đăng nhập ngay{" "}
-                  <ChevronRight
-                    size={20}
-                    className="group-hover:translate-x-1 transition-transform"
-                  />
-                </>
-              )}
-            </span>
-            <div className="absolute inset-0 bg-primary translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
           </button>
         </div>
       </form>

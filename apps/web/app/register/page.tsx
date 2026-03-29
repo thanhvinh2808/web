@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "../contexts/AuthContext";
 import Link from "next/link";
 import AuthLayout from "../../components/AuthLayout";
-import toast from "react-hot-toast";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -25,7 +24,6 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
-      toast.error('Mật khẩu nhập lại không khớp!');
       return;
     }
 
@@ -40,10 +38,9 @@ export default function RegisterPage() {
         email: formData.email, 
         password: formData.password
       });
-      toast.success('Đăng ký thành công! Đang chuyển hướng...');
       setTimeout(() => router.push('/'), 1500);
     } catch (error: any) {
-      toast.error(error.message || 'Email này đã được sử dụng!');
+      console.error(error.message || 'Email này đã được sử dụng!');
       setIsLoading(false);
     }
   };

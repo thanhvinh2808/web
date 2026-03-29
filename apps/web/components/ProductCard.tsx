@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { ShoppingCart, Check, TrendingUp } from 'lucide-react';
 import { useCart } from '../app/contexts/CartContext';
 import { useRouter } from 'next/navigation';
-import toast from 'react-hot-toast';
 import { getImageUrl } from '../lib/imageHelper';
 import { Product } from '../lib/shared/types';
 
@@ -65,14 +64,12 @@ export default function ProductCard({ product, showSoldCount = false }: ProductC
 
   const handleAddItem = () => {
     if ((sizeVariant && !selectedSize) || (colorVariant && !selectedColor)) {
-      toast.error('Vui lòng chọn đầy đủ Size và Màu sắc');
       return;
     }
 
     setIsAdding(true);
     // @ts-ignore
     addToCart({ ...product, _id: productId }, 1, selectedSize, selectedColor);
-    toast.success('Đã thêm vào giỏ hàng!');
     
     setTimeout(() => {
       setIsAdding(false);

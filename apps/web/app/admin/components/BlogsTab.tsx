@@ -4,7 +4,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, Loader2, Search } from 'lucide-react';
 import { Blog } from '@/data/blog/types';
-import toast from 'react-hot-toast';
 import Image from 'next/image';
 import BlogForm from './BlogForm'; // Import the new form component
 
@@ -56,7 +55,7 @@ export default function BlogsTab({ token, showMessage }: BlogsTabProps) {
     } catch (err: any) {
       const msg = err.message || 'Error fetching blogs';
       setError(msg);
-      toast.error(msg);
+      console.error(msg);
     } finally {
       setLoading(false);
     }
@@ -92,10 +91,9 @@ export default function BlogsTab({ token, showMessage }: BlogsTabProps) {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (!res.ok) throw new Error((await res.json()).message || 'Failed to delete blog');
-      toast.success('Blog post deleted successfully!');
       fetchBlogs(); // Re-fetch
     } catch (err: any) {
-      toast.error(err.message || 'Error deleting blog post.');
+      console.error(err.message || 'Error deleting blog post.');
     }
   };
 

@@ -5,7 +5,6 @@ import { useState } from "react";
 import { Mail, ChevronRight, ArrowLeft, KeyRound, CheckCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import toast from "react-hot-toast";
 
 import { CLEAN_API_URL } from '@lib/shared/constants';
 const API_URL = CLEAN_API_URL;
@@ -28,13 +27,12 @@ export default function ForgotPasswordPage() {
 
       const data = await res.json();
       if (res.ok) {
-        toast.success('Mã OTP đã được gửi vào Email của bạn!');
         router.push(`/reset-password?email=${encodeURIComponent(email)}`);
       } else {
-        toast.error(data.message || 'Email không tồn tại trong hệ thống!');
+        console.error(data.message || 'Email không tồn tại trong hệ thống!');
       }
     } catch (error) {
-      toast.error('Lỗi kết nối server!');
+      console.error('Lỗi kết nối server!', error);
     } finally {
       setIsLoading(false);
     }

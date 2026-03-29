@@ -220,7 +220,7 @@ export default function ProductsTab({
     <div>
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-black italic tracking-tighter text-black">🛍️ Quản lý Sản Phẩm</h2>
+        <h2 className="text-2xl font-black italic tracking-tighter text-black"> Quản lý Sản Phẩm</h2>
         <button
           onClick={handleAdd}
           className="px-6 py-2 bg-black text-white rounded-lg font-bold uppercase tracking-wider hover:bg-stone-800 transition shadow-lg"

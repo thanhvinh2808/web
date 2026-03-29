@@ -220,7 +220,7 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
       {/* Header */}
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-3xl font-black italic tracking-tighter text-black uppercase mb-2">📦 Quản Lý Đơn Hàng</h2>
+          <h2 className="text-3xl font-black italic tracking-tighter text-black uppercase mb-2"> Quản Lý Đơn Hàng</h2>
           <p className="text-gray-500 font-medium text-sm">Theo dõi và xử lý đơn hàng của FootMark</p>
         </div>
       </div>
@@ -474,10 +474,10 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
                                 : 'cursor-pointer hover:brightness-95 ring-black/5 shadow-sm'
                             }`}
                           >
-                            <option value="pending" disabled={order.status !== 'pending'}>Chờ Duyệt</option>
-                            <option value="processing" disabled={!['pending', 'processing'].includes(order.status)}>Xử Lý</option>
-                            <option value="shipped" disabled={!['processing', 'shipped'].includes(order.status)}>Đang Giao</option>
-                            <option value="delivered" disabled={!['shipped', 'delivered'].includes(order.status)}>Hoàn Thành</option>
+                            <option value="pending">Chờ Duyệt</option>
+                            <option value="processing">Xử Lý</option>
+                            <option value="shipped">Đang Giao</option>
+                            <option value="delivered">Hoàn Thành</option>
                             <option value="cancelled">Hủy</option>
                           </select>
                           <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">

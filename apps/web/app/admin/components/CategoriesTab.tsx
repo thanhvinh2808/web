@@ -144,7 +144,7 @@ export default function CategoriesTab({ categories, token, onRefresh, showMessag
       <div className="flex justify-between items-center mb-8">
         <div>
           <h2 className="text-2xl font-black italic tracking-tighter text-black uppercase flex items-center gap-2">
-            <FolderTree /> Quản lý Danh mục
+             Quản lý Danh mục
           </h2>
           <p className="text-gray-500 text-sm font-medium">Phân loại sản phẩm FootMark</p>
         </div>

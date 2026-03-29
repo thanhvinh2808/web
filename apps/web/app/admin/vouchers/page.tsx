@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, Tag, Calendar, AlertCircle } from 'lucide-react';
-import toast from 'react-hot-toast';
 import { CLEAN_API_URL } from '@lib/shared/constants';
 
 interface Voucher {
@@ -53,8 +52,7 @@ export default function AdminVouchersPage() {
         setVouchers(data.data);
       }
     } catch (error) {
-      console.error(error);
-      toast.error('Lỗi tải danh sách voucher');
+      console.error('Lỗi tải danh sách voucher', error);
     } finally {
       setLoading(false);
     }
@@ -88,15 +86,14 @@ export default function AdminVouchersPage() {
       const data = await res.json();
 
       if (data.success) {
-        toast.success(editingVoucher ? 'Cập nhật thành công!' : 'Tạo voucher thành công!');
         fetchVouchers();
         setShowModal(false);
         resetForm();
       } else {
-        toast.error(data.message || 'Có lỗi xảy ra');
+        console.error(data.message || 'Có lỗi xảy ra');
       }
     } catch (error) {
-      toast.error('Lỗi kết nối server');
+      console.error('Lỗi kết nối server', error);
     }
   };
 
@@ -111,10 +108,9 @@ export default function AdminVouchersPage() {
       });
       
       if (res.ok) {
-        toast.success('Đã xóa voucher');
         fetchVouchers();
       } else {
-        toast.error('Lỗi xóa voucher');
+        console.error('Lỗi xóa voucher');
       }
     } catch (error) {
       console.error(error);

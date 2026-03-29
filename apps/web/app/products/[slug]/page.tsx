@@ -6,21 +6,17 @@ import Link from 'next/link';
 import { 
   Heart, 
   ChevronRight, 
-  ShieldCheck, 
-  RotateCcw, 
   Minus, 
   Plus,
-  Check,
-  XCircle,
   TrendingUp,
-  Ruler
+  Ruler,
+  AlertTriangle
 } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { useWishlist } from '../../contexts/WishlistContext';
 import { useAuth } from '../../contexts/AuthContext';
 import ProductCard from '../../../components/ProductCard';
 import SizeGuideModal from '../../../components/SizeGuideModal';
-import toast from 'react-hot-toast';
 import { getImageUrl } from '../../../lib/imageHelper';
 
 // --- TYPES ---
@@ -42,11 +38,7 @@ interface Product {
   id?: string;
   name: string;
   brand: string;
-  brandId?: {
-     _id: string;
-     name: string;
-     logo: string;
-  };
+  brandId?: any;
   price: number;
   originalPrice?: number;
   image: string;
@@ -71,8 +63,8 @@ interface Product {
 import { CLEAN_API_URL } from '@lib/shared/constants';
 const API_URL = CLEAN_API_URL;
 
-export default function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = React.use(params);
+export default function ProductDetailPage({ params }: { params: { slug: string } }) {
+  const { slug } = params;
   const router = useRouter();
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
@@ -113,12 +105,32 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
         if (data.image) setActiveImage(getImageUrl(data.image));
         else if (data.images?.length > 0) setActiveImage(getImageUrl(data.images[0]));
 
-        // Fetch Related
-        if (data.categorySlug) {
-           const relRes = await fetch(`${API_URL}/api/products?category=${data.categorySlug}&exclude=${data.slug}&limit=4`);
-           const relData = await relRes.json();
-           setRelatedProducts(relData.data || []);
+        // ✅ LOGIC GỢI Ý THÔNG MINH (SHOPEE STYLE)
+        let related: Product[] = [];
+        
+        // 1. Thử lấy theo Brand trước
+        const brandRes = await fetch(`${API_URL}/api/products?brand=${encodeURIComponent(data.brand)}&exclude=${data.slug}&limit=4`);
+        const brandData = await brandRes.json();
+        related = brandData.data || [];
+
+        // 2. Nếu thiếu, lấy thêm theo Category
+        if (related.length < 4 && data.categorySlug) {
+           const catRes = await fetch(`${API_URL}/api/products?category=${data.categorySlug}&exclude=${data.slug}&limit=4`);
+           const catData = await catRes.json();
+           const catProducts = (catData.data || []).filter((p: Product) => !related.find(r => r._id === p._id));
+           related = [...related, ...catProducts].slice(0, 4);
         }
+
+        // 3. Nếu vẫn thiếu (Brand độc bản), lấy Sản phẩm mới nhất
+        if (related.length < 4) {
+           const newRes = await fetch(`${API_URL}/api/products?sort=createdAt&exclude=${data.slug}&limit=4`);
+           const newData = await newRes.json();
+           const newProducts = (newData.data || []).filter((p: Product) => !related.find(r => r._id === p._id));
+           related = [...related, ...newProducts].slice(0, 4);
+        }
+
+        setRelatedProducts(related);
+
       } catch (err) {
         console.error('Lỗi tải sản phẩm:', err);
       } finally {
@@ -130,7 +142,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
 
   // --- LOGIC TÍNH TOÁN ---
   
-  // Phân loại variant Size và Color
   const sizeVariant = useMemo(() => 
     product?.variants?.find(v => v.name.toLowerCase().includes('size')) || null, 
   [product]);
@@ -139,7 +150,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
     product?.variants?.find(v => v.name.toLowerCase().includes('màu') || v.name.toLowerCase().includes('color')) || null, 
   [product]);
 
-  // Giá hiển thị động
   const displayPrice = useMemo(() => {
     if (!product) return 0;
     const base = product.price || 0;
@@ -155,23 +165,29 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
     return !(product.stock > 0);
   }, [product]);
 
+  const isLowStock = useMemo(() => {
+    if (!product || isOutOfStock) return false;
+    if (selectedSize) return selectedSize.stock === 1;
+    if (!sizeVariant) return product.stock === 1;
+    return false;
+  }, [product, selectedSize, isOutOfStock, sizeVariant]);
+
   // --- ACTIONS ---
   const handleAddToCart = () => {
     if (!product) return;
-    if (sizeVariant && !selectedSize) { toast.error('Vui lòng chọn Size'); return; }
-    if (colorVariant && !selectedColor) { toast.error('Vui lòng chọn Màu sắc'); return; }
+    if (sizeVariant && !selectedSize) return;
+    if (colorVariant && !selectedColor) return;
 
     setIsActionLoading(true);
     // @ts-ignore
     addToCart({ ...product, _id: productId }, quantity, selectedSize, selectedColor);
-    toast.success('Đã thêm vào giỏ hàng!');
     setTimeout(() => setIsActionLoading(false), 500);
   };
 
   const handleBuyNow = () => {
     if (!product) return;
-    if (sizeVariant && !selectedSize) { toast.error('Vui lòng chọn Size'); return; }
-    if (colorVariant && !selectedColor) { toast.error('Vui lòng chọn Màu sắc'); return; }
+    if (sizeVariant && !selectedSize) return;
+    if (colorVariant && !selectedColor) return;
     
     // @ts-ignore
     addToCart({ ...product, _id: productId }, quantity, selectedSize, selectedColor);
@@ -228,7 +244,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                     <span className="text-sm text-gray-400 line-through">{formatCurrency(product.originalPrice)}</span>
                   )}
                 </div>
-                {/* Sửa lỗi dư số 0 bằng cách kiểm tra > 0 trực tiếp */}
                 {Number(product.soldCount) > 0 ? (
                   <span className="text-[10px] font-bold bg-blue-50 text-primary px-2 py-1 uppercase flex items-center gap-1">
                     <TrendingUp size={12}/> Đã bán {product.soldCount}
@@ -287,24 +302,31 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                 </div>
               )}
 
-              {/* SỐ LƯỢNG */}
-              <div className="flex items-center gap-4 pt-4">
-                <span className="text-xs font-black uppercase tracking-widest">Số lượng</span>
-                <div className="flex items-center border border-gray-200">
-                  <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-2 hover:bg-gray-50"><Minus size={16}/></button>
-                  <span className="w-12 text-center font-bold">{quantity}</span>
-                  <button 
-                    onClick={() => {
-                      const max = selectedSize ? selectedSize.stock : (product.stock || 0);
-                      if (quantity < max) setQuantity(quantity + 1);
-                      else toast.error('Vượt quá số lượng có sẵn');
-                    }} 
-                    className="p-2 hover:bg-gray-50"
-                  >
-                    <Plus size={16}/>
-                  </button>
+              {/* SỐ LƯỢNG VÀ CẢNH BÁO */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-4 pt-4">
+                  <span className="text-xs font-black uppercase tracking-widest">Số lượng</span>
+                  <div className="flex items-center border border-gray-200">
+                    <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-2 hover:bg-gray-50"><Minus size={16}/></button>
+                    <span className="w-12 text-center font-bold">{quantity}</span>
+                    <button 
+                      onClick={() => {
+                        const max = selectedSize ? selectedSize.stock : (product.stock || 0);
+                        if (quantity < max) setQuantity(quantity + 1);
+                      }} 
+                      className="p-2 hover:bg-gray-50"
+                    >
+                      <Plus size={16}/>
+                    </button>
+                  </div>
+                  {selectedSize && <span className="text-[10px] font-bold text-gray-400 uppercase italic">Kho: {selectedSize.stock}</span>}
                 </div>
-                {selectedSize && <span className="text-[10px] font-bold text-gray-400 uppercase italic">Kho: {selectedSize.stock}</span>}
+
+                {isLowStock && (
+                  <p className="text-red-600 text-xs font-bold italic flex items-center gap-1 animate-pulse">
+                    <AlertTriangle size={14} /> 🔥 Kho chỉ còn lại 1 sản phẩm cuối cùng!
+                  </p>
+                )}
               </div>
 
               {/* NÚT MUA */}
@@ -365,10 +387,9 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
         )}
       </div>
 
-      {showSizeGuide && product.brandId && (
+      {showSizeGuide && (
         <SizeGuideModal 
-          brandId={product.brandId._id}
-          brandName={product.brand}
+          brandName={product.brand || 'FootMark'}
           isOpen={showSizeGuide}
           onClose={() => setShowSizeGuide(false)}
         />

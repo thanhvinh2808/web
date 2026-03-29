@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
-import { toast } from 'react-hot-toast';
 
 interface Product {
   _id: string;
@@ -63,7 +62,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
   const toggleWishlist = async (product: Product) => {
     if (!isAuthenticated) {
-      toast.error('Vui lòng đăng nhập để thêm vào yêu thích');
+      console.error('Vui lòng đăng nhập để thêm vào yêu thích');
       return;
     }
 
@@ -82,15 +81,12 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         const result = await response.json();
         if (result.action === 'added') {
           setWishlist(prev => [...prev, product]);
-          toast.success('Đã thêm vào danh sách yêu thích');
         } else {
           setWishlist(prev => prev.filter(p => p._id !== product._id));
-          toast.success('Đã xóa khỏi danh sách yêu thích');
         }
       }
     } catch (error) {
       console.error('❌ Error toggling wishlist:', error);
-      toast.error('Có lỗi xảy ra, vui lòng thử lại');
     }
   };
 

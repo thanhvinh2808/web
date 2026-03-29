@@ -5,7 +5,6 @@ import { SocketProvider } from "../app/contexts/SocketContext";
 import { OrderProvider } from "../app/contexts/OrderContext";
 import ConditionalLayout from "./admin/components/ConditionalLayout";
 import ClientProviders from "../components/ClientProviders";
-import { Toaster } from "react-hot-toast";
 import Providers from "../components/providers";
 import "./globals.css";
 
@@ -37,7 +36,6 @@ export default function RootLayout({
                 <OrderProvider>
                   <ConditionalLayout>
                     <main>{children}</main>
-                    <Toaster position="top-right" />
                   </ConditionalLayout>
                 </OrderProvider>
               </ClientProviders>

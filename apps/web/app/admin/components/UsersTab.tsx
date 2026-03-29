@@ -145,7 +145,7 @@ export default function UsersTab({ token, showMessage }: UsersTabProps) {
     <div className="animate-fade-in space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-3xl font-black italic tracking-tighter text-black uppercase mb-2">👥 Quản Lý Người Dùng</h2>
+        <h2 className="text-3xl font-black italic tracking-tighter text-black uppercase mb-2"> Quản Lý Người Dùng</h2>
         <p className="text-gray-500 font-medium text-sm">Quản lý tài khoản và phân quyền hệ thống</p>
       </div>
 

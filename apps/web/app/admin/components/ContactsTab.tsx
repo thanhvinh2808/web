@@ -169,7 +169,7 @@ export default function ContactsTab({ contacts, token, onRefresh, showMessage }:
       <div className="mb-8 flex justify-between items-center">
         <div>
            <h2 className="text-2xl font-black italic tracking-tighter text-black uppercase flex items-center gap-2">
-             <Mail /> Quản Lý Liên Hệ
+              Quản Lý Liên Hệ
            </h2>
            <p className="text-gray-500 text-sm font-medium">Hộp thư hỗ trợ khách hàng</p>
         </div>

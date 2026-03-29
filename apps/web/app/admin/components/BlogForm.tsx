@@ -3,14 +3,21 @@
 
 import { useState, useEffect } from 'react';
 import { Save, Loader2, Image as ImageIcon, ChevronLeft } from 'lucide-react';
-import toast from 'react-hot-toast';
 import dynamic from 'next/dynamic';
 import 'react-quill/dist/quill.snow.css';
 import { Blog } from '@/data/blog/types';
 import Image from 'next/image';
 import { CLEAN_API_URL } from '@lib/shared/constants';
 
-const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
+const ReactQuill = dynamic(async () => {
+  const { default: RQ } = await import('react-quill');
+  // eslint-disable-next-line react/display-name
+  return ({ forwardedRef, ...props }: any) => <RQ ref={forwardedRef} {...props} />;
+}, { 
+  ssr: false,
+  loading: () => <div className="h-40 bg-gray-50 animate-pulse rounded-md flex items-center justify-center text-gray-400">Đang tải bộ soạn thảo...</div>
+});
+
 const API_URL = CLEAN_API_URL;
 
 // Function to check if a URL is absolute
@@ -65,7 +72,7 @@ export default function BlogForm({ blogId, onFormClose, token }: BlogFormProps) 
           setTags(data.tags || []);
           setPublished(data.published || false);
         } catch (err: any) {
-          toast.error(err.message || 'Error fetching blog post.');
+          console.error(err.message || 'Error fetching blog post.');
           onFormClose();
         } finally {
           setLoading(false);
@@ -97,9 +104,8 @@ export default function BlogForm({ blogId, onFormClose, token }: BlogFormProps) 
       if (!res.ok) throw new Error((await res.json()).message || 'Failed to upload image');
       const data = await res.json();
       setImage(data.data.url);
-      toast.success('Image uploaded successfully!');
     } catch (err: any) {
-      toast.error(err.message || 'Error uploading image.');
+      console.error(err.message || 'Error uploading image.');
     } finally {
       setSubmitting(false);
     }
@@ -125,10 +131,9 @@ export default function BlogForm({ blogId, onFormClose, token }: BlogFormProps) 
 
       if (!res.ok) throw new Error((await res.json()).message || `Failed to ${isEditing ? 'update' : 'create'} blog post`);
       
-      toast.success(`Blog post ${isEditing ? 'updated' : 'created'} successfully!`);
       onFormClose();
     } catch (err: any) {
-      toast.error(err.message || 'An error occurred.');
+      console.error(err.message || 'An error occurred.');
     } finally {
       setSubmitting(false);
     }
@@ -177,8 +182,17 @@ export default function BlogForm({ blogId, onFormClose, token }: BlogFormProps) 
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nội dung</label>
-          <ReactQuill theme="snow" value={content} onChange={setContent} className="bg-white" />
+          <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-1">Nội dung (Hỗ trợ HTML)</label>
+          <textarea 
+            id="content"
+            value={content} 
+            onChange={(e) => setContent(e.target.value)} 
+            rows={15}
+            className="w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono text-sm leading-relaxed"
+            placeholder="Nhập nội dung bài viết ở đây..."
+            required
+          ></textarea>
+          <p className="mt-1 text-[10px] text-gray-400 italic">* Hệ thống tạm thời sử dụng trình soạn thảo văn bản đơn giản để đảm bảo tính ổn định.</p>
         </div>
 
         <div className="mb-6">

@@ -148,11 +148,13 @@ export default function AdminDashboard() {
             localStorage.setItem('adminToken', savedToken);
             
             if (data.user) {
-              setCurrentUser({
+              const userData = {
                 name: data.user.name || 'Admin',
                 email: data.user.email || '',
                 role: data.user.role || 'admin'
-              });
+              };
+              setCurrentUser(userData);
+              localStorage.setItem('user', JSON.stringify(userData));
             }
             fetchStats(savedToken);
           } else {
@@ -442,7 +444,7 @@ export default function AdminDashboard() {
           )}
 
           <div className="animate-fade-in-up">
-            {activeTab === 'dashboard' && stats && <DashboardTab stats={stats} />}
+            {activeTab === 'dashboard' && stats && <DashboardTab stats={stats} setActiveTab={setActiveTab} />}
             {activeTab === 'users' && <UsersTab users={users} token={token} onRefresh={fetchUsers} showMessage={showMessage} />}
             {activeTab === 'orders' && <OrdersTab orders={orders} token={token} onRefresh={fetchOrders} showMessage={showMessage} />}
             {activeTab === 'products' && <ProductsTab products={products} categories={categories} token={token} onRefresh={fetchProducts} showMessage={showMessage} />}
