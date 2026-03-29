@@ -2,7 +2,7 @@
 import { useSearchParams } from 'next/navigation';
 import { useOrders } from '../contexts/OrderContext';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { Order } from '../contexts/OrderContext';
 import { CheckCircle, ShoppingBag, Truck, Receipt } from 'lucide-react';
 import QRCodePayment from '../../components/QRCodePayment';
@@ -33,7 +33,7 @@ function calcSummary(order: any) {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function OrderSuccessPage() {
+function OrderSuccessContent() {
   const searchParams = useSearchParams();
   const { getOrderById } = useOrders();
 
@@ -306,5 +306,17 @@ export default function OrderSuccessPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function OrderSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+      </div>
+    }>
+      <OrderSuccessContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Filter, SlidersHorizontal, X, Check, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import ProductCard from '../../components/ProductCard';
@@ -29,7 +29,7 @@ const CONDITIONS = ['New', 'Like New', '98%', '95%', 'Used'];
 const SIZES = ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
 const BRANDS = ['Nike', 'Adidas', 'Jordan', 'New Balance', 'MLB', 'Vans', 'Converse', 'Puma'];
 
-export default function ProductsPage() {
+function ProductsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -425,5 +425,17 @@ export default function ProductsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white flex justify-center items-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <ProductsContent />
+    </Suspense>
   );
 }
