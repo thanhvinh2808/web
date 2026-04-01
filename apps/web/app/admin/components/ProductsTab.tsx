@@ -223,9 +223,9 @@ export default function ProductsTab({
         <h2 className="text-2xl font-black italic tracking-tighter text-black"> Quản lý Sản Phẩm</h2>
         <button
           onClick={handleAdd}
-          className="px-6 py-2 bg-black text-white rounded-lg font-bold uppercase tracking-wider hover:bg-stone-800 transition shadow-lg"
+          className="px-6 py-2 border border-blue-600 text-blue-600 rounded-lg font-bold uppercase tracking-wider hover:bg-blue-600 hover:text-white transition shadow-lg"
         >
-          ➕ Thêm mới
+           Thêm mới
         </button>
       </div>
 
@@ -233,7 +233,7 @@ export default function ProductsTab({
       <div className="bg-white rounded-lg shadow-sm p-4 mb-6 border border-gray-100">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div className="md:col-span-2">
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">🔍 Tìm kiếm</label>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-2"> Tìm kiếm</label>
             <input
               type="text"
               placeholder="Tìm theo tên, thương hiệu, mã giày..."
@@ -243,7 +243,7 @@ export default function ProductsTab({
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">📁 Danh mục</label>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">  Danh mục</label>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}

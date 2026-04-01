@@ -140,7 +140,14 @@ export const updateProfile = async (req, res) => {
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
     if (name) user.name = name.trim();
-    if (phone !== undefined) user.phone = String(phone).trim();
+    
+    if (phone !== undefined) {
+      const cleanPhone = String(phone).trim();
+      if (cleanPhone !== '' && !/^\d{10,11}$/.test(cleanPhone)) {
+        return res.status(400).json({ success: false, message: 'Số điện thoại phải có từ 10 đến 11 chữ số' });
+      }
+      user.phone = cleanPhone;
+    }
     if (address !== undefined) user.address = String(address).trim();
     if (dateOfBirth !== undefined) user.dateOfBirth = dateOfBirth;
     if (gender !== undefined) user.gender = gender;
@@ -150,7 +157,24 @@ export const updateProfile = async (req, res) => {
     if (avatar !== undefined) user.avatar = avatar;
 
     await user.save();
-    res.json({ success: true, message: 'Cập nhật thành công', user });
+    res.json({ 
+      success: true, 
+      message: 'Cập nhật thành công', 
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        address: user.address,
+        role: user.role,
+        avatar: user.avatar,
+        gender: user.gender,
+        dateOfBirth: user.dateOfBirth,
+        city: user.city,
+        district: user.district,
+        ward: user.ward
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

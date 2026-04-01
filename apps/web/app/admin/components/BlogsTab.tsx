@@ -121,8 +121,9 @@ export default function BlogsTab({ token, showMessage }: BlogsTabProps) {
       <div className="flex justify-between items-center mb-6">
         {/* Title is handled by the main page */}
         <div></div>
-        <button onClick={handleAddNew} className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-semibold rounded-md shadow-md hover:bg-blue-700 transition-colors">
-          <Plus size={20} className="mr-2" /> Thêm Bài viết mới
+        <button onClick={handleAddNew} className="px-6 py-2 border border-blue-600 text-blue-600 rounded-lg font-bold uppercase tracking-wider hover:bg-blue-600 hover:text-white transition shadow-lg"
+        >
+           Thêm bài viết
         </button>
       </div>
 

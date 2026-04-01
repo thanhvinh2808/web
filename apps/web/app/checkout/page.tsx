@@ -511,7 +511,21 @@ export default function CheckoutPage() {
                             </div>
                             <div>
                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Số điện thoại *</label>
-                               <input type="text" value={customerInfo.phone} onChange={e => setCustomerInfo({...customerInfo, phone: e.target.value})} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-none focus:ring-2 focus:ring-primary outline-none font-medium text-sm" placeholder="0987..." />
+                               <input 
+                                  type="tel" 
+                                  value={customerInfo.phone} 
+                                  onChange={e => {
+                                     const val = e.target.value.replace(/\D/g, ''); // Chỉ giữ lại số
+                                     if (val.length <= 10) { // Giới hạn 10 số
+                                        setCustomerInfo({...customerInfo, phone: val});
+                                     }
+                                  }} 
+                                  className={`w-full px-4 py-3 bg-white border ${customerInfo.phone && !/^0\d{9}$/.test(customerInfo.phone) ? 'border-red-500' : 'border-gray-200'} rounded-none focus:ring-2 focus:ring-primary outline-none font-medium text-sm`} 
+                                  placeholder="0987654321" 
+                                />
+                                {customerInfo.phone && !/^0\d{9}$/.test(customerInfo.phone) && (
+                                   <p className="text-[10px] text-red-500 font-bold uppercase mt-1 tracking-widest">SĐT không hợp lệ</p>
+                                )}
                             </div>
                          </div>
                          <div className="grid grid-cols-2 gap-4">
@@ -634,7 +648,9 @@ export default function CheckoutPage() {
                                <span className="absolute -top-1 -right-1 bg-primary text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-none shadow">{item.quantity}</span>
                             </div>
                             <div className="flex-1 min-w-0">
-                               <h4 className="font-bold text-sm truncate uppercase tracking-tighter italic">{item.product.name}</h4>
+                               <Link href={`/products/${item.product.slug || item.product._id || item.product.id}`} className="hover:text-primary transition-colors group">
+                                  <h4 className="font-bold text-sm truncate uppercase tracking-tighter italic group-hover:underline">{item.product.name}</h4>
+                               </Link>
                                {item.selectedVariant && <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">Size: <span className="text-primary">{item.selectedVariant.name}</span></p>}
                                <p className="text-sm font-black mt-1 text-black italic">{formatCurrency(item.product.price + (item.selectedVariant?.price || 0))}</p>
                             </div>

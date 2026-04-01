@@ -150,9 +150,9 @@ export default function CategoriesTab({ categories, token, onRefresh, showMessag
         </div>
         <button
           onClick={handleAdd}
-          className="bg-black text-white px-6 py-2.5 rounded-lg font-bold uppercase text-xs tracking-wider hover:bg-stone-800 transition flex items-center gap-2 shadow-lg"
+          className="px-6 py-2 border border-blue-600 text-blue-600 rounded-lg font-bold uppercase tracking-wider hover:bg-blue-600 hover:text-white transition shadow-lg"
         >
-          <Plus size={18}/> Thêm danh mục
+           Thêm mới
         </button>
       </div>
       

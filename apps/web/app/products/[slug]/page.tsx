@@ -10,16 +10,35 @@ import {
   Plus,
   TrendingUp,
   Ruler,
-  AlertTriangle
+  AlertTriangle,
+  Star,
+  MessageSquare,
+  CheckCircle2,
+  ThumbsUp
 } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { useWishlist } from '../../contexts/WishlistContext';
 import { useAuth } from '../../contexts/AuthContext';
 import ProductCard from '../../../components/ProductCard';
 import SizeGuideModal from '../../../components/SizeGuideModal';
+import ReviewModal from '../../../components/ReviewModal';
 import { getImageUrl } from '../../../lib/imageHelper';
 
 // --- TYPES ---
+interface Review {
+  _id: string;
+  userId: {
+    _id: string;
+    fullName: string;
+    avatar?: string;
+  };
+  rating: number;
+  comment: string;
+  createdAt: string;
+  isPurchased?: boolean;
+  isAnonymous?: boolean;
+}
+
 interface VariantOption {
   name: string;
   price: number;
@@ -82,6 +101,27 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   const [showSizeGuide, setShowSizeGuide] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
 
+  // Review State
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [canReview, setCanReview] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [fetchReviewsTrigger, setFetchReviewsTrigger] = useState(0);
+
+  // --- LOGIC ẨN DANH & TÍNH SAO ---
+  const averageRating = useMemo(() => {
+    if (reviews.length === 0) return 0;
+    const total = reviews.reduce((acc, rev) => acc + rev.rating, 0);
+    return total / reviews.length;
+  }, [reviews]);
+
+  const maskName = (name?: string) => {
+    if (!name) return "n*****g";
+    const parts = name.split(' ');
+    const lastPart = parts[parts.length - 1];
+    if (lastPart.length < 2) return lastPart + "*****";
+    return lastPart.charAt(0) + "*****" + lastPart.charAt(lastPart.length - 1);
+  };
+
   // ✅ RESET SỐ LƯỢNG KHI ĐỔI SIZE
   useEffect(() => {
     if (selectedSize) {
@@ -92,12 +132,46 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   const productId = product?._id || product?.id || '';
   const isFavorite = isInWishlist(productId);
 
+  // --- FETCH REVIEWS ---
+  useEffect(() => {
+    const fetchReviews = async () => {
+      // CHỈ CHẠY KHI CÓ PRODUCT ID HỢP LỆ VÀ KHÔNG PHẢI CHUỖI "undefined"
+      if (!productId || productId === 'undefined' || productId === '') return;
+      
+      try {
+        const res = await fetch(`${API_URL}/api/products/${productId}/reviews`);
+        const data = await res.json();
+        if (data.success) setReviews(data.reviews);
+
+        // Check can review
+        const token = localStorage.getItem('token');
+        if (token) {
+          const canRes = await fetch(`${API_URL}/api/products/${productId}/can-review`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const canData = await canRes.json();
+          setCanReview(!!canData.canReview);
+        }
+      } catch (err) {
+        console.error('Lỗi tải đánh giá:', err);
+      }
+    };
+    fetchReviews();
+  }, [productId, fetchReviewsTrigger]);
+
   // --- FETCH DATA ---
   useEffect(() => {
     const fetchProduct = async () => {
+      // CHẶN NẾU SLUG LÀ CHUỖI "undefined"
+      if (!slug || slug === 'undefined') {
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
       try {
         const res = await fetch(`${API_URL}/api/products/${slug}`);
+        if (!res.ok) throw new Error('Không tìm thấy sản phẩm');
         const result = await res.json();
         const data = result.data || result;
         setProduct(data);
@@ -133,11 +207,12 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
 
       } catch (err) {
         console.error('Lỗi tải sản phẩm:', err);
+        setProduct(null);
       } finally {
         setIsLoading(false);
       }
     };
-    if (slug) fetchProduct();
+    fetchProduct();
   }, [slug]);
 
   // --- LOGIC TÍNH TOÁN ---
@@ -244,8 +319,22 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                     <span className="text-sm text-gray-400 line-through">{formatCurrency(product.originalPrice)}</span>
                   )}
                 </div>
+                <div className="flex items-center gap-1 border-l border-gray-200 pl-4">
+                  <div className="flex items-center gap-0.5">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star 
+                        key={s} 
+                        size={14} 
+                        className={s <= Math.round(averageRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-200"} 
+                      />
+                    ))}
+                  </div>
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">
+                    ({reviews.length} đánh giá)
+                  </span>
+                </div>
                 {Number(product.soldCount) > 0 ? (
-                  <span className="text-[10px] font-bold bg-blue-50 text-primary px-2 py-1 uppercase flex items-center gap-1">
+                  <span className="text-[10px] font-bold bg-blue-50 text-primary px-2 py-1 uppercase flex items-center gap-1 ml-auto">
                     <TrendingUp size={12}/> Đã bán {product.soldCount}
                   </span>
                 ) : null}
@@ -385,6 +474,95 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             </div>
           </div>
         )}
+
+        {/* REVIEWS SECTION */}
+        <div className="mt-24 border-t border-gray-100 pt-16" id="review">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
+            <div>
+              <h3 className="text-3xl font-black italic uppercase tracking-tighter mb-2">Đánh giá từ khách hàng</h3>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star 
+                      key={s} 
+                      size={18} 
+                      className={s <= Math.round(averageRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-200"} 
+                    />
+                  ))}
+                </div>
+                <span className="text-sm font-bold text-gray-500 uppercase tracking-widest">
+                  {averageRating.toFixed(1)} / 5 ({reviews.length} đánh giá)
+                </span>
+              </div>
+            </div>
+            
+            {canReview && (
+              <button 
+                onClick={() => setIsReviewModalOpen(true)}
+                className="bg-primary text-white px-8 py-4 font-black uppercase text-xs tracking-[0.2em] hover:bg-primary-dark transition shadow-xl shadow-primary/20 flex items-center gap-2"
+              >
+                <MessageSquare size={16} /> Viết đánh giá của bạn
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {reviews.length > 0 ? (
+              reviews.map((rev) => (
+                <div key={rev._id} className="bg-gray-50 p-8 border border-gray-100 hover:bg-white hover:shadow-xl transition-all duration-300">
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-black text-white flex items-center justify-center font-black italic uppercase text-lg">
+                        {rev.isAnonymous ? 'A' : (rev.userId?.fullName || 'U').charAt(0)}
+                      </div>
+                      <div>
+                        <p className="font-black uppercase italic tracking-tighter text-sm leading-none mb-1">
+                          {rev.isAnonymous ? maskName(rev.userId?.fullName || 'Người dùng') : (rev.userId?.fullName || 'Người dùng FootMark')}
+                        </p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                          {new Date(rev.createdAt).toLocaleDateString('vi-VN')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star key={s} size={12} className={s <= rev.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'} />
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {rev.isPurchased && (
+                    <div className="inline-flex items-center gap-1 text-[9px] font-black text-green-600 mb-4 bg-green-50 px-2 py-0.5 uppercase tracking-widest">
+                      <CheckCircle2 size={10} /> Đã mua hàng tại FootMark
+                    </div>
+                  )}
+                  
+                  <p className="text-gray-600 text-sm italic font-medium leading-relaxed mb-6">"{rev.comment}"</p>
+                  
+                  <div className="flex items-center gap-4 pt-4 border-t border-gray-200/50">
+                    <button className="flex items-center gap-1.5 text-[10px] font-black text-gray-400 hover:text-primary transition uppercase tracking-widest">
+                      <ThumbsUp size={12} /> Hữu ích
+                    </button>
+                    <button className="text-[10px] font-black text-gray-400 hover:text-black transition uppercase tracking-widest">Phản hồi</button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full py-20 text-center bg-gray-50 border border-dashed border-gray-200">
+                <MessageSquare size={48} className="mx-auto text-gray-200 mb-4" />
+                <p className="text-gray-400 font-bold uppercase tracking-widest text-sm italic">Chưa có đánh giá nào cho sản phẩm này</p>
+                {canReview && (
+                  <button 
+                    onClick={() => setIsReviewModalOpen(true)}
+                    className="mt-4 text-primary font-black uppercase text-xs tracking-widest hover:underline"
+                  >
+                    Hãy là người đầu tiên đánh giá
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {showSizeGuide && (
@@ -392,6 +570,21 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
           brandName={product.brand || 'FootMark'}
           isOpen={showSizeGuide}
           onClose={() => setShowSizeGuide(false)}
+        />
+      )}
+
+      {isReviewModalOpen && product && (
+        <ReviewModal 
+          isOpen={isReviewModalOpen}
+          onClose={() => setIsReviewModalOpen(false)}
+          product={{
+            id: productId,
+            name: product.name,
+            image: getImageUrl(product.image || product.images?.[0])
+          }}
+          onSuccess={() => {
+            setFetchReviewsTrigger(prev => prev + 1);
+          }}
         />
       )}
     </div>

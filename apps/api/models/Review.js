@@ -30,6 +30,10 @@ const reviewSchema = new mongoose.Schema({
     type: Boolean,
     default: false // Đánh dấu "Đã mua hàng" để tăng uy tín
   },
+  isAnonymous: {
+    type: Boolean,
+    default: false // Đánh giá ẩn danh (giấu tên)
+  },
   reply: {
     content: String,
     adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

@@ -23,9 +23,8 @@ export default function ProductCard({ product, showSoldCount = false }: ProductC
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
 
-  const productId = product.id || product._id || '';
-  const rawSlug = product.slug || productId;
-  const productSlug = typeof rawSlug === 'string' ? rawSlug : productId;
+  const productId = product._id || product.id || '';
+  const productSlug = product.slug || productId;
 
   // Tách các loại biến thể
   const sizeVariant = useMemo(() => 

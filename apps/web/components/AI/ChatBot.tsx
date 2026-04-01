@@ -22,6 +22,33 @@ export default function ChatBot() {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // 📂 Cấu trúc kịch bản hội thoại (Guided Conversation)
+  const menuConfig: Record<string, string[]> = {
+    root: [
+      "Các mẫu giày mới nhất",
+      "Deal hot hôm nay",
+      "Tư vấn chọn size",
+      "Kiểm tra đơn hàng",
+      "Chính sách đổi trả",
+      "Địa chỉ cửa hàng"
+    ],
+    "Các mẫu giày mới nhất": [
+      "Dưới 1.000.000đ",
+      "1.000.000đ - 2.000.000đ",
+      "Trên 2.000.000đ",
+      "Quay lại menu chính"
+    ],
+    "Tư vấn chọn size": [
+      "Bảng size Nike",
+      "Bảng size Adidas",
+      "Cách đo chân tại nhà",
+      "Quay lại menu chính"
+    ]
+  };
+
+  const [currentMenu, setCurrentMenu] = useState<string>("root");
+  const [isWaitingForOrderNumber, setIsWaitingForOrderNumber] = useState(false);
+
   const API_URL = CLEAN_API_URL;
 
   const scrollToBottom = () => {
@@ -32,29 +59,116 @@ export default function ChatBot() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
+  const onQuickReplyClick = (reply: string) => {
+    if (reply === "Quay lại menu chính") {
+      setCurrentMenu("root");
+      setIsWaitingForOrderNumber(false);
+      return;
+    }
 
-    const userMessage = input.trim();
+    if (reply === "Kiểm tra đơn hàng") {
+      setIsWaitingForOrderNumber(true);
+      setMessages(prev => [
+        ...prev,
+        { role: 'user', parts: [{ text: reply }] },
+        { role: 'model', parts: [{ text: "Vui lòng nhập mã đơn hàng của bạn (ví dụ: FM260401-1234 hoặc mã ID):" }] }
+      ]);
+      return;
+    }
+
+    // Nếu câu trả lời này có menu con, chuyển sang menu đó
+    if (menuConfig[reply]) {
+      setCurrentMenu(reply);
+    }
+
+    handleSendMessage(null, reply);
+  };
+
+  const handleTrackOrder = async (orderNumber: string) => {
+    setIsLoading(true);
+    try {
+      // ✅ Loại bỏ dấu # nếu người dùng nhập vào
+      const cleanOrderNumber = orderNumber.replace('#', '').trim();
+      
+      const fetchUrl = API_URL.endsWith('/api') 
+        ? `${API_URL}/track-order/${cleanOrderNumber}` 
+        : `${API_URL}/api/track-order/${cleanOrderNumber}`;
+        
+      const res = await fetch(fetchUrl);
+      const result = await res.json();
+
+      if (res.ok && result.success) {
+        const order = result.data;
+        const statusMap: Record<string, string> = {
+          pending: 'Chờ xác nhận',
+          processing: 'Đang xử lý',
+          shipped: 'Đang giao hàng',
+          delivered: 'Giao hàng thành công',
+          cancelled: 'Đã hủy'
+        };
+
+        const reply = ` Thông tin đơn hàng #${order.orderNumber}:\n\n` +
+          ` Khách hàng: ${order.customerName}\n` +
+          ` Ngày đặt: ${new Date(order.date).toLocaleDateString('vi-VN')}\n` +
+          ` Tổng tiền: ${order.totalAmount.toLocaleString('vi-VN')}₫\n` +
+          ` Số lượng: ${order.itemCount} sản phẩm\n` +
+          ` Trạng thái: ${statusMap[order.status] || order.status}\n` +
+          ` Thanh toán: ${order.paymentStatus === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán'}`;
+
+        setMessages(prev => [
+          ...prev,
+          { role: 'user', parts: [{ text: orderNumber }] },
+          { role: 'model', parts: [{ text: reply }] }
+        ]);
+        setIsWaitingForOrderNumber(false);
+      } else {
+        setMessages(prev => [
+          ...prev,
+          { role: 'user', parts: [{ text: orderNumber }] },
+          { role: 'model', parts: [{ text: "❌ Không tìm thấy đơn hàng với mã này. Bạn vui lòng kiểm tra lại mã đơn hàng nhé!" }] }
+        ]);
+      }
+    } catch (error) {
+      console.error('Track Error:', error);
+      setMessages(prev => [
+        ...prev,
+        { role: 'user', parts: [{ text: orderNumber }] },
+        { role: 'model', parts: [{ text: "Hệ thống tra cứu đang gặp sự cố, bạn vui lòng thử lại sau." }] }
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSendMessage = async (e: React.FormEvent | null, textOverride?: string) => {
+    if (e) e.preventDefault();
+    const messageToSend = textOverride || input.trim();
+    if (!messageToSend || isLoading) return;
+
+    // Nếu đang trong trạng thái chờ mã đơn hàng
+    if (isWaitingForOrderNumber && !textOverride) {
+      setInput('');
+      await handleTrackOrder(messageToSend);
+      return;
+    }
+
     setInput('');
     
     const newMessages: Message[] = [
       ...messages,
-      { role: 'user', parts: [{ text: userMessage }] }
+      { role: 'user', parts: [{ text: messageToSend }] }
     ];
     setMessages(newMessages);
     setIsLoading(true);
 
     try {
-      // Đảm bảo URL chính xác: nếu API_URL đã có /api thì không cộng thêm nữa
       const fetchUrl = API_URL.endsWith('/api') ? `${API_URL}/chat` : `${API_URL}/api/chat`;
       
       const res = await fetch(fetchUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: userMessage,
+          message: messageToSend,
           history: messages 
         })
       });
@@ -90,7 +204,6 @@ export default function ChatBot() {
         <div className="absolute right-16 bg-black text-white px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0 pointer-events-none whitespace-nowrap border border-white/10">
           Hỏi AI FootMark
         </div>
-        {/* Badge thông báo nhỏ */}
         <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full"></span>
       </button>
     );
@@ -149,11 +262,27 @@ export default function ChatBot() {
                 </div>
               </div>
             )}
+            
+            {/* ✅ Quick Replies (Messenger Style) */}
+            {!isLoading && messages[messages.length - 1]?.role === 'model' && (
+              <div className="flex flex-wrap gap-2 justify-start mt-2 animate-in fade-in slide-in-from-left-4 duration-500">
+                {(menuConfig[currentMenu] || menuConfig.root).map((reply, i) => (
+                  <button
+                    key={i}
+                    onClick={() => onQuickReplyClick(reply)}
+                    className="px-4 py-2 bg-white border border-gray-200 hover:border-black text-[11px] font-bold text-gray-600 hover:text-black rounded-full transition-all active:scale-90 shadow-sm whitespace-nowrap uppercase tracking-widest"
+                  >
+                    {reply}
+                  </button>
+                ))}
+              </div>
+            )}
+            
             <div ref={messagesEndRef} />
           </div>
 
           {/* Input Area */}
-          <form onSubmit={handleSendMessage} className="p-6 bg-white border-t border-gray-100 shadow-[0_-10px_40px_rgba(0,0,0,0.02)]">
+          <form onSubmit={(e) => handleSendMessage(e)} className="p-6 bg-white border-t border-gray-100 shadow-[0_-10px_40px_rgba(0,0,0,0.02)]">
             <div className="relative flex items-center gap-3 bg-gray-50 p-2 rounded-[1.25rem] border border-gray-200 focus-within:border-black focus-within:ring-4 focus-within:ring-black/5 transition-all duration-300">
               <input
                 type="text"

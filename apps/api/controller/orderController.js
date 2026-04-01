@@ -267,6 +267,70 @@ export const updateOrderStatus = async (req, res) => {
 };
 
 /**
+ * TRA CỨU NHANH ĐƠN HÀNG (PUBLIC - Cho Chatbot)
+ */
+export const trackOrder = async (req, res) => {
+  try {
+    const { orderNumber } = req.params;
+    if (!orderNumber) return res.status(400).json({ success: false, message: 'Thiếu mã đơn hàng' });
+
+    const searchStr = orderNumber.toUpperCase();
+
+    // Sử dụng aggregation để có thể search được 8 ký tự cuối của ID (chuyển ObjectId -> String)
+    const results = await Order.aggregate([
+      {
+        $addFields: {
+          idStr: { $toString: "$_id" }
+        }
+      },
+      {
+        $match: {
+          $or: [
+            { orderNumber: searchStr },
+            { idStr: { $regex: orderNumber + '$', $options: 'i' } }, // Khớp 8 ký tự cuối
+            { idStr: orderNumber.toLowerCase() } // Khớp toàn bộ ID
+          ]
+        }
+      },
+      {
+        $project: {
+          orderNumber: 1,
+          status: 1,
+          paymentStatus: 1,
+          totalAmount: 1,
+          customerInfo: 1,
+          items: 1,
+          createdAt: 1
+        }
+      },
+      { $limit: 1 }
+    ]);
+
+    const order = results[0];
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        orderNumber: order.orderNumber || order._id.toString().slice(-8).toUpperCase(),
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        totalAmount: order.totalAmount,
+        customerName: order.customerInfo?.fullName || 'Khách hàng',
+        itemCount: order.items?.length || 0,
+        date: order.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Track Order Error:', error);
+    return res.status(500).json({ success: false, message: 'Lỗi server khi tra cứu đơn hàng' });
+  }
+};
+
+/**
  * LẤY DANH SÁCH ĐƠN HÀNG CỦA NGƯỜI DÙNG
  */
 export const getUserOrders = async (req, res) => {

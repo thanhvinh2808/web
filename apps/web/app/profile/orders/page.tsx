@@ -19,8 +19,11 @@ import {
   LayoutList,
   Truck,
   Receipt,
+  Star,
 } from 'lucide-react';
 
+import ReviewModal from '../../../components/ReviewModal';
+import { getImageUrl } from '../../../lib/imageHelper';
 import { CLEAN_API_URL } from '@lib/shared/constants';
 const API_URL = CLEAN_API_URL;
 const ORDERS_PER_PAGE = 5;
@@ -64,7 +67,7 @@ function calcSummary(order: any) {
   // VAT 10%
   const vatAmount = Math.round(subtotal * 0.1);
 
-  // Phí vận chuyển: ưu tiên field từ backend, fallback tính theo ngưỡng
+  // Phí vận chuyển
   const shippingFee: number = (() => {
     if (typeof order.shippingFee === 'number') return order.shippingFee;
     if (subtotal >= 1_000_000) return 0;
@@ -165,14 +168,14 @@ function PaymentFilterBar({ value, onChange, counts }: {
 
 // ─── Order Card ───────────────────────────────────────────────────────────────
 
-function OrderCard({ order, reorderingId, onReorder }: {
-  order: any; reorderingId: string | null; onReorder: (o: any) => void;
+function OrderCard({ order, reorderingId, onReorder, onReview }: {
+  order: any; reorderingId: string | null; onReorder: (o: any) => void; onReview: (p: any) => void;
 }) {
   const [showBreakdown, setShowBreakdown] = useState(false);
 
   const isReordering = reorderingId === order._id;
   const canReorder   = order.status === 'delivered' || order.status === 'cancelled';
-  const canReview    = ['delivered', 'processing', 'shipped'].includes(order.status);
+  const canReview    = ['delivered'].includes(order.status);
   const unpaid       = !isPaid(order) && order.status !== 'cancelled';
 
   const { subtotal, vatAmount, shippingFee, discountAmount, finalTotal } = calcSummary(order);
@@ -201,18 +204,26 @@ function OrderCard({ order, reorderingId, onReorder }: {
         {order.items.map((item: any, idx: number) => (
           <div key={idx} className="flex gap-3">
             <div className="w-16 h-16 bg-gray-100 overflow-hidden border border-gray-200 flex-shrink-0">
-              <img src={item.productImage || '/placeholder.jpg'} alt={item.productName} className="w-full h-full object-cover" />
+              <img src={getImageUrl(item.productImage)} alt={item.productName} className="w-full h-full object-cover" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex justify-between items-start gap-2">
-                <h4 className="font-bold text-sm text-gray-900 line-clamp-1 uppercase tracking-tight italic">{item.productName}</h4>
+                <Link href={`/products/${item.productSlug || item.productId}`} className="hover:text-primary transition-colors group flex-1 min-w-0">
+                  <h4 className="font-bold text-sm text-gray-900 line-clamp-1 uppercase tracking-tight italic group-hover:underline">
+                    {item.productName}
+                  </h4>
+                </Link>
                 {canReview && (
-                  <Link
-                    href={`/products/${item.productId}?review=true#review`}
-                    className="flex-shrink-0 text-[10px] font-black text-primary border border-primary px-2 py-1 hover:bg-primary hover:text-white active:scale-95 active:brightness-90 transition-all duration-150 uppercase tracking-widest"
+                  <button
+                    onClick={() => onReview({
+                      id: item.productId,
+                      name: item.productName,
+                      image: item.productImage || '/placeholder.jpg'
+                    })}
+                    className="flex-shrink-0 flex items-center gap-1.5 text-[10px] font-black text-primary border border-primary px-3 py-1.5 hover:bg-primary hover:text-white active:scale-95 transition-all duration-150 uppercase tracking-widest"
                   >
-                    Đánh giá
-                  </Link>
+                    <Star size={12} /> Đánh giá
+                  </button>
                 )}
               </div>
               {item.variant && (
@@ -418,6 +429,7 @@ export default function OrdersPage() {
   const [searchTerm,     setSearchTerm]     = useState('');
   const [reorderingId,   setReorderingId]   = useState<string | null>(null);
   const [currentPage,    setCurrentPage]    = useState(1);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
   // ── Fetch ──────────────────────────────────────────────
   useEffect(() => {
@@ -483,15 +495,69 @@ export default function OrdersPage() {
 
   // ── Reorder ────────────────────────────────────────────
   const handleReorder = async (order: any) => {
+    if (!order) return;
+    setReorderingId(order._id);
+
     try {
-      setReorderingId(order._id);
-      for (const item of order.items) {
-        addToCart({ _id: item.productId, name: item.productName, price: item.price, image: item.productImage, stock: 99 } as any, item.quantity);
-      }
-      router.push('/cart');
-    } catch (err) {
-      console.error('Reorder error:', err);
-    } finally {
+      await Promise.all(order.items.map(async (item: any) => {
+        const pId = item.productId;
+        if (!pId) return;
+
+        try {
+          const res = await fetch(`${API_URL}/api/products/${pId}`);
+          if (!res.ok) throw new Error('Sản phẩm không còn tồn tại');
+          
+          const freshProduct = await res.json();
+          
+          const savedVariantName = item.variant?.name;
+          let currentVariant = null;
+          
+          if (savedVariantName && freshProduct.variants) {
+            for (const v of freshProduct.variants) {
+              const opt = v.options?.find((o: any) => o.name === savedVariantName);
+              if (opt) {
+                currentVariant = opt;
+                break;
+              }
+            }
+          }
+
+          addToCart(
+            {
+              ...freshProduct,
+              _id: freshProduct._id || freshProduct.id
+            } as any, 
+            item.quantity, 
+            currentVariant || undefined,
+            item.color
+          );
+        } catch (err) {
+          console.error(`Không thể lấy thông tin sản phẩm ${pId}:`, err);
+          addToCart(
+            {
+              _id: pId,
+              id: pId,
+              name: item.productName || 'Sản phẩm đã ẩn',
+              brand: item.productBrand || 'N/A',
+              price: Number(item.price) || 0,
+              image: item.productImage,
+              slug: pId,
+              stock: 99
+            } as any,
+            Number(item.quantity) || 1,
+            item.variant,
+            item.color
+          );
+        }
+      }));
+
+      setTimeout(() => {
+        router.push('/cart');
+        setReorderingId(null);
+      }, 300);
+
+    } catch (error) {
+      console.error('Reorder failed:', error);
       setReorderingId(null);
     }
   };
@@ -578,7 +644,13 @@ export default function OrdersPage() {
           </div>
         ) : (
           paginatedOrders.map(order => (
-            <OrderCard key={order._id} order={order} reorderingId={reorderingId} onReorder={handleReorder} />
+            <OrderCard 
+              key={order._id} 
+              order={order} 
+              reorderingId={reorderingId} 
+              onReorder={handleReorder} 
+              onReview={setSelectedProduct}
+            />
           ))
         )}
       </div>
@@ -590,6 +662,14 @@ export default function OrdersPage() {
         perPage={ORDERS_PER_PAGE}
         onChange={setCurrentPage}
       />
+
+      {selectedProduct && (
+        <ReviewModal
+          isOpen={!!selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          product={selectedProduct}
+        />
+      )}
     </div>
   );
 }

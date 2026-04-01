@@ -62,6 +62,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+import { trackOrder } from './controller/orderController.js';
+
 // ✅ App setup
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -333,7 +335,7 @@ app.get('/api/products/:productId/can-review', authenticateToken, async (req, re
 // ✅ SUBMIT A REVIEW
 app.post('/api/products/:productId/reviews', authenticateToken, async (req, res) => {
   try {
-    const { rating, comment } = req.body;
+    const { rating, comment, isAnonymous } = req.body;
     const productId = req.params.productId;
     const userId = req.user.id;
 
@@ -353,7 +355,8 @@ app.post('/api/products/:productId/reviews', authenticateToken, async (req, res)
       productId,
       rating,
       comment,
-      isPurchased: true
+      isPurchased: true,
+      isAnonymous: !!isAnonymous
     });
 
     // 🔔 Notify Admin via Socket.io
@@ -1510,6 +1513,9 @@ app.get('/api/about', (req, res) => {
     mission: 'Mang đến những đôi giày chất lượng và phong cách nhất cho cộng đồng yêu sneakers Việt Nam'
   });
 });
+
+// ✅ Route tra cứu đơn hàng công khai (Dành cho Chatbot)
+app.get('/api/track-order/:orderNumber', trackOrder);
 
 // ✅ Start server
 server.listen(PORT, () => {
