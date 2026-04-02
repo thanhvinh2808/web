@@ -103,12 +103,23 @@ export const handleIpn = async (req, res) => {
       return res.json(IpnUnknownError);
     }
 
-    // ✅ FIX: txnRef bây giờ trực tiếp là order._id
-    const orderId = verify.vnp_TxnRef;
-    const order = await Order.findById(orderId);
+    // ✅ FIX: Lấy orderId từ txnRef, xử lý trường hợp txnRef có chứa dấu "-" (orderNumber-timestamp)
+    const txnRef = verify.vnp_TxnRef;
+    let order = null;
+
+    // Thử tìm bằng ID trực tiếp
+    if (mongoose.Types.ObjectId.isValid(txnRef)) {
+      order = await Order.findById(txnRef);
+    } 
+    
+    // Nếu không thấy hoặc ID không hợp lệ, thử tìm bằng orderNumber (cắt lấy phần trước dấu gạch ngang đầu tiên)
+    if (!order) {
+      const orderNumber = txnRef.split('-')[0];
+      order = await Order.findOne({ orderNumber: orderNumber });
+    }
 
     if (!order) {
-      console.error(`❌ VNPay IPN Error: Order ${orderId} not found`);
+      console.error(`❌ VNPay IPN Error: Order with reference ${txnRef} not found`);
       return res.json(IpnOrderNotFound);
     }
 

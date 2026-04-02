@@ -9,176 +9,192 @@ import { getVnpay } from '../config/vnpay.js';
 /**
  * TẠO ĐƠN HÀNG (CREATE ORDER)
  * Quy trình: Xác minh giá -> Trừ kho Atomic -> Lưu đơn -> Rollback nếu lỗi
+ * Có cơ chế Retry khi gặp Write Conflict (MongoDB Transaction)
  */
 export const createOrder = async (req, res) => {
-  // Bắt đầu Session cho Transaction (Đảm bảo Atomic cho toàn bộ đơn hàng)
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const MAX_RETRIES = 3;
+  let attempt = 0;
 
-  try {
-    const { items, customerInfo, paymentMethod, shippingFee, discountAmount, voucherCode, note } = req.body;
+  while (attempt < MAX_RETRIES) {
+    attempt++;
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({ success: false, message: 'Giỏ hàng trống' });
-    }
+    try {
+      const { items, customerInfo, paymentMethod, shippingFee, discountAmount, voucherCode, note } = req.body;
 
-    const productIds = items.filter(i => i.productId).map(i => i.productId);
-    const dbProducts = await Product.find({ _id: { $in: productIds } }).session(session);
-    
-    const trustedItems = [];
-    let grandTotal = 0;
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({ success: false, message: 'Giỏ hàng trống' });
+      }
 
-    // 1. XÁC MINH GIÁ & BIẾN THỂ
-    for (const item of items) {
-      if (!item.productId) continue;
+      const productIds = items.filter(i => i.productId).map(i => i.productId);
+      const dbProducts = await Product.find({ _id: { $in: productIds } }).session(session);
+      
+      const trustedItems = [];
+      let grandTotal = 0;
 
-      const product = dbProducts.find(p => p._id.toString() === item.productId.toString());
-      if (!product) throw new Error(`Sản phẩm ${item.productId} không tồn tại.`);
+      // 1. XÁC MINH GIÁ & BIẾN THỂ
+      for (const item of items) {
+        if (!item.productId) continue;
 
-      let selectedVariantName = null;
-      const selectedOptions = {};
+        const product = dbProducts.find(p => p._id.toString() === item.productId.toString());
+        if (!product) throw new Error(`Sản phẩm ${item.productId} không tồn tại.`);
 
-      if (item.variant && item.variant.name) {
-        let optionFound = false;
-        product.variants.forEach(v => {
-          if (v.options.some(opt => opt.name === item.variant.name)) {
-            selectedOptions[v.name] = item.variant.name;
-            selectedVariantName = v.name; // Lưu lại tên Variant (vd: "Size") để trừ kho chính xác
-            optionFound = true;
+        let selectedVariantName = null;
+        const selectedOptions = {};
+
+        if (item.variant && item.variant.name) {
+          let optionFound = false;
+          product.variants.forEach(v => {
+            if (v.options.some(opt => opt.name === item.variant.name)) {
+              selectedOptions[v.name] = item.variant.name;
+              selectedVariantName = v.name;
+              optionFound = true;
+            }
+          });
+          
+          if (!optionFound) {
+            throw new Error(`Biến thể "${item.variant.name}" không hợp lệ cho sản phẩm "${product.name}".`);
           }
+        }
+
+        const price = product.calculatePrice(selectedOptions);
+        const quantity = Math.max(1, parseInt(item.quantity) || 1);
+        grandTotal += price * quantity;
+
+        trustedItems.push({
+          productId: product._id,
+          productName: product.name,
+          productImage: product.image,
+          productBrand: product.brand,
+          price,
+          quantity,
+          variant: item.variant?.name ? { name: item.variant.name } : undefined,
+          variantGroupName: selectedVariantName
         });
-        
-        if (!optionFound) {
-          throw new Error(`Biến thể "${item.variant.name}" không hợp lệ cho sản phẩm "${product.name}".`);
+      }
+
+      const finalTotal = grandTotal + (parseInt(shippingFee) || 0) - (parseInt(discountAmount) || 0);
+
+      // 2. TRỪ KHO ATOMIC
+      for (const item of trustedItems) {
+        let filter, update, arrayFilters = [];
+
+        if (item.variant && item.variant.name) {
+          filter = {
+            _id: item.productId,
+            'variants': {
+              $elemMatch: {
+                name: item.variantGroupName,
+                'options.name': item.variant.name,
+                'options.stock': { $gte: item.quantity }
+              }
+            }
+          };
+          update = {
+            $inc: {
+              'variants.$[var].options.$[opt].stock': -item.quantity,
+              'variants.$[var].options.$[opt].soldCount': item.quantity,
+              'soldCount': item.quantity
+            }
+          };
+          arrayFilters = [
+            { 'var.name': item.variantGroupName },
+            { 'opt.name': item.variant.name }
+          ];
+        } else {
+          filter = {
+            _id: item.productId,
+            stock: { $gte: item.quantity }
+          };
+          update = {
+            $inc: { 
+              stock: -item.quantity, 
+              soldCount: item.quantity
+            }
+          };
+        }
+
+        const updatedProduct = await Product.findOneAndUpdate(filter, update, {
+          arrayFilters,
+          new: true,
+          session
+        });
+
+        if (!updatedProduct) {
+          throw new Error(`Sản phẩm "${item.productName}" (${item.variant?.name || 'Tiêu chuẩn'}) vừa hết hàng hoặc không đủ số lượng.`);
         }
       }
 
-      const price = product.calculatePrice(selectedOptions);
-      const quantity = Math.max(1, parseInt(item.quantity) || 1);
-      grandTotal += price * quantity;
+      // 3. LƯU ĐƠN HÀNG
+      const finalOrderData = {
+        customerInfo,
+        paymentMethod,
+        shippingFee,
+        discountAmount,
+        voucherCode,
+        note,
+        userId: req.user ? req.user.id : null,
+        items: trustedItems.map(({ variantGroupName, ...rest }) => rest),
+        totalAmount: Math.max(0, finalTotal),
+        status: 'pending',
+        paymentStatus: 'unpaid',
+      };
 
-      trustedItems.push({
-        productId: product._id,
-        productName: product.name,
-        productImage: product.image,
-        productBrand: product.brand,
-        price,
-        quantity,
-        variant: item.variant?.name ? { name: item.variant.name } : undefined,
-        variantGroupName: selectedVariantName // "Size" hoặc "Color"
-      });
-    }
+      const [savedOrder] = await Order.create([finalOrderData], { session });
 
-    const finalTotal = grandTotal + (parseInt(shippingFee) || 0) - (parseInt(discountAmount) || 0);
+      // 4. XÁC NHẬN GIAO DỊCH
+      await session.commitTransaction();
+      session.endSession();
 
-    // 2. TRỪ KHO ATOMIC (Chạy trong Transaction)
-    for (const item of trustedItems) {
-      let filter, update, arrayFilters = [];
-
-      if (item.variant && item.variant.name) {
-        // Trừ kho & Tăng lượt bán cho cả Variant + Global Product
-        filter = {
-          _id: item.productId,
-          'variants': {
-            $elemMatch: {
-              name: item.variantGroupName,
-              'options.name': item.variant.name,
-              'options.stock': { $gte: item.quantity }
-            }
-          }
-        };
-        update = {
-          $inc: {
-            'variants.$[var].options.$[opt].stock': -item.quantity,
-            'variants.$[var].options.$[opt].soldCount': item.quantity,
-            'soldCount': item.quantity // ✅ Tăng tổng lượt bán toàn sản phẩm
-          }
-        };
-        arrayFilters = [
-          { 'var.name': item.variantGroupName },
-          { 'opt.name': item.variant.name }
-        ];
-      } else {
-        filter = {
-          _id: item.productId,
-          stock: { $gte: item.quantity }
-        };
-        update = {
-          $inc: { 
-            stock: -item.quantity, 
-            soldCount: item.quantity // ✅ Tăng tổng lượt bán
-          }
-        };
+      // 5. XỬ LÝ SAU KHI ĐẶT HÀNG (Ngoài Transaction)
+      if (savedOrder.paymentMethod === 'cod') {
+        if (typeof createNotification === 'function') {
+          createNotification('order', `Đơn hàng mới #${savedOrder._id.toString().slice(-6).toUpperCase()}`, savedOrder._id, 'Order').catch(() => {});
+        }
+        sendNewOrderEmail(savedOrder).catch(() => {});
+        if (global.io) global.io.to('admin').emit('newOrder', savedOrder);
       }
 
-      const updatedProduct = await Product.findOneAndUpdate(filter, update, {
-        arrayFilters,
-        new: true,
-        session
-      });
-
-      if (!updatedProduct) {
-        throw new Error(`Sản phẩm "${item.productName}" (${item.variant?.name || 'Tiêu chuẩn'}) vừa hết hàng hoặc không đủ số lượng.`);
+      // VNPay Integration
+      const vnpayInstance = getVnpay();
+      if (savedOrder.paymentMethod === 'vnpay' && vnpayInstance) {
+        const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || '127.0.0.1';
+        const paymentUrl = vnpayInstance.buildPaymentUrl({
+          vnp_Amount: savedOrder.totalAmount,
+          vnp_IpAddr: clientIp,
+          vnp_TxnRef: `${savedOrder._id.toString()}`,
+          vnp_OrderInfo: `Thanh toan don hang ${savedOrder.orderNumber}`,
+          vnp_OrderType: ProductCode.Other,
+          vnp_ReturnUrl: process.env.VNPAY_RETURN_URL || 'http://localhost:3000/payment/vnpay-return',
+          vnp_Locale: VnpLocale.VN,
+        });
+        return res.status(201).json({ success: true, message: 'Đặt hàng thành công', order: savedOrder, paymentUrl });
       }
-    }
 
-    // 3. LƯU ĐƠN HÀNG
-    const finalOrderData = {
-      customerInfo,
-      paymentMethod,
-      shippingFee,
-      discountAmount,
-      voucherCode,
-      note,
-      userId: req.user ? req.user.id : null,
-      items: trustedItems.map(({ variantGroupName, ...rest }) => rest),
-      totalAmount: Math.max(0, finalTotal),
-      status: 'pending',
-      paymentStatus: 'unpaid',
-    };
+      return res.status(201).json({ success: true, message: 'Đặt hàng thành công', order: savedOrder });
 
-    const [savedOrder] = await Order.create([finalOrderData], { session });
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
 
-    // 4. XÁC NHẬN GIAO DỊCH (Commit)
-    await session.commitTransaction();
-    session.endSession();
+      const isTransientError = 
+        error.hasErrorLabel && 
+        (error.hasErrorLabel('TransientTransactionError') || error.hasErrorLabel('UnknownTransactionCommitResult'));
+      
+      const isWriteConflict = error.message.includes('Write conflict');
 
-    // 5. XỬ LÝ SAU KHI ĐẶT HÀNG (Ngoài Transaction để không làm chậm DB)
-    if (savedOrder.paymentMethod === 'cod') {
-      if (typeof createNotification === 'function') {
-        createNotification('order', `Đơn hàng mới #${savedOrder._id.toString().slice(-6).toUpperCase()}`, savedOrder._id, 'Order').catch(() => {});
+      if ((isTransientError || isWriteConflict) && attempt < MAX_RETRIES) {
+        console.warn(`⚠️ Transaction retry attempt ${attempt}/${MAX_RETRIES} due to: ${error.message}`);
+        await new Promise(resolve => setTimeout(resolve, 100 * attempt)); // Exponential backoff
+        continue;
       }
-      sendNewOrderEmail(savedOrder).catch(() => {});
-      if (global.io) global.io.to('admin').emit('newOrder', savedOrder);
+      
+      console.error('❌ Order Creation Failed:', error.message);
+      return res.status(400).json({ success: false, message: error.message || 'Lỗi xử lý đơn hàng' });
     }
-
-    // VNPay Integration
-    const vnpayInstance = getVnpay();
-    if (savedOrder.paymentMethod === 'vnpay' && vnpayInstance) {
-      const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || '127.0.0.1';
-      const paymentUrl = vnpayInstance.buildPaymentUrl({
-        vnp_Amount: savedOrder.totalAmount,
-        vnp_IpAddr: clientIp,
-        vnp_TxnRef: `${savedOrder.orderNumber}-${Date.now()}`,
-        vnp_OrderInfo: `Thanh toan don hang ${savedOrder.orderNumber}`,
-        vnp_OrderType: ProductCode.Other,
-        vnp_ReturnUrl: process.env.VNPAY_RETURN_URL || 'http://localhost:3000/payment/vnpay-return',
-        vnp_Locale: VnpLocale.VN,
-      });
-      return res.status(201).json({ success: true, message: 'Đặt hàng thành công', order: savedOrder, paymentUrl });
-    }
-
-    return res.status(201).json({ success: true, message: 'Đặt hàng thành công', order: savedOrder });
-
-  } catch (error) {
-    // ⚠️ HỦY BỎ GIAO DỊCH (Tất cả thay đổi kho sẽ tự động phục hồi)
-    await session.abortTransaction();
-    session.endSession();
-    
-    console.error('❌ Transaction Aborted:', error.message);
-    return res.status(400).json({ success: false, message: error.message || 'Lỗi xử lý đơn hàng' });
   }
 };
 

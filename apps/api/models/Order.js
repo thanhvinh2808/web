@@ -4,7 +4,7 @@ import mongoose from 'mongoose';
 // Schema cho item trong đơn hàng
 const OrderItemSchema = new mongoose.Schema({
   productId: {
-    type: mongoose.Schema.Types.ObjectId, // ✅ FIX: Dùng ObjectId thay vì String để query/populate được
+    type: mongoose.Schema.Types.ObjectId, 
     ref: 'Product',
     required: true,
   },
@@ -75,7 +75,6 @@ const OrderSchema = new mongoose.Schema(
       enum: ['unpaid', 'paid'],
       default: 'unpaid',
     },
-    // ✅ FIX: Thêm isPaid và paidAt — orderController gọi order.isPaid & order.paidAt nhưng schema thiếu
     isPaid: {
       type: Boolean,
       default: false,
@@ -144,20 +143,17 @@ OrderSchema.statics.getCancellableOrders = function (userId) {
 
 // ===== PRE-SAVE HOOK =====
 OrderSchema.pre('save', function (next) {
-  // Đơn hàng hủy: đảm bảo có thông tin hủy
   if (this.status === 'cancelled') {
     if (!this.cancelledAt) this.cancelledAt = new Date();
     if (!this.cancelledBy) this.cancelledBy = 'system';
   }
 
-  // Đã giao: tự động đánh dấu đã thanh toán
   if (this.status === 'delivered' && this.paymentStatus === 'unpaid') {
     this.paymentStatus = 'paid';
     this.isPaid = true;
     this.paidAt = this.paidAt || new Date();
   }
 
-  // ✅ FIX: Dùng slice(-2) thay vì substr(-2) (bị deprecated)
   if (!this.orderNumber) {
     const date = new Date();
     const yy = date.getFullYear().toString().slice(-2);
@@ -170,7 +166,6 @@ OrderSchema.pre('save', function (next) {
   next();
 });
 
-// Cho phép virtual trong JSON output
 OrderSchema.set('toJSON', { virtuals: true });
 OrderSchema.set('toObject', { virtuals: true });
 
