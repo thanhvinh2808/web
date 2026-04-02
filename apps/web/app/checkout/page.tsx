@@ -159,6 +159,7 @@ export default function CheckoutPage() {
   });
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [isOrderPlaced, setIsOrderPlaced] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   const [activeOrderData, setActiveOrderData] = useState<any>(null);
@@ -366,6 +367,7 @@ export default function CheckoutPage() {
      }
 
      setIsProcessing(true);
+     setStatusError(null);
      try {
         if (!user || !user.id) return;
 
@@ -450,6 +452,7 @@ export default function CheckoutPage() {
         }
      } catch (error: any) {
         console.error("Order Error:", error);
+        setStatusError(error.message || 'Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại.');
      } finally {
         setIsProcessing(false);
      }
@@ -710,6 +713,15 @@ export default function CheckoutPage() {
                    <button onClick={handleSubmit} disabled={isProcessing} className="w-full bg-primary text-white py-4 rounded-none font-bold uppercase tracking-widest hover:bg-primary-dark transition shadow-xl shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2" >
                       {isProcessing ? 'Đang xử lý...' : paymentMethod === 'vnpay' ? 'Thanh toán qua VNPay' : paymentMethod === 'banking' ? 'Thanh toán & Đặt hàng' : 'Đặt hàng ngay'} <CheckCircle size={20}/>
                    </button>
+
+                   {statusError && (
+                      <div className="mt-4 p-3 bg-red-50 border border-red-100 animate-shake">
+                         <p className="text-[10px] text-red-600 font-black uppercase tracking-[0.2em] text-center leading-relaxed">
+                            ⚠️ {statusError}
+                         </p>
+                      </div>
+                   )}
+
                    <p className="text-center text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mt-6 flex items-center justify-center gap-1"><Lock size={12}/> Thông tin được bảo mật tuyệt đối</p>
                 </div>
              </div>

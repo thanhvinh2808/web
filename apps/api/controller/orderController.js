@@ -11,36 +11,41 @@ import { getVnpay } from '../config/vnpay.js';
  * Quy trình: Xác minh giá -> Trừ kho Atomic -> Lưu đơn -> Rollback nếu lỗi
  */
 export const createOrder = async (req, res) => {
-  const processedItems = []; // Danh sách để rollback nếu có lỗi xảy ra giữa chừng
+  // Bắt đầu Session cho Transaction (Đảm bảo Atomic cho toàn bộ đơn hàng)
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
   try {
-    const { items, ...orderInfo } = req.body;
+    const { items, customerInfo, paymentMethod, shippingFee, discountAmount, voucherCode, note } = req.body;
 
-    // 1. Kiểm tra đầu vào
     if (!items || !Array.isArray(items) || items.length === 0) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ success: false, message: 'Giỏ hàng trống' });
     }
 
+    const productIds = items.filter(i => i.productId).map(i => i.productId);
+    const dbProducts = await Product.find({ _id: { $in: productIds } }).session(session);
+    
     const trustedItems = [];
     let grandTotal = 0;
 
-    // 2. XÁC MINH GIÁ (Zero Trust Price Verification)
+    // 1. XÁC MINH GIÁ & BIẾN THỂ
     for (const item of items) {
       if (!item.productId) continue;
 
-      const product = await Product.findById(item.productId);
-      if (!product) {
-        throw new Error(`Sản phẩm ${item.productId} không tồn tại.`);
-      }
+      const product = dbProducts.find(p => p._id.toString() === item.productId.toString());
+      if (!product) throw new Error(`Sản phẩm ${item.productId} không tồn tại.`);
 
-      // Xác định các option được chọn để tính giá chuẩn từ Server
+      let selectedVariantName = null;
       const selectedOptions = {};
+
       if (item.variant && item.variant.name) {
-        // Tìm xem option name này thuộc Variant nào trong DB
         let optionFound = false;
         product.variants.forEach(v => {
           if (v.options.some(opt => opt.name === item.variant.name)) {
             selectedOptions[v.name] = item.variant.name;
+            selectedVariantName = v.name; // Lưu lại tên Variant (vd: "Size") để trừ kho chính xác
             optionFound = true;
           }
         });
@@ -50,7 +55,6 @@ export const createOrder = async (req, res) => {
         }
       }
 
-      // Tính giá cuối cùng (Base + Surcharges) từ Model
       const price = product.calculatePrice(selectedOptions);
       const quantity = Math.max(1, parseInt(item.quantity) || 1);
       grandTotal += price * quantity;
@@ -63,42 +67,48 @@ export const createOrder = async (req, res) => {
         price,
         quantity,
         variant: item.variant?.name ? { name: item.variant.name } : undefined,
-        selectedOptions // Lưu trữ để phục vụ logic trừ kho
+        variantGroupName: selectedVariantName // "Size" hoặc "Color"
       });
     }
 
-    // 3. TRỪ KHO ATOMIC (Atomic Stock Deduction)
+    const finalTotal = grandTotal + (parseInt(shippingFee) || 0) - (parseInt(discountAmount) || 0);
+
+    // 2. TRỪ KHO ATOMIC (Chạy trong Transaction)
     for (const item of trustedItems) {
       let filter, update, arrayFilters = [];
 
       if (item.variant && item.variant.name) {
-        // Trừ kho cho sản phẩm có Variant
+        // Trừ kho & Tăng lượt bán cho cả Variant + Global Product
         filter = {
           _id: item.productId,
-          'variants.options': {
+          'variants': {
             $elemMatch: {
-              name: item.variant.name,
-              stock: { $gte: item.quantity } // Đảm bảo đủ hàng ở cấp độ option
+              name: item.variantGroupName,
+              'options.name': item.variant.name,
+              'options.stock': { $gte: item.quantity }
             }
           }
         };
         update = {
           $inc: {
-            'variants.$[].options.$[opt].stock': -item.quantity,
-            'variants.$[].options.$[opt].soldCount': item.quantity
+            'variants.$[var].options.$[opt].stock': -item.quantity,
+            'variants.$[var].options.$[opt].soldCount': item.quantity,
+            'soldCount': item.quantity // ✅ Tăng tổng lượt bán toàn sản phẩm
           }
         };
-        arrayFilters = [{ 'opt.name': item.variant.name }];
+        arrayFilters = [
+          { 'var.name': item.variantGroupName },
+          { 'opt.name': item.variant.name }
+        ];
       } else {
-        // Trừ kho cho sản phẩm đơn giản
         filter = {
           _id: item.productId,
           stock: { $gte: item.quantity }
         };
         update = {
-          $inc: {
-            stock: -item.quantity,
-            soldCount: item.quantity
+          $inc: { 
+            stock: -item.quantity, 
+            soldCount: item.quantity // ✅ Tăng tổng lượt bán
           }
         };
       }
@@ -106,119 +116,69 @@ export const createOrder = async (req, res) => {
       const updatedProduct = await Product.findOneAndUpdate(filter, update, {
         arrayFilters,
         new: true,
-        runValidators: true
+        session
       });
 
       if (!updatedProduct) {
-        throw new Error(`Sản phẩm "${item.productName}" (${item.variant?.name || 'Tiêu chuẩn'}) không đủ số lượng tồn kho.`);
+        throw new Error(`Sản phẩm "${item.productName}" (${item.variant?.name || 'Tiêu chuẩn'}) vừa hết hàng hoặc không đủ số lượng.`);
       }
-
-      // Đánh dấu đã trừ kho thành công để rollback nếu cần
-      processedItems.push(item);
     }
 
-    // 4. LƯU ĐƠN HÀNG
+    // 3. LƯU ĐƠN HÀNG
     const finalOrderData = {
-      ...orderInfo,
+      customerInfo,
+      paymentMethod,
+      shippingFee,
+      discountAmount,
+      voucherCode,
+      note,
       userId: req.user ? req.user.id : null,
-      items: trustedItems.map(({ selectedOptions, ...rest }) => rest), // Loại bỏ dữ liệu thừa
-      totalAmount: grandTotal,
+      items: trustedItems.map(({ variantGroupName, ...rest }) => rest),
+      totalAmount: Math.max(0, finalTotal),
       status: 'pending',
       paymentStatus: 'unpaid',
     };
 
-    const savedOrder = await Order.create(finalOrderData);
+    const [savedOrder] = await Order.create([finalOrderData], { session });
 
-    // 5. XỬ LÝ SAU KHI ĐẶT HÀNG (Thông báo, Email...)
-    // ✅ CHỈ GỬI THÔNG BÁO NGAY NẾU LÀ COD (Thanh toán khi nhận hàng)
-    // Đối với Banking/VNPay, sẽ gửi sau khi markOrderAsPaid được gọi (khi tiền đã vào)
+    // 4. XÁC NHẬN GIAO DỊCH (Commit)
+    await session.commitTransaction();
+    session.endSession();
+
+    // 5. XỬ LÝ SAU KHI ĐẶT HÀNG (Ngoài Transaction để không làm chậm DB)
     if (savedOrder.paymentMethod === 'cod') {
       if (typeof createNotification === 'function') {
-        createNotification(
-          'order',
-          `Đơn hàng mới #${savedOrder._id.toString().slice(-6).toUpperCase()} - ${grandTotal.toLocaleString('vi-VN')}đ`,
-          savedOrder._id,
-          'Order'
-        ).catch(err => console.error('Lỗi thông báo:', err));
+        createNotification('order', `Đơn hàng mới #${savedOrder._id.toString().slice(-6).toUpperCase()}`, savedOrder._id, 'Order').catch(() => {});
       }
-
-      sendNewOrderEmail(savedOrder).catch(err => console.error('Lỗi gửi email:', err));
-
-      if (global.io) {
-        global.io.to('admin').emit('newOrder', savedOrder);
-      }
+      sendNewOrderEmail(savedOrder).catch(() => {});
+      if (global.io) global.io.to('admin').emit('newOrder', savedOrder);
     }
 
-    // 6. VNPay: generate payment URL if paymentMethod is vnpay
+    // VNPay Integration
     const vnpayInstance = getVnpay();
     if (savedOrder.paymentMethod === 'vnpay' && vnpayInstance) {
-      const clientIp =
-        req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-        req.socket?.remoteAddress ||
-        req.ip ||
-        '127.0.0.1';
-
-      const txnRef = `${savedOrder.orderNumber}-${Date.now()}`;
-
+      const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || '127.0.0.1';
       const paymentUrl = vnpayInstance.buildPaymentUrl({
         vnp_Amount: savedOrder.totalAmount,
         vnp_IpAddr: clientIp,
-        vnp_TxnRef: txnRef,
+        vnp_TxnRef: `${savedOrder.orderNumber}-${Date.now()}`,
         vnp_OrderInfo: `Thanh toan don hang ${savedOrder.orderNumber}`,
         vnp_OrderType: ProductCode.Other,
         vnp_ReturnUrl: process.env.VNPAY_RETURN_URL || 'http://localhost:3000/payment/vnpay-return',
         vnp_Locale: VnpLocale.VN,
       });
-
-      return res.status(201).json({
-        success: true,
-        message: 'Đặt hàng thành công',
-        order: savedOrder,
-        paymentUrl,
-      });
+      return res.status(201).json({ success: true, message: 'Đặt hàng thành công', order: savedOrder, paymentUrl });
     }
 
-    return res.status(201).json({
-      success: true,
-      message: 'Đặt hàng thành công',
-      order: savedOrder,
-    });
+    return res.status(201).json({ success: true, message: 'Đặt hàng thành công', order: savedOrder });
 
   } catch (error) {
-    console.error('❌ Lỗi tạo đơn hàng:', error.message);
-
-    // ⚠️ HOÀN KHO (Rollback) - Trả lại hàng nếu có lỗi xảy ra sau khi đã trừ kho
-    if (processedItems.length > 0) {
-      console.log('🔄 Đang hoàn kho cho đơn hàng thất bại...');
-      for (const item of processedItems) {
-        try {
-          if (item.variant && item.variant.name) {
-            await Product.updateOne(
-              { _id: item.productId },
-              {
-                $inc: {
-                  'variants.$[].options.$[opt].stock': item.quantity,
-                  'variants.$[].options.$[opt].soldCount': -item.quantity,
-                },
-              },
-              { arrayFilters: [{ 'opt.name': item.variant.name }] }
-            );
-          } else {
-            await Product.updateOne(
-              { _id: item.productId },
-              { $inc: { stock: item.quantity, soldCount: -item.quantity } }
-            );
-          }
-        } catch (rollbackError) {
-          console.error(`CỰC KỲ NGHIÊM TRỌNG: Lỗi hoàn kho cho sản phẩm ${item.productId}`, rollbackError);
-        }
-      }
-    }
-
-    return res.status(400).json({
-      success: false,
-      message: error.message || 'Lỗi xử lý đơn hàng',
-    });
+    // ⚠️ HỦY BỎ GIAO DỊCH (Tất cả thay đổi kho sẽ tự động phục hồi)
+    await session.abortTransaction();
+    session.endSession();
+    
+    console.error('❌ Transaction Aborted:', error.message);
+    return res.status(400).json({ success: false, message: error.message || 'Lỗi xử lý đơn hàng' });
   }
 };
 
@@ -372,62 +332,92 @@ export const getOrderById = async (req, res) => {
 };
 
 /**
- * HỦY ĐƠN HÀNG (CÓ HOÀN KHO)
+ * HỦY ĐƠN HÀNG (CÓ HOÀN KHO - TRANSACTIONAL)
  */
 export const cancelOrder = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const { id } = req.params;
     const { reason } = req.body;
 
-    const order = await Order.findOne({ _id: id, userId: req.user.id });
+    // 1. Tìm đơn hàng (Sử dụng session)
+    const order = await Order.findOne({ _id: id, userId: req.user.id }).session(session);
 
     if (!order) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
+      throw new Error('Không tìm thấy đơn hàng');
     }
 
-    if (['shipped', 'delivered', 'cancelled', 'completed'].includes(order.status)) {
-      return res.status(400).json({ success: false, message: 'Không thể hủy đơn hàng ở trạng thái này' });
+    // Kiểm tra trạng thái có được phép hủy không
+    const forbiddenStatuses = ['shipped', 'delivered', 'cancelled', 'completed'];
+    if (forbiddenStatuses.includes(order.status)) {
+      throw new Error(`Không thể hủy đơn hàng đang ở trạng thái: ${order.status}`);
     }
 
-    // 1. Cập nhật trạng thái hủy
-    order.status = 'cancelled';
-    order.cancelReason = reason || 'Người dùng hủy';
-    await order.save();
-
-    // 2. HOÀN KHO ATOMIC
+    // 2. HOÀN KHO ATOMIC (Chạy trong Transaction)
     if (order.items && order.items.length > 0) {
       for (const item of order.items) {
-        try {
-          if (item.variant && item.variant.name) {
-            await Product.updateOne(
-              { _id: item.productId },
-              {
-                $inc: {
-                  'variants.$[].options.$[opt].stock': item.quantity,
-                  'variants.$[].options.$[opt].soldCount': -item.quantity,
-                },
-              },
-              { arrayFilters: [{ 'opt.name': item.variant.name }] }
-            );
-          } else {
-            await Product.updateOne(
-              { _id: item.productId },
-              { $inc: { stock: item.quantity, soldCount: -item.quantity } }
-            );
-          }
-        } catch (restockError) {
-          console.error(`Lỗi hoàn kho cho đơn ${order._id}:`, restockError);
+        let filter, update, arrayFilters = [];
+
+        if (item.variant && item.variant.name) {
+          // Hoàn kho cho sản phẩm có Variant
+          // Chúng ta dùng $[var] và $[opt] để xác định chính xác option trong variant
+          filter = { _id: item.productId };
+          update = {
+            $inc: {
+              'variants.$[var].options.$[opt].stock': item.quantity,
+              'variants.$[].options.$[opt].soldCount': -item.quantity
+            }
+          };
+          // Vì khi lưu đơn ta đã lưu variant.name, ta sẽ tìm option có name đó trong bất kỳ variant group nào
+          arrayFilters = [
+            { 'var.options.name': item.variant.name },
+            { 'opt.name': item.variant.name }
+          ];
+        } else {
+          // Hoàn kho cho sản phẩm đơn giản
+          filter = { _id: item.productId };
+          update = {
+            $inc: { stock: item.quantity, soldCount: -item.quantity }
+          };
+        }
+
+        const result = await Product.updateOne(filter, update, { arrayFilters, session });
+        
+        if (result.matchedCount === 0) {
+          console.warn(`Cảnh báo: Không tìm thấy sản phẩm ${item.productId} để hoàn kho.`);
         }
       }
     }
 
+    // 3. Cập nhật trạng thái đơn hàng
+    order.status = 'cancelled';
+    order.cancelReason = reason || 'Người dùng hủy';
+    await order.save({ session });
+
+    // 4. Xác nhận Transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    // Thông báo cho Admin qua Socket
     if (global.io) {
-      global.io.to('admin').emit('orderStatusUpdated', { orderId: order._id, status: 'cancelled' });
+      global.io.to('admin').emit('orderStatusUpdated', { 
+        orderId: order._id, 
+        status: 'cancelled',
+        message: `Đơn hàng #${order._id.toString().slice(-6).toUpperCase()} đã bị hủy`
+      });
     }
 
-    return res.json({ success: true, message: 'Hủy đơn hàng thành công', order });
+    return res.json({ success: true, message: 'Hủy đơn hàng và hoàn kho thành công', order });
+
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    // Rollback nếu có lỗi
+    await session.abortTransaction();
+    session.endSession();
+    
+    console.error('❌ Cancel Order Error:', error.message);
+    return res.status(400).json({ success: false, message: error.message || 'Lỗi khi hủy đơn hàng' });
   }
 };
 
