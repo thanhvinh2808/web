@@ -8,10 +8,20 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    domains: ['localhost', 'images.unsplash.com', 'footmark-api.onrender.com'], // ? Th�m domain Render
+    domains: [
+      'localhost', 
+      'images.unsplash.com', 
+      'footmark-api.onrender.com', 
+      'res.cloudinary.com'
+    ],
     remotePatterns: [
       {
-        protocol: 'https', // ? HTTPS cho Render
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
         hostname: 'footmark-api.onrender.com',
         pathname: '/uploads/**',
       },

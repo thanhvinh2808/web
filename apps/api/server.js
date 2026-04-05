@@ -604,11 +604,7 @@ app.put('/api/admin/products/:slug', authenticateToken, requireAdmin, async (req
       updateData[key] === undefined && delete updateData[key]
     );
     
-    const product = await Product.findOneAndUpdate(
-      { slug: req.params.slug },
-      updateData,
-      { new: true, runValidators: true }
-    );
+    const product = await Product.findOne({ slug: req.params.slug });
     
     if (!product) {
       return res.status(404).json({
@@ -616,6 +612,36 @@ app.put('/api/admin/products/:slug', authenticateToken, requireAdmin, async (req
         message: 'Product not found' 
       });
     }
+
+    // 🛡️ SECURITY: Cleanup old images that are no longer in the new set
+    if (processedImages.length > 0) {
+      const oldImageUrls = product.images.map(img => img.url);
+      const newImageUrls = processedImages.map(img => img.url);
+      
+      const imagesToDelete = oldImageUrls.filter(url => !newImageUrls.includes(url));
+      
+      if (imagesToDelete.length > 0) {
+        console.log(`🧹 Cleaning up ${imagesToDelete.length} unused images...`);
+        for (const url of imagesToDelete) {
+          await deleteFile(url);
+        }
+      }
+    }
+
+    // Also check for variant images if they were removed
+    if (processedVariants.length > 0) {
+       const oldVariantImages = product.variants.flatMap(v => v.options.map(o => o.image)).filter(Boolean);
+       const newVariantImages = processedVariants.flatMap(v => v.options.map(o => o.image)).filter(Boolean);
+       const variantImagesToDelete = oldVariantImages.filter(url => !newVariantImages.includes(url));
+       
+       for (const url of variantImagesToDelete) {
+         await deleteFile(url);
+       }
+    }
+    
+    // Apply updates
+    Object.assign(product, updateData);
+    await product.save();
     
     console.log('✅ Product updated:', product.slug);
     

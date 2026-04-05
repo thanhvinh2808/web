@@ -336,7 +336,7 @@ export const getOrderById = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
     }
 
-    // Bảo mật: Chỉ chủ đơn hoặc Admin mới được xem
+    // Bảo mật
     if (req.user.role !== 'admin' && order.userId?._id.toString() !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Không có quyền truy cập' });
     }
@@ -348,7 +348,7 @@ export const getOrderById = async (req, res) => {
 };
 
 /**
- * HỦY ĐƠN HÀNG (CÓ HOÀN KHO - TRANSACTIONAL)
+ * HỦY ĐƠN HÀNG
  */
 export const cancelOrder = async (req, res) => {
   const session = await mongoose.startSession();
@@ -371,14 +371,12 @@ export const cancelOrder = async (req, res) => {
       throw new Error(`Không thể hủy đơn hàng đang ở trạng thái: ${order.status}`);
     }
 
-    // 2. HOÀN KHO ATOMIC (Chạy trong Transaction)
+    // 2. HOÀN KHO ATOMIC
     if (order.items && order.items.length > 0) {
       for (const item of order.items) {
         let filter, update, arrayFilters = [];
 
         if (item.variant && item.variant.name) {
-          // Hoàn kho cho sản phẩm có Variant
-          // Chúng ta dùng $[var] và $[opt] để xác định chính xác option trong variant
           filter = { _id: item.productId };
           update = {
             $inc: {
@@ -386,7 +384,6 @@ export const cancelOrder = async (req, res) => {
               'variants.$[].options.$[opt].soldCount': -item.quantity
             }
           };
-          // Vì khi lưu đơn ta đã lưu variant.name, ta sẽ tìm option có name đó trong bất kỳ variant group nào
           arrayFilters = [
             { 'var.options.name': item.variant.name },
             { 'opt.name': item.variant.name }
