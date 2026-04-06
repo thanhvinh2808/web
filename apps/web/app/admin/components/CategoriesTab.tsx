@@ -43,8 +43,14 @@ export default function CategoriesTab({ categories, token, onRefresh, showMessag
     try {
       const uploadFormData = new FormData();
       uploadFormData.append('image', file);
-      const BASE_URL = API_URL.replace('/api', ''); // Giả sử API_URL là .../api
-      const res = await fetch(`${BASE_URL}/upload/single`, {
+      
+      const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace('/api', '');
+      
+      const res = await fetch(`${BASE_URL}/api/upload/single`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: uploadFormData
+      });
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: uploadFormData

@@ -20,12 +20,26 @@ export interface Product {
   slug: string;
   description?: string;
   price: number;
+  originalPrice?: number;
   salePrice?: number;
-  category: string;
+  category?: string;
   categorySlug?: string;
+  brand?: string;
   images?: string[];
   stock?: number;
-  status?: 'active' | 'inactive' | 'draft';
+  soldCount?: number;
+  tags?: string[];
+  specs?: {
+    condition?: string;
+    accessories?: string;
+    material?: string;
+    styleCode?: string;
+    colorway?: string;
+    releaseDate?: string | Date;
+  };
+  status?: 'active' | 'inactive' | 'out_of_stock';
+  featured?: boolean;
+  isNew?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

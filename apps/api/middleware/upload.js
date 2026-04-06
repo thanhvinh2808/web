@@ -1,158 +1,166 @@
-// backend/middleware/upload.js
+// middleware/upload.js
 import multer from 'multer';
-import path from 'path';
+import nodePath from 'path'; // ✅ FIX: Đổi tên import để tránh shadow với param 'filePath'
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { v2 as cloudinary } from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import dotenv from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// ===== CẤU HÌNH STORAGE =====
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = 'uploads/products';
-    
-    // Tạo thư mục nếu chưa tồn tại
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    
-    cb(null, uploadDir);
-  },
-  
-  filename: (req, file, cb) => {
-    // Tạo tên file unique: timestamp-random-originalname
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    const nameWithoutExt = path.basename(file.originalname, ext);
-    
-    // Slug-ify tên file (remove special chars, spaces)
-    const safeName = nameWithoutExt
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '-')
-      .replace(/-+/g, '-')
-      .substring(0, 50); // Giới hạn độ dài
-    
-    cb(null, `${safeName}-${uniqueSuffix}${ext}`);
-  }
-});
+dotenv.config({ path: nodePath.resolve(process.cwd(), 'apps/api/.env') });
+
+// ===== CONFIG CLOUDINARY =====
+const isCloudinaryConfigured =
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET;
+
+if (isCloudinaryConfigured) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+  console.log('☁️  Cloudinary Configured');
+} else {
+  console.log('📂 Cloudinary NOT configured. Using Local Storage.');
+}
+
+// ===== MIME TYPE WHITELIST =====
+const MIME_TYPE_MAP = {
+  'image/png': '.png',
+  'image/jpeg': '.jpg',
+  'image/jpg': '.jpg',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
+};
+
+// ===== STORAGE =====
+let storage;
+
+if (isCloudinaryConfigured) {
+  storage = new CloudinaryStorage({
+    cloudinary,
+    params: {
+      folder: 'footmark-products',
+      allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'gif'],
+      format: async (req, file) => {
+        if (file.mimetype === 'image/png') return 'png';
+        if (file.mimetype === 'image/webp') return 'webp';
+        if (file.mimetype === 'image/gif') return 'gif';
+        return 'jpg';
+      },
+    },
+  });
+} else {
+  storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      const uploadDir = 'uploads/products';
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+      // 🛡️ SECURITY: Bỏ qua extension từ client, dùng extension từ MIME type
+      const ext = MIME_TYPE_MAP[file.mimetype] || '.jpg';
+      const originalName = nodePath.basename(file.originalname, nodePath.extname(file.originalname));
+      const safeName = originalName
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '-')
+        .replace(/-+/g, '-')
+        .substring(0, 50);
+      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+      cb(null, `${safeName}-${uniqueSuffix}${ext}`);
+    },
+  });
+}
 
 // ===== FILE FILTER =====
 const fileFilter = (req, file, cb) => {
-  // Chỉ chấp nhận file ảnh
-  const allowedMimeTypes = [
-    'image/jpeg',
-    'image/jpg', 
-    'image/png',
-    'image/webp',
-    'image/gif'
-  ];
-  
-  if (allowedMimeTypes.includes(file.mimetype)) {
+  if (Object.keys(MIME_TYPE_MAP).includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error(`Chỉ chấp nhận file ảnh (JPEG, PNG, WEBP, GIF). File ${file.originalname} không hợp lệ.`), false);
+    cb(
+      new Error(
+        `Chỉ chấp nhận file ảnh (JPEG, PNG, WEBP, GIF). File "${file.originalname}" không hợp lệ.`
+      ),
+      false
+    );
   }
 };
 
-// ===== MULTER CONFIG =====
+// ===== MULTER INSTANCE =====
 const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
+  storage,
+  fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024, // Giới hạn 5MB
-    files: 10 // Tối đa 10 files cùng lúc
-  }
+    fileSize: 5 * 1024 * 1024, // 5MB
+    files: 10,
+  },
 });
 
 // ===== MIDDLEWARE EXPORTS =====
-
-/**
- * Upload single image
- * Field name: 'image'
- */
 export const uploadSingle = upload.single('image');
-
-/**
- * Upload multiple images
- * Field name: 'images'
- * Max: 10 files
- */
 export const uploadMultiple = upload.array('images', 10);
-
-/**
- * Upload fields (có thể upload nhiều loại field khác nhau)
- * VD: thumbnail + gallery
- */
 export const uploadFields = upload.fields([
   { name: 'thumbnail', maxCount: 1 },
-  { name: 'gallery', maxCount: 10 }
+  { name: 'gallery', maxCount: 10 },
 ]);
 
-// ===== ERROR HANDLER MIDDLEWARE =====
-/**
- * Xử lý lỗi từ multer
- */
+// ===== UPLOAD ERROR HANDLER =====
 export const handleUploadError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
-    // Lỗi từ multer
-    if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({
-        success: false,
-        message: 'File quá lớn. Kích thước tối đa là 5MB.',
-        error: err.message
-      });
-    }
-    
-    if (err.code === 'LIMIT_FILE_COUNT') {
-      return res.status(400).json({
-        success: false,
-        message: 'Vượt quá số lượng file cho phép (tối đa 10 files).',
-        error: err.message
-      });
-    }
-    
-    if (err.code === 'LIMIT_UNEXPECTED_FILE') {
-      return res.status(400).json({
-        success: false,
-        message: 'Field name không đúng. Vui lòng sử dụng "image" hoặc "images".',
-        error: err.message
-      });
-    }
-    
-    return res.status(400).json({
-      success: false,
-      message: 'Lỗi khi upload file.',
-      error: err.message
-    });
-  } else if (err) {
-    // Lỗi custom từ fileFilter hoặc lỗi khác
-    return res.status(400).json({
-      success: false,
-      message: err.message || 'Lỗi không xác định khi upload file.'
-    });
+    if (err.code === 'LIMIT_FILE_SIZE')
+      return res.status(400).json({ success: false, message: 'File quá lớn (tối đa 5MB).' });
+    if (err.code === 'LIMIT_FILE_COUNT')
+      return res.status(400).json({ success: false, message: 'Quá nhiều file (tối đa 10).' });
+    return res.status(400).json({ success: false, message: 'Lỗi upload: ' + err.message });
   }
-  
-  // Không có lỗi, tiếp tục
+  if (err) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
   next();
 };
 
-// ===== HELPER FUNCTIONS =====
-
-/**
- * Xóa file khỏi server
- * @param {string} filePath - Đường dẫn file cần xóa
- * @returns {boolean} - true nếu xóa thành công
- */
-export const deleteFile = (filePath) => {
+// ===== HELPER: Lấy Cloudinary public_id từ URL =====
+const getCloudinaryPublicId = (url) => {
   try {
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-      console.log('✅ Deleted file:', filePath);
-      return true;
+    const parts = url.split('/');
+    const filenameWithExt = parts.pop();
+    const folder = parts.pop();
+    const publicId = `${folder}/${filenameWithExt.split('.')[0]}`;
+    return publicId;
+  } catch {
+    return null;
+  }
+};
+
+export const deleteFile = async (filePath) => {
+  try {
+    if (!filePath) return false;
+
+    if (filePath.startsWith('http')) {
+      if (!isCloudinaryConfigured) return false;
+      const publicId = getCloudinaryPublicId(filePath);
+      if (publicId) {
+        await cloudinary.uploader.destroy(publicId);
+        console.log('☁️ Deleted from Cloudinary:', publicId);
+        return true;
+      }
+      return false;
     } else {
-      console.log('⚠️ File not found:', filePath);
+      const cleanPath = filePath.startsWith('/') ? filePath.slice(1) : filePath;
+      const fullPath = nodePath.resolve(process.cwd(), cleanPath);
+      if (fs.existsSync(fullPath)) {
+        fs.unlinkSync(fullPath);
+        console.log('✅ Deleted local file:', fullPath);
+        return true;
+      }
       return false;
     }
   } catch (error) {
@@ -161,143 +169,17 @@ export const deleteFile = (filePath) => {
   }
 };
 
-/**
- * Xóa nhiều file
- * @param {string[]} filePaths - Mảng đường dẫn files cần xóa
- * @returns {object} - { success: number, failed: number }
- */
-export const deleteMultipleFiles = (filePaths) => {
-  let success = 0;
-  let failed = 0;
-  
-  filePaths.forEach(filePath => {
-    if (deleteFile(filePath)) {
-      success++;
-    } else {
-      failed++;
-    }
-  });
-  
+// ===== HELPER: Xóa nhiều file =====
+export const deleteMultipleFiles = async (filePaths) => {
+  const results = await Promise.allSettled(filePaths.map((filePath) => deleteFile(filePath)));
+  const success = results.filter((r) => r.status === 'fulfilled' && r.value === true).length;
+  const failed = results.length - success;
   return { success, failed };
 };
 
-/**
- * Validate URL ảnh
- * @param {string} url - URL cần validate
- * @returns {boolean}
- */
-export const isValidImageUrl = (url) => {
-  if (!url || typeof url !== 'string') return false;
-  
-  // Check nếu là URL local uploads
-  if (url.startsWith('/uploads/')) return true;
-  
-  // Check nếu là URL external
-  try {
-    const urlObj = new URL(url);
-    const validExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
-    return validExtensions.some(ext => urlObj.pathname.toLowerCase().endsWith(ext));
-  } catch {
-    return false;
-  }
-};
-
-/**
- * Get filename từ URL
- * @param {string} url - URL ảnh
- * @returns {string|null} - Filename hoặc null
- */
-export const getFilenameFromUrl = (url) => {
-  if (!url) return null;
-  
-  try {
-    // Nếu là local URL
-    if (url.startsWith('/uploads/')) {
-      return url.split('/').pop();
-    }
-    
-    // Nếu là external URL
-    const urlObj = new URL(url);
-    return path.basename(urlObj.pathname);
-  } catch {
-    return null;
-  }
-};
-
-/**
- * Clean old uploads (xóa file cũ hơn X ngày)
- * @param {number} daysOld - Số ngày (default: 30)
- */
-export const cleanOldUploads = (daysOld = 30) => {
-  const uploadDir = 'uploads/products';
-  const now = Date.now();
-  const daysInMs = daysOld * 24 * 60 * 60 * 1000;
-  
-  try {
-    const files = fs.readdirSync(uploadDir);
-    let deletedCount = 0;
-    
-    files.forEach(file => {
-      const filePath = path.join(uploadDir, file);
-      const stats = fs.statSync(filePath);
-      const fileAge = now - stats.mtimeMs;
-      
-      if (fileAge > daysInMs) {
-        fs.unlinkSync(filePath);
-        deletedCount++;
-      }
-    });
-    
-    console.log(`🧹 Cleaned ${deletedCount} old files from ${uploadDir}`);
-    return deletedCount;
-  } catch (error) {
-    console.error('❌ Error cleaning old uploads:', error);
-    return 0;
-  }
-};
-
-/**
- * Get upload statistics
- */
-export const getUploadStats = () => {
-  const uploadDir = 'uploads/products';
-  
-  try {
-    const files = fs.readdirSync(uploadDir);
-    const stats = {
-      totalFiles: files.length,
-      totalSize: 0,
-      fileTypes: {}
-    };
-    
-    files.forEach(file => {
-      const filePath = path.join(uploadDir, file);
-      const fileStats = fs.statSync(filePath);
-      const ext = path.extname(file).toLowerCase();
-      
-      stats.totalSize += fileStats.size;
-      stats.fileTypes[ext] = (stats.fileTypes[ext] || 0) + 1;
-    });
-    
-    stats.totalSizeMB = (stats.totalSize / (1024 * 1024)).toFixed(2);
-    
-    return stats;
-  } catch (error) {
-    console.error('❌ Error getting upload stats:', error);
-    return null;
-  }
-};
-
-// ===== DEFAULT EXPORT =====
 export default {
   uploadSingle,
   uploadMultiple,
-  uploadFields,
   handleUploadError,
   deleteFile,
-  deleteMultipleFiles,
-  isValidImageUrl,
-  getFilenameFromUrl,
-  cleanOldUploads,
-  getUploadStats
 };

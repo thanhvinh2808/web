@@ -1,9 +1,8 @@
-// context/SocketContext.tsx
-'use client';
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
+"use client";
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { io, Socket } from "socket.io-client";
+import { SOCKET_URL } from '../../lib/shared/constants'; // ✅ Dùng hằng số chuẩn
 
 interface SocketContextType {
   socket: Socket | null;
@@ -12,62 +11,45 @@ interface SocketContextType {
 
 const SocketContext = createContext<SocketContextType>({
   socket: null,
-  isConnected: false
+  isConnected: false,
 });
 
 export const useSocket = () => useContext(SocketContext);
 
-export function SocketProvider({ children }: { children: React.ReactNode }) {
+export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    // ✅ Chỉ kết nối khi đang ở client-side
-    if (typeof window === 'undefined') return;
-
-    console.log('🔌 Connecting to Socket.io server:', SOCKET_URL);
-
+    // Khởi tạo socket connection trỏ về server backend
     const socketInstance = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'],
-      reconnection: true,
+      transports: ["websocket", "polling"],
+      withCredentials: true,
+      reconnectionAttempts: 5,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: 10,
-      timeout: 20000,
-      // ✅ Thêm autoConnect
-      autoConnect: true,
     });
 
-    socketInstance.on('connect', () => {
-      console.log('✅ Socket connected:', socketInstance.id);
+    socketInstance.on("connect", () => {
+      console.log("✅ Socket connected:", socketInstance.id);
       setIsConnected(true);
     });
 
-    socketInstance.on('disconnect', (reason) => {
-      console.log('❌ Socket disconnected:', reason);
+    socketInstance.on("disconnect", () => {
+      console.log("❌ Socket disconnected");
       setIsConnected(false);
     });
 
-    socketInstance.on('connect_error', (error) => {
-      console.error('❌ Socket connection error:', error.message);
-      setIsConnected(false);
-      
-      // ✅ Không hiển thị error nếu backend chưa chạy
-      if (error.message.includes('xhr poll error')) {
-        console.warn('⚠️ Backend chưa chạy hoặc không thể kết nối');
-      }
+    socketInstance.on("connect_error", (err) => {
+      console.error("❌ Socket connection error:", err.message);
     });
 
-    socketInstance.on('error', (error) => {
-      console.error('❌ Socket error:', error);
-    });
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSocket(socketInstance);
 
+    // Cleanup khi component unmount
     return () => {
-      console.log('🔌 Disconnecting socket...');
-      socketInstance.disconnect();
+      if (socketInstance) {
+        socketInstance.disconnect();
+      }
     };
   }, []);
 
@@ -76,47 +58,30 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       {children}
     </SocketContext.Provider>
   );
-}
+};
 
-// Hook for listening to order updates
-export function useOrderUpdates(userId?: string, onUpdate?: (order: any) => void) {
-  const { socket, isConnected } = useSocket();
+// --- Custom Hooks for Real-time Updates ---
+
+export const useOrderUpdates = (userId?: string) => {
+  const { socket } = useSocket();
 
   useEffect(() => {
-    if (!socket || !isConnected) return;
-
-    const handleOrderUpdate = (data: any) => {
-      console.log('📦 Order updated:', data);
-      if (onUpdate) {
-        onUpdate(data.order);
-      }
-    };
-
-    socket.on('orderStatusUpdated', handleOrderUpdate);
-
-    if (userId) {
-      socket.emit('joinUserRoom', userId);
+    if (socket && userId) {
+      // Tham gia phòng của người dùng cụ thể
+      socket.emit("joinUserRoom", userId);
+      console.log(`👤 Joined user room: user:${userId}`);
     }
+  }, [socket, userId]);
+};
 
-    return () => {
-      socket.off('orderStatusUpdated', handleOrderUpdate);
-    };
-  }, [socket, isConnected, userId, onUpdate]);
-
-  return { socket, isConnected };
-}
-
-// Hook for admin room
-export function useAdminUpdates(isAdmin: boolean) {
-  const { socket, isConnected } = useSocket();
+export const useAdminUpdates = (isAdmin: boolean) => {
+  const { socket } = useSocket();
 
   useEffect(() => {
-    if (!socket || !isConnected || !isAdmin) return;
-
-    console.log('👑 Joining Admin Room...');
-    socket.emit('joinAdminRoom');
-
-  }, [socket, isConnected, isAdmin]);
-
-  return { socket, isConnected };
-}
+    if (socket && isAdmin) {
+      // Tham gia phòng dành cho admin
+      socket.emit("joinAdminRoom");
+      console.log("👑 Joined admin room");
+    }
+  }, [socket, isAdmin]);
+};

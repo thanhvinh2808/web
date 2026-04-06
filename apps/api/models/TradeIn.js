@@ -6,6 +6,11 @@ const tradeInSchema = new mongoose.Schema({
     ref: 'User',
     required: false
   },
+  // ✅ Liên kết với Product sau khi thu mua thành công
+  productId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product'
+  },
   productName: {
     type: String,
     required: true,
@@ -46,6 +51,7 @@ const tradeInSchema = new mongoose.Schema({
     default: ''
   },
   contactInfo: { // Thông tin liên hệ nếu khác profile
+    name: String,
     phone: String,
     address: String
   }

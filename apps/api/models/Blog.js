@@ -26,6 +26,10 @@ const blogSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  thumbnail: {
+    type: String,
+    default: ''
+  },
   category: {
     type: String,
     default: 'Technology',
@@ -35,6 +39,14 @@ const blogSchema = new mongoose.Schema({
     type: String,
     trim: true
   }],
+  authorName: {
+    type: String,
+    default: 'Admin'
+  },
+  authorAvatar: {
+    type: String,
+    default: ''
+  },
   author: {
     name: {
       type: String,

@@ -14,7 +14,7 @@ interface Product {
   slug?: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '$ {process.env.NEXT_PUBLIC_API_URL' || 'http://localhost:5000';
 
 export const SearchBar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -63,7 +63,7 @@ export const SearchBar = () => {
           console.log('✅ Is Array?:', Array.isArray(data));
           
           // Kiểm tra nếu data có structure khác
-          let products = [];
+          let products: Product[] = [];
           if (Array.isArray(data)) {
             products = data;
           } else if (data && Array.isArray(data.products)) {
@@ -192,6 +192,16 @@ export const SearchBar = () => {
       router.push(`/api/products?search=${encodeURIComponent(searchQuery)}`);
       handleCloseSearch();
     }
+  };
+
+  // ✅ Helper function để lấy URL ảnh đầy đủ
+  const getImageUrl = (imgData: any): string => {
+    if (!imgData) return '/placeholder-product.jpg';
+    const url = typeof imgData === 'string' ? imgData : (imgData.url || '');
+    if (!url || url.includes('[object')) return '/placeholder-product.jpg';
+    if (url.startsWith('http') || url.startsWith('data:')) return url;
+    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace('/api', '');
+    return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
   const formatCurrency = (amount: number) => {

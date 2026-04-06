@@ -1,11 +1,11 @@
-import User from '../models/User.js';
+﻿import User from '../models/User.js';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import Notification from '../models/Notification.js';
 import bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
 
-// 🔔 Create Notification (Helper for internal use)
+// ðŸ”” Create Notification (Helper for internal use)
 export const createNotification = async (type, message, referenceId, referenceModel) => {
   try {
     const notification = await Notification.create({
@@ -26,7 +26,7 @@ export const createNotification = async (type, message, referenceId, referenceMo
   }
 };
 
-// 🔔 Get Notifications
+// ðŸ”” Get Notifications
 export const getNotifications = async (req, res) => {
   try {
     const { limit = 20 } = req.query;
@@ -46,7 +46,7 @@ export const getNotifications = async (req, res) => {
   }
 };
 
-// 🔔 Mark Notification as Read
+// ðŸ”” Mark Notification as Read
 export const markNotificationRead = async (req, res) => {
   try {
     const { id } = req.params;
@@ -57,7 +57,7 @@ export const markNotificationRead = async (req, res) => {
   }
 };
 
-// 🔔 Mark All as Read
+// ðŸ”” Mark All as Read
 export const markAllNotificationsRead = async (req, res) => {
   try {
     await Notification.updateMany({ isRead: false }, { isRead: true });
@@ -67,7 +67,7 @@ export const markAllNotificationsRead = async (req, res) => {
   }
 };
 
-// 📊 Dashboard Statistics
+// ðŸ“Š Dashboard Statistics
 export const getDashboardStats = async (req, res) => {
   try {
     const [
@@ -107,12 +107,12 @@ export const getDashboardStats = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Lỗi lấy thống kê: ' + error.message
+      message: 'Lá»—i láº¥y thá»‘ng kÃª: ' + error.message
     });
   }
 };
 
-// 👥 Get All Users
+// ðŸ‘¥ Get All Users
 export const getAllUsers = async (req, res) => {
   try {
     const { page = 1, limit = 10, search = '' } = req.query;
@@ -144,12 +144,12 @@ export const getAllUsers = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Lỗi lấy danh sách users: ' + error.message
+      message: 'Lá»—i láº¥y danh sÃ¡ch users: ' + error.message
     });
   }
 };
 
-// 🔄 Update User Role
+// ðŸ”„ Update User Role
 export const updateUserRole = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -158,7 +158,7 @@ export const updateUserRole = async (req, res) => {
     if (!['user', 'admin'].includes(role)) {
       return res.status(400).json({
         success: false,
-        message: 'Role không hợp lệ'
+        message: 'Role khÃ´ng há»£p lá»‡'
       });
     }
 
@@ -170,18 +170,18 @@ export const updateUserRole = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Cập nhật role thành công',
+      message: 'Cáº­p nháº­t role thÃ nh cÃ´ng',
       data: user
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Lỗi cập nhật role: ' + error.message
+      message: 'Lá»—i cáº­p nháº­t role: ' + error.message
     });
   }
 };
 
-// 🗑️ Delete User
+// ðŸ—‘ï¸ Delete User
 export const deleteUser = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -190,17 +190,17 @@ export const deleteUser = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Xóa user thành công'
+      message: 'XÃ³a user thÃ nh cÃ´ng'
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Lỗi xóa user: ' + error.message
+      message: 'Lá»—i xÃ³a user: ' + error.message
     });
   }
 };
 
-// 📦 Get All Orders
+// ðŸ“¦ Get All Orders
 export const getAllOrders = async (req, res) => {
   try {
     const { page = 1, limit = 10, status = '' } = req.query;
@@ -227,12 +227,38 @@ export const getAllOrders = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Lỗi lấy danh sách orders: ' + error.message
+      message: 'Lá»—i láº¥y danh sÃ¡ch orders: ' + error.message
     });
   }
 };
 
-// 🔄 Update Order Status
+// ðŸ”„ Update Order Status
+// Get Order By ID
+export const getOrderById = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId)
+      .populate('userId', 'name email phone');
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy đơn hàng'
+      });
+    }
+
+    res.json({
+      success: true,
+      order
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi lấy thông tin đơn hàng: ' + error.message
+    });
+  }
+};
 export const updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -242,7 +268,7 @@ export const updateOrderStatus = async (req, res) => {
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
-        message: 'Status không hợp lệ'
+        message: 'Status khÃ´ng há»£p lá»‡'
       });
     }
 
@@ -254,32 +280,32 @@ export const updateOrderStatus = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Cập nhật trạng thái đơn hàng thành công',
+      message: 'Cáº­p nháº­t tráº¡ng thÃ¡i Ä‘Æ¡n hÃ ng thÃ nh cÃ´ng',
       data: order
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Lỗi cập nhật order: ' + error.message
+      message: 'Lá»—i cáº­p nháº­t order: ' + error.message
     });
   }
 };
-// 🔑 Reset User Password
+// ðŸ”‘ Reset User Password
 export const resetUserPassword = async (req, res) => {
   try {
     const { userId } = req.params;
     const { password } = req.body;
 
-    console.log('🔑 Reset password request for user:', userId);
+    console.log('ðŸ”‘ Reset password request for user:', userId);
 
     if (!password || password.length < 6) {
       return res.status(400).json({
         success: false,
-        message: 'Password phải có ít nhất 6 ký tự'
+        message: 'Password pháº£i cÃ³ Ã­t nháº¥t 6 kÃ½ tá»±'
       });
     }
 
-    // Hash password mới
+    // Hash password má»›i
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Update password
@@ -292,27 +318,27 @@ export const resetUserPassword = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'Không tìm thấy user'
+        message: 'KhÃ´ng tÃ¬m tháº¥y user'
       });
     }
 
-    console.log('✅ Password reset thành công cho:', user.email);
+    console.log('âœ… Password reset thÃ nh cÃ´ng cho:', user.email);
 
     res.json({
       success: true,
-      message: 'Reset password thành công',
+      message: 'Reset password thÃ nh cÃ´ng',
       data: user
     });
   } catch (error) {
-    console.error('❌ Error reset password:', error);
+    console.error('âŒ Error reset password:', error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi reset password: ' + error.message
+      message: 'Lá»—i reset password: ' + error.message
     });
   }
 };
 
-// 🔍 Global Search
+// ðŸ” Global Search
 export const globalSearch = async (req, res) => {
   try {
     const { q } = req.query;
@@ -326,25 +352,25 @@ export const globalSearch = async (req, res) => {
 
     const searchRegex = new RegExp(q, 'i');
     
-    // Xây dựng query cho Order
+    // XÃ¢y dá»±ng query cho Order
     const orderQuery = {
       $or: [
         { 'customerInfo.fullName': { $regex: searchRegex } }
       ]
     };
 
-    // Chỉ tìm theo ID nếu q là ObjectId hợp lệ
+    // Chá»‰ tÃ¬m theo ID náº¿u q lÃ  ObjectId há»£p lá»‡
     if (mongoose.Types.ObjectId.isValid(q)) {
        orderQuery.$or.push({ _id: q });
     }
 
     const [products, users, orders] = await Promise.all([
-      // Tìm sản phẩm
+      // TÃ¬m sáº£n pháº©m
       Product.find({ 
         name: { $regex: searchRegex } 
       }).select('name image price slug categorySlug').limit(5),
 
-      // Tìm user
+      // TÃ¬m user
       User.find({
         $or: [
           { name: { $regex: searchRegex } },
@@ -352,7 +378,7 @@ export const globalSearch = async (req, res) => {
         ]
       }).select('name email role').limit(5),
 
-      // Tìm đơn hàng
+      // TÃ¬m Ä‘Æ¡n hÃ ng
       Order.find(orderQuery).select('_id totalAmount status userId createdAt customerInfo').limit(5)
     ]);
 
@@ -364,12 +390,12 @@ export const globalSearch = async (req, res) => {
     console.error('Global search error:', error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi tìm kiếm: ' + error.message
+      message: 'Lá»—i tÃ¬m kiáº¿m: ' + error.message
     });
   }
 };
 
-// 💰 Get Revenue Stats (Advanced)
+// ðŸ’° Get Revenue Stats (Advanced)
 export const getRevenueStats = async (req, res) => {
   try {
     let { startDate, endDate } = req.query;
@@ -458,7 +484,7 @@ export const getRevenueStats = async (req, res) => {
     console.error('Revenue stats error:', error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi thống kê doanh thu: ' + error.message
+      message: 'Lá»—i thá»‘ng kÃª doanh thu: ' + error.message
     });
   }
 };

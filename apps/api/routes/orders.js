@@ -1,56 +1,26 @@
-import { Router } from 'express';
-const router = Router();
+import express from 'express';
+import {
+  createOrder,
+  getOrderById,
+  cancelOrder,
+  markOrderAsPaid,
+} from '../controller/orderController.js';
+import { authenticateToken } from '../middleware/auth.js';
 
-// Database giả lập
-let orders = [];
+const router = express.Router();
 
-// Tạo đơn hàng
-router.post('/', (req, res) => {
-  const { userId, items, total, shippingAddress } = req.body;
+// ✅ FIX: Thêm authenticateToken cho createOrder
+// Controller dùng req.user.id để gán userId — nếu không có auth, req.user = undefined → crash
+router.post('/', authenticateToken, createOrder);
 
-  const newOrder = {
-    id: orders.length + 1,
-    userId,
-    items,
-    total,
-    shippingAddress,
-    status: 'pending',
-    createdAt: new Date().toISOString()
-  };
+// ✅ FIX: Thêm authenticateToken cho getOrderById
+// Controller kiểm tra req.user.role và req.user.id → crash nếu không có auth
+router.get('/:id', authenticateToken, getOrderById);
 
-  orders.push(newOrder);
-  res.status(201).json({ message: 'Đặt hàng thành công', order: newOrder });
-});
+// Protected: Hủy đơn hàng
+router.put('/:id/cancel', authenticateToken, cancelOrder);
 
-// Lấy đơn hàng của user
-router.get('/user/:userId', (req, res) => {
-  const { userId } = req.params;
-  const userOrders = orders.filter(o => o.userId === parseInt(userId));
-  res.json(userOrders);
-});
-
-// Lấy chi tiết đơn hàng
-router.get('/:id', (req, res) => {
-  const order = orders.find(o => o.id === parseInt(req.params.id));
-
-  if (!order) {
-    return res.status(404).json({ message: 'Đơn hàng không tồn tại' });
-  }
-
-  res.json(order);
-});
-
-// Cập nhật trạng thái đơn hàng
-router.put('/:id/status', (req, res) => {
-  const { status } = req.body;
-  const order = orders.find(o => o.id === parseInt(req.params.id));
-
-  if (!order) {
-    return res.status(404).json({ message: 'Đơn hàng không tồn tại' });
-  }
-
-  order.status = status;
-  res.json({ message: 'Đã cập nhật trạng thái', order });
-});
+// Protected: Đánh dấu đã thanh toán (sau khi quét QR)
+router.put('/:id/pay', authenticateToken, markOrderAsPaid);
 
 export default router;

@@ -36,25 +36,29 @@ export interface ProductVariant {
   options: VariantOption[];
 }
 
+export interface ProductSpecs {
+  condition?: string;
+  accessories?: string;
+  material?: string;
+  styleCode?: string;
+  colorway?: string;
+  releaseDate?: Date | string;
+}
+
 export interface Product {
   _id: string;
   name: string;
   brand?: string;
+  brandId?: string;
   slug: string;
   price: number;
   originalPrice?: number;
   images: ProductImage[];
   variants?: ProductVariant[];
   description?: string;
+  tags?: string[];
   categorySlug?: string;
-  specs?: {
-    screen?: string;
-    chip?: string;
-    ram?: string;
-    storage?: string;
-    camera?: string;
-    battery?: string;
-  };
+  specs?: ProductSpecs;
   rating: number;
   reviewCount: number;
   stock: number;
@@ -63,6 +67,33 @@ export interface Product {
   isNew: boolean;
   hasPromotion: boolean;
   status: 'active' | 'inactive' | 'out_of_stock';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Brand {
+  _id: string;
+  name: string;
+  slug: string;
+  logo: string;
+  description?: string;
+  origin?: string;
+  website?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Review {
+  _id: string;
+  productId: string;
+  userId: {
+    _id: string;
+    name: string;
+    avatar?: string;
+  };
+  rating: number;
+  comment: string;
+  images?: string[];
   createdAt: Date;
   updatedAt: Date;
 }

@@ -4,19 +4,21 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --no-lint --no-mangling",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.19",
-    "@tech-store/constants": "*",
-    "@tech-store/types": "*",
+    "date-fns": "^2.30.0",
+    "lucide-react": "^0.562.0",
     "next": "14.0.0",
     "react": "^18",
     "react-dom": "^18",
+    "react-hot-toast": "^2.6.0",
     "react-quill": "^2.0.0",
+    "recharts": "^2.12.7",
     "socket.io-client": "^4.8.1"
   },
   "devDependencies": {

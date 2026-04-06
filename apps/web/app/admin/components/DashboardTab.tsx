@@ -192,7 +192,7 @@ export default function DashboardTab({ stats }: { stats: any }) {
                   contentStyle={{ backgroundColor: '#000', borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', color: '#fff' }}
                   itemStyle={{color: '#60A5FA', fontWeight: 'bold'}}
                   labelStyle={{color: '#9CA3AF', marginBottom: '4px', fontWeight: 'bold'}}
-                  formatter={(value: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)}
+                  formatter={(value: any) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)}
                 />
                 <Area 
                   type="monotone" 

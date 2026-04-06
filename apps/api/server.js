@@ -18,6 +18,7 @@ import Category from './models/Category.js';
 import Contact from './models/Contact.js';
 import Blog from './models/Blog.js';
 import Voucher from './models/Voucher.js';
+import Review from './models/Review.js';
 // Middleware
 import { 
   uploadSingle, 
@@ -25,6 +26,7 @@ import {
   handleUploadError, 
   deleteFile 
 } from './middleware/upload.js';
+import { authenticateToken } from './middleware/auth.js';
 
 // Services
 import { 
@@ -35,18 +37,32 @@ import {
 
 import { createNotification } from './controller/adminController.js';
 
-// Routes
+// ✅ Routes
 import adminRoutes from './routes/admin.js';
 import tradeInRoutes from './routes/tradeIn.js';
 import blogRoutes from './routes/blog.js';
+import wishlistRoutes from './routes/wishlist.js';
+// ✅ Routes mới
+import brandRoutes from './routes/brands.js';
+import addressRoutes from './routes/addresses.js';
+import sizeGuideRoutes from './routes/sizeGuides.js';
+import orderRoutes from './routes/orders.js'; // ✅ Imported Order Routes
+import authRoutes from './routes/auth.js'; // ✅ Auth Routes
+import notificationRoutes from './routes/notifications.js';
+import productRoutes from './routes/products.js';
+
+import { getJwtSecret } from './config/secrets.js';
 
 // ✅ Load environment variables
-dotenv.config({ path: path.resolve(process.cwd(), 'apps/api/.env') });
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 // ✅ App setup
 const app = express();
 const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || 'vinh-super-secret-key-2024-techstore-12345';
+const JWT_SECRET = getJwtSecret();
 
 // ✅ Create HTTP server
 const server = createServer(app);
@@ -63,6 +79,15 @@ app.use('/uploads', express.static('uploads'));
 // Routes
 app.use('/api/trade-in', tradeInRoutes);
 app.use('/api/blogs', blogRoutes);
+app.use('/api/wishlist', wishlistRoutes);
+// ✅ Register New Routes
+app.use('/api/brands', brandRoutes);
+app.use('/api/addresses', addressRoutes);
+app.use('/api/size-guides', sizeGuideRoutes);
+app.use('/api/orders', orderRoutes); // ✅ Use Order Routes
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api', authRoutes); // ✅ Use Auth Routes
 
 // ✅ Socket.io setup
 const io = new Server(server, {
@@ -103,7 +128,8 @@ const connectDB = async () => {
     console.log('✅ MongoDB connected successfully');
     console.log(`📊 Database: ${mongoose.connection.name}`);
     
-    await createDefaultAdmin();
+    // Admin creation should be handled via script: npm run create:admin
+    // await createDefaultAdmin(); 
   } catch (error) {
     console.error('❌ MongoDB connection error:', error.message);
     console.error('💡 Check MONGODB_URI in .env file');
@@ -165,33 +191,6 @@ mongoose.connection.on('reconnected', () => {
 // MIDDLEWARE
 // ============================================ 
 
-// ✅ Authenticate token
-const authenticateToken = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  
-  if (!token) {
-    return res.status(401).json({
-      success: false,
-      message: 'Token required'
-    });
-  }
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = {
-      id: decoded.id,
-      email: decoded.email,
-      role: decoded.role
-    };
-    next();
-  } catch (error) {
-    return res.status(403).json({
-      success: false,
-      message: 'Invalid token'
-    });
-  }
-};
-
 // ✅ Require admin
 const requireAdmin = async (req, res, next) => {
   try {
@@ -238,556 +237,136 @@ app.get('/api/admin/verify', authenticateToken, requireAdmin, (req, res) => {
 });
 
 // ============================================ 
-// AUTHROUTES
+// AUTHROUTES (Moved to routes/auth.js)
+// ============================================
+
+
+
+
+
+// ============================================ 
+// REVIEW ROUTES
 // ============================================ 
 
-// Register
-app.post('/api/register', async (req, res) => {
+// ✅ GET REVIEWS FOR A PRODUCT
+app.get('/api/products/:productId/reviews', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
-    
-    if (!name || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'All fields required'
-      });
+    if (!mongoose.Types.ObjectId.isValid(req.params.productId)) {
+       return res.json({ success: true, reviews: [] });
     }
-
-    const trimmedEmail = email.trim().toLowerCase();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    
-    if (!emailRegex.test(trimmedEmail)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid email'
-      });
-    }
-
-    if (password.trim().length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must be at least 6 characters'
-      });
-    }
-
-    const existingUser = await User.findOne({ email: trimmedEmail });
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email already in use'
-      });
-    }
-
-    const hashedPassword = await bcrypt.hash(password.trim(), 10);
-
-    const newUser = await User.create({
-      name: name.trim(),
-      email: trimmedEmail,
-      password: hashedPassword,
-      role: 'user'
-    });
-
-    // 🔔 Notify Admin
-    try {
-      if (typeof createNotification === 'function') {
-        await createNotification('user', `Người dùng mới: ${newUser.name}`, newUser._id, 'User');
-      } else {
-        console.error('⚠️ createNotification is not a function');
-      }
-    } catch (notiError) {
-      console.error('⚠️ Notification error:', notiError);
-    }
-
-    const token = jwt.sign(
-      {
-        id: newUser._id, 
-        email: newUser.email,
-        role: newUser.role 
-      },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    return res.status(201).json({
-      success: true,
-      message: 'Registration successful',
-      token,
-      user: {
-        id: newUser._id,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role
-      }
-    });
-
+    const reviews = await Review.find({ productId: req.params.productId })
+      .populate('userId', 'name avatar')
+      .sort({ createdAt: -1 });
+    res.json({ success: true, reviews });
   } catch (error) {
-    console.error('❌ Register error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
+    console.error("Get Reviews Error:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// Login
-app.post('/api/login', async (req, res) => {
+// ✅ CHECK IF USER CAN REVIEW
+app.get('/api/products/:productId/can-review', authenticateToken, async (req, res) => {
   try {
-    const { email, password } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'All fields required'
-      });
+    if (!mongoose.Types.ObjectId.isValid(req.params.productId)) {
+       return res.json({ canReview: false, reason: 'INVALID_ID' });
+    }
+    const userId = req.user.id;
+    const productId = req.params.productId;
+
+    // 1. Kiểm tra đã review chưa
+    const existingReview = await Review.findOne({ userId, productId });
+    if (existingReview) {
+      return res.json({ canReview: false, reason: 'ALREADY_REVIEWED' });
     }
 
-    const trimmedEmail = email.trim().toLowerCase();
-    const user = await User.findOne({ email: trimmedEmail });
-    
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    }
-
-    const isPasswordValid = await bcrypt.compare(password.trim(), user.password);
-    
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    }
-
-    const token = jwt.sign(
-      {
-        id: user._id, 
-        email: user.email,
-        role: user.role 
-      },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    return res.json({
-      success: true,
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
+    // 2. Kiểm tra đã mua và đơn hàng hoàn thành chưa
+    // Lưu ý: items.productId trong Order đang lưu ID hoặc slug tùy logic đặt hàng
+    const completedOrder = await Order.findOne({
+      userId,
+      status: { $in: ['processing', 'shipped', 'delivered', 'completed'] }, // ✅ Allow reviewing sooner for testing
+      'items.productId': productId
     });
 
-  } catch (error) {
-    console.error('❌ Login error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
+    if (!completedOrder) {
+      return res.json({ canReview: false, reason: 'NOT_PURCHASED' });
+    }
 
-// ✅ FORGOT PASSWORD
-app.post('/api/forgot-password', async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ success: false, message: 'Email required' });
-
-    const user = await User.findOne({ email: email.trim().toLowerCase() });
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-
-    // Generate random 6-digit OTP
-    const token = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    // Save to DB
-    user.resetPasswordToken = token;
-    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
-    await user.save();
-
-    // In thực tế sẽ dùng nodemailer gửi email
-    // Ở đây chúng ta log ra console để test
-    console.log(`\n📧 [EMAIL SERVICE] Reset Password OTP for ${email}: ${token}\n`);
-
-    res.json({ success: true, message: 'OTP sent to your email' });
+    res.json({ canReview: true });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// ✅ RESET PASSWORD
-app.post('/api/reset-password', async (req, res) => {
+// ✅ SUBMIT A REVIEW
+app.post('/api/products/:productId/reviews', authenticateToken, async (req, res) => {
   try {
-    const { email, otp, newPassword } = req.body;
-    
-    if (!email || !otp || !newPassword) {
-      return res.status(400).json({ success: false, message: 'All fields required' });
-    }
+    const { rating, comment } = req.body;
+    const productId = req.params.productId;
+    const userId = req.user.id;
 
-    const user = await User.findOne({
-      email: email.trim().toLowerCase(),
-      resetPasswordToken: otp,
-      resetPasswordExpires: { $gt: Date.now() }
+    // Re-validate purchase
+    const completedOrder = await Order.findOne({
+      userId,
+      status: { $in: ['processing', 'shipped', 'delivered', 'completed'] },
+      'items.productId': productId
     });
 
-    if (!user) {
-      return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+    if (!completedOrder) {
+      return res.status(403).json({ success: false, message: 'Bạn cần hoàn thành đơn hàng để đánh giá' });
     }
 
-    // Hash new password
-    const hashedPassword = await bcrypt.hash(newPassword.trim(), 10);
-    
-    user.password = hashedPassword;
-    user.resetPasswordToken = null;
-    user.resetPasswordExpires = null;
-    await user.save();
+    const review = await Review.create({
+      userId,
+      productId,
+      rating,
+      comment,
+      isPurchased: true
+    });
 
-    res.json({ success: true, message: 'Password reset successful' });
+    // 🔔 Notify Admin via Socket.io
+    const io = req.app.get('socketio');
+    if (io) {
+      const product = await Product.findById(productId);
+      io.emit('newNotification', {
+        type: 'review',
+        message: `Đánh giá mới ${rating}⭐ cho sản phẩm ${product?.name || 'giày'}`,
+        relatedId: productId,
+        createdAt: new Date()
+      });
+    }
+
+    res.status(201).json({ success: true, review });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ success: false, message: 'Bạn đã đánh giá sản phẩm này rồi' });
+    }
     res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// Logout
-app.post('/api/logout', authenticateToken, async (req, res) => {
-  try {
-    console.log(`👋 User ${req.user.email} logged out`);
-    
-    res.json({
-      success: true,
-      message: 'Logout successful' 
-    });
-  } catch (error) {
-    console.error('❌ Logout error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Logout error: ' + error.message 
-    });
   }
 });
 
 // ============================================ 
-// USER ROUTES
+// USER ROUTES (Moved to routes/auth.js)
+// ============================================
+
+
+
 // ============================================ 
+// ADDRESS ROUTES (Moved to routes/auth.js & routes/addresses.js)
+// ============================================
 
-// Get current user
-app.get('/api/user/me', authenticateToken, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id).select('-password');
-    
-    if (!user) {
-      return res.status(404).json({
-        success: false, 
-        message: 'User not found' 
-      });
-    }
-    
-    res.json({
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      address: user.address,
-      city: user.city,
-      district: user.district,
-      ward: user.ward,
-      role: user.role,
-      addresses: user.addresses,
-      bankAccounts: user.bankAccounts,
-      createdAt: user.createdAt
-    });
-    
-  } catch (error) {
-    console.error('❌ Error getting user:', error);
-    res.status(500).json({
-      success: false, 
-      message: 'Server error' 
-    });
-  }
-});
+// ============================================ 
+// BANK ROUTES (Moved to routes/auth.js)
+// ============================================
 
-// Update user info
-app.put('/api/user/update', authenticateToken, async (req, res) => {
-  try {
-    const { 
-      name, 
-      phone, 
-      address, 
-      dateOfBirth, 
-      gender, 
-      city, 
-      district, 
-      ward,
-      avatar 
-    } = req.body;
-
-    if (!name || name.trim() === '') {
-      return res.status(400).json({
-        success: false,
-        message: 'Name required'
-      });
-    }
-
-    if (name.trim().length < 2) {
-      return res.status(400).json({
-        success: false,
-        message: 'Name must be at least 2 characters'
-      });
-    }
-
-    const user = await User.findById(req.user.id);
-    
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
-    user.name = name.trim();
-    user.phone = phone?.trim() || '';
-    user.address = address?.trim() || '';
-    user.dateOfBirth = dateOfBirth || '';
-    user.gender = gender || '';
-    user.city = city?.trim() || '';
-    user.district = district?.trim() || '';
-    user.ward = ward?.trim() || '';
-    
-    if (avatar !== undefined) {
-      user.avatar = avatar;
-    }
-
-    await user.save();
-
-    const updatedUser = {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      address: user.address,
-      dateOfBirth: user.dateOfBirth,
-      gender: user.gender,
-      city: user.city,
-      district: user.district,
-      ward: user.ward,
-      avatar: user.avatar,
-      role: user.role,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt
-    };
-
-    res.json({
-      success: true,
-      message: 'Profile updated',
-      ...updatedUser
-    });
-
-  } catch (error) {
-    console.error('❌ Error updating user:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// ✅ CHANGE PASSWORD
-app.put('/api/user/change-password', authenticateToken, async (req, res) => {
-  try {
-    const { currentPassword, newPassword } = req.body;
-    const user = await User.findById(req.user.id);
-
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-
-    // Verify current password
-    const isMatch = await bcrypt.compare(currentPassword, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ success: false, message: 'Mật khẩu hiện tại không đúng' });
-    }
-
-    // Validate new password
-    if (newPassword.length < 6) {
-      return res.status(400).json({ success: false, message: 'Mật khẩu mới phải có ít nhất 6 ký tự' });
-    }
-
-    // Hash new password
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(newPassword, salt);
-    await user.save();
-
-    res.json({ success: true, message: 'Đổi mật khẩu thành công' });
-
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// ✅ ADDRESS: ADD NEW
-app.post('/api/user/addresses', authenticateToken, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-
-    const newAddress = req.body; // { name, phone, city, district, ward, address, isDefault } 
-    
-    // Nếu là địa chỉ đầu tiên hoặc được set default -> Reset các default khác
-    if (user.addresses.length === 0 || newAddress.isDefault) {
-      user.addresses.forEach(a => a.isDefault = false);
-      newAddress.isDefault = true;
-      
-      // Sync với thông tin gốc để Checkout hoạt động
-      user.name = newAddress.name;
-      user.phone = newAddress.phone;
-      user.city = newAddress.city;
-      user.district = newAddress.district;
-      user.ward = newAddress.ward;
-      user.address = newAddress.address;
-    }
-
-    user.addresses.push(newAddress);
-    await user.save();
-
-    res.json({ success: true, message: 'Thêm địa chỉ thành công', addresses: user.addresses });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// ✅ ADDRESS: SET DEFAULT
-app.put('/api/user/addresses/:addressId/default', authenticateToken, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    const addressId = req.params.addressId;
-    
-    // Reset all defaults
-    user.addresses.forEach(a => a.isDefault = false);
-    
-    // Set new default
-    const addr = user.addresses.id(addressId);
-    if (addr) {
-      addr.isDefault = true;
-      
-      // Sync root fields
-      user.name = addr.name;
-      user.phone = addr.phone;
-      user.city = addr.city;
-      user.district = addr.district;
-      user.ward = addr.ward;
-      user.address = addr.address;
-      
-      await user.save();
-      res.json({ success: true, message: 'Đã đặt làm mặc định', addresses: user.addresses });
-    } else {
-      res.status(404).json({ success: false, message: 'Không tìm thấy địa chỉ' });
-    }
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// ✅ ADDRESS: DELETE
-app.delete('/api/user/addresses/:addressId', authenticateToken, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    user.addresses.pull(req.params.addressId);
-    await user.save();
-    res.json({ success: true, message: 'Đã xóa địa chỉ', addresses: user.addresses });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// ✅ BANK: ADD NEW
-app.post('/api/user/banks', authenticateToken, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    const newBank = req.body;
-    
-    if (user.bankAccounts.length === 0) newBank.isDefault = true;
-    
-    user.bankAccounts.push(newBank);
-    await user.save();
-    res.json({ success: true, message: 'Thêm ngân hàng thành công', bankAccounts: user.bankAccounts });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// ✅ BANK: DELETE
-app.delete('/api/user/banks/:bankId', authenticateToken, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    user.bankAccounts.pull(req.params.bankId);
-    await user.save();
-    res.json({ success: true, message: 'Đã xóa tài khoản ngân hàng', bankAccounts: user.bankAccounts });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// Get user orders
-app.get('/api/user/orders', authenticateToken, async (req, res) => {
-  try {
-    const orders = await Order.find({ userId: req.user.id })
-      .sort({ createdAt: -1 })
-      .lean();
-    
-    res.json({
-      success: true,
-      data: orders,
-      total: orders.length
-    });
-    
-  } catch (error) {
-    console.error('❌ Error fetching orders:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
+// ============================================ 
+// ORDER ROUTES (Moved to routes/orders.js & routes/auth.js)
+// ============================================
 
 // ============================================ 
 // PRODUCT ROUTES (PUBLIC)
 // ============================================ 
 
-// Get all products (public)
-app.get('/api/products', async (req, res) => {
-  try {
-    const products = await Product.find()
-      .sort({ createdAt: -1 })
-      .lean();
-    
-    res.json({
-      success: true, 
-      data: products 
-    });
-  } catch (error) {
-    console.error('❌ Error fetching products:', error);
-    res.status(500).json({
-      success: false, 
-      message: error.message 
-    });
-  }
-});
-
-// Get product by slug (public)
-app.get('/api/products/:slug', async (req, res) => {
-  try {
-    const product = await Product.findOne({ slug: req.params.slug });
-    
-    if (product) {
-      res.json(product);
-    } else {
-      res.status(404).json({ error: 'Product not found' });
-    }
-  } catch (error) {
-    console.error('❌ Error fetching product:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
+// Routes are now handled by routes/products.js
 
 // ============================================ 
 // ADMIN PRODUCT ROUTES
@@ -797,7 +376,7 @@ app.get('/api/products/:slug', async (req, res) => {
 app.get('/api/admin/products', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const products = await Product.find()
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1, _id: -1 })
       .lean();
     
     res.json({
@@ -820,7 +399,7 @@ app.post('/api/admin/products', authenticateToken, requireAdmin, async (req, res
     const {
       name, brand, slug, price, originalPrice, rating, description,
       categorySlug, stock, images, image, specs, soldCount,
-      isNew, hasPromotion, featured, variants
+      isNew, hasPromotion, featured, variants, tags
     } = req.body;
 
     if (!name || !price || !slug) {
@@ -878,6 +457,7 @@ app.post('/api/admin/products', authenticateToken, requireAdmin, async (req, res
       isNew: isNew || false,
       hasPromotion: hasPromotion || false,
       featured: featured || false,
+      tags: tags || [],
       variants: processedVariants
     };
     
@@ -914,7 +494,7 @@ app.put('/api/admin/products/:slug', authenticateToken, requireAdmin, async (req
     const { 
       name, brand, slug, price, originalPrice, rating, description,
       categorySlug, stock, images, image, specs, soldCount,
-      isNew, hasPromotion, featured, variants
+      isNew, hasPromotion, featured, variants, tags
     } = req.body;
 
     // Process images
@@ -965,6 +545,7 @@ app.put('/api/admin/products/:slug', authenticateToken, requireAdmin, async (req
       isNew: isNew,
       hasPromotion: hasPromotion,
       featured: featured,
+      tags: tags,
       variants: processedVariants
     };
 
@@ -1233,7 +814,10 @@ app.post('/api/upload/single', authenticateToken, requireAdmin, uploadSingle, ha
       });
     }
     
-    const fileUrl = `/uploads/products/${req.file.filename}`;
+    // Support both Cloudinary (req.file.path is URL) and Local (construct path)
+    const fileUrl = (req.file.path && req.file.path.startsWith('http')) 
+      ? req.file.path 
+      : `/uploads/products/${req.file.filename}`;
     
     console.log('✅ Upload single image:', fileUrl);
     
@@ -1267,7 +851,9 @@ app.post('/api/upload/multiple', authenticateToken, requireAdmin, uploadMultiple
     }
     
     const fileUrls = req.files.map(file => ({
-      url: `/uploads/products/${file.filename}`,
+      url: (file.path && file.path.startsWith('http')) 
+        ? file.path 
+        : `/uploads/products/${file.filename}`,
       filename: file.filename,
       size: file.size,
       mimetype: file.mimetype
@@ -1290,12 +876,14 @@ app.post('/api/upload/multiple', authenticateToken, requireAdmin, uploadMultiple
 });
 
 // Delete image
-app.delete('/api/upload/:filename', authenticateToken, requireAdmin, (req, res) => {
+app.delete('/api/upload/:filename', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { filename } = req.params;
     const filePath = `uploads/products/${filename}`;
     
-    const deleted = deleteFile(filePath);
+    // Note: For Cloudinary, this simple filename delete might not work unless we store public_ids differently.
+    // This maintains backward compatibility for local files.
+    const deleted = await deleteFile(filePath);
     
     if (deleted) {
       res.json({
@@ -1432,6 +1020,27 @@ app.put('/api/admin/orders/:id/status', authenticateToken, requireAdmin, async (
     }
 
     await order.save();
+
+    // 🔔 Create Notification for User
+    if (order.userId) {
+      const NotificationModel = mongoose.model('Notification');
+      const statusLabels = {
+        'pending': 'Chờ xử lý',
+        'processing': 'Đang chuẩn bị hàng',
+        'shipped': 'Đang giao hàng',
+        'delivered': 'Giao hàng thành công',
+        'cancelled': 'Đã hủy'
+      };
+
+      await NotificationModel.create({
+        user_id: order.userId._id,
+        type: 'order',
+        title: 'Cập nhật đơn hàng',
+        message: `Đơn hàng #${order._id.toString().slice(-6).toUpperCase()} đã được cập nhật trạng thái: ${statusLabels[status] || status}`,
+        referenceId: order._id,
+        referenceModel: 'Order'
+      });
+    }
     
     if (global.io) {
       const updateData = {
@@ -1619,6 +1228,30 @@ app.post('/api/admin/contacts/:id/reply', authenticateToken, requireAdmin, async
 
     contact.status = 'replied';
     await contact.save();
+
+    // 🔔 Create Notification for User if they exist
+    const targetUser = await User.findOne({ email: contact.email.toLowerCase() });
+    if (targetUser) {
+      const NotificationModel = mongoose.model('Notification');
+      await NotificationModel.create({
+        user_id: targetUser._id,
+        type: 'contact',
+        title: 'Phản hồi liên hệ',
+        message: `Admin đã phản hồi tin nhắn của bạn: "${replyMessage.substring(0, 50)}${replyMessage.length > 50 ? '...' : ''}"`,
+        referenceId: contact._id,
+        referenceModel: 'Contact'
+      });
+
+      // Emit socket event if user is online
+      if (global.io) {
+        global.io.to(`user:${targetUser._id}`).emit('newNotification', {
+          type: 'contact',
+          title: 'Phản hồi liên hệ',
+          message: 'Admin đã phản hồi tin nhắn của bạn',
+          createdAt: new Date()
+        });
+      }
+    }
 
     res.json({
       success: true, 
@@ -1809,196 +1442,8 @@ app.get('/api/vouchers', async (req, res) => {
 });
 
 // ============================================ 
-// ORDERROUTES (PUBLIC/USER)
-// ============================================ 
-
-// Create order
-app.post('/api/orders', async (req, res) => {
-  try {
-    const orderData = req.body;
-
-    if (!orderData.items || orderData.items.length === 0) {
-      return res.status(400).json({
-        success: false, 
-        message: 'Order must have at least 1 item' 
-      });
-    }
-
-    if (!orderData.customerInfo || !orderData.userId) {
-      return res.status(400).json({
-        success: false, 
-        message: 'Missing customer info or userId' 
-      });
-    }
-
-    // Check stock
-    for (const item of orderData.items) {
-      const product = await Product.findById(item.productId);
-      
-      if (!product) {
-        return res.status(404).json({
-          success: false,
-          message: `Product ${item.productId} not found`
-        });
-      }
-
-      if (product.stock < item.quantity) {
-        return res.status(400).json({
-          success: false,
-          message: `"${product.name}" insufficient stock. Available: ${product.stock}, Required: ${item.quantity}`
-        });
-      }
-    }
-
-    // Update stock
-    for (const item of orderData.items) {
-      await Product.findByIdAndUpdate(
-        item.productId,
-        { $inc: { stock: -item.quantity } }
-      );
-    }
-
-    const newOrder = new Order(orderData);
-    const savedOrder = await newOrder.save();
-
-    // 🔔 Notify Admin
-    await createNotification('order', `Đơn hàng mới #${savedOrder._id.toString().slice(-6).toUpperCase()}`, savedOrder._id, 'Order');
-
-    try {
-      await sendNewOrderEmail(savedOrder);
-      console.log('📧 Order email sent to admin');
-    } catch (emailError) {
-      console.error('⚠️ Email error:', emailError.message);
-    }
-
-    res.status(201).json({
-      success: true,
-      message: 'Order created',
-      order: savedOrder
-    }); 
-
-  } catch (error) {
-    console.error('❌ Error creating order:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// Get order by ID
-app.get('/api/orders/:id', async (req, res) => {
-  try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid order ID'
-      });
-    }
-    
-    const order = await Order.findById(req.params.id).populate('userId', 'name email');
-    
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found'
-      });
-    }
-    
-    res.json({
-      success: true,
-      order
-    });
-    
-  } catch (error) {
-    console.error('❌ Error fetching order:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
-
-// Cancel order (user)
-app.put('/api/orders/:id/cancel', authenticateToken, async (req, res) => {
-  try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid order ID'
-      });
-    }
-    
-    const { cancelReason } = req.body;
-    const order = await Order.findById(req.params.id).populate('userId', 'name email');
-    
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found'
-      });
-    }
-
-    if (order.userId._id.toString() !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied'
-      });
-    }
-
-    if (!['pending', 'processing'].includes(order.status)) {
-      return res.status(400).json({
-        success: false,
-        message: `Cannot cancel order with status "${order.status}"`
-      });
-    }
-
-    order.status = 'cancelled';
-    order.cancelledAt = new Date();
-    order.cancelledBy = 'user';
-    order.cancelReason = cancelReason || 'No reason';
-
-    // Restore stock
-    for (const item of order.items) {
-      await Product.findByIdAndUpdate(
-        item.productId,
-        { $inc: { stock: item.quantity } }
-      );
-    }
-
-    await order.save();
-    
-    if (global.io) {
-      const updateData = {
-        orderId: order._id,
-        status: 'cancelled',
-        cancelledAt: order.cancelledAt,
-        cancelledBy: 'user',
-        cancelReason: order.cancelReason,
-        order: order
-      };
-
-      global.io.to(`user:${req.user.id}`).emit('orderStatusUpdated', updateData);
-      global.io.to('admin').emit('orderCancelled', {
-        ...updateData,
-        userName: order.userId.name
-      });
-    }
-    
-    res.json({
-      success: true,
-      message: 'Order cancelled',
-      order: order
-    });
-    
-  } catch (error) {
-    console.error('❌ Error cancelling order:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error: ' + error.message
-    });
-  }
-});
+// ORDER ROUTES (Moved to routes/orders.js & routes/auth.js)
+// ============================================
 
 // Use admin routes
 app.use('/api/admin', adminRoutes);
@@ -2012,9 +1457,9 @@ app.use('/api/blogs', blogRoutes);
 
 app.get('/api/about', (req, res) => {
   res.json({
-    title: 'Về TechStore',
-    description: 'TechStore là cửa hàng công nghệ uy tín với hơn 10 năm kinh nghiệm trong ngành. Chúng tôi cung cấp các sản phẩm chất lượng cao với giá cả hợp lý.',
-    mission: 'Mang đến những sản phẩm công nghệ tốt nhất cho người tiêu dùng Việt Nam'
+    title: 'Về FootMark',
+    description: 'FootMark là hệ thống bán lẻ giày sneakers và streetwear chính hãng uy tín với đa dạng các dòng sản phẩm từ New đến Secondhand tuyển chọn.',
+    mission: 'Mang đến những đôi giày chất lượng và phong cách nhất cho cộng đồng yêu sneakers Việt Nam'
   });
 });
 

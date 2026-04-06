@@ -22,7 +22,7 @@ interface Category {
   description: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function CategoryPage() {
   const params = useParams();
@@ -41,7 +41,7 @@ export default function CategoryPage() {
         setError(null);
         
         // 1. Lấy thông tin category theo slug
-        const categoryRes = await fetch(`${API_URL}/categories/${categorySlug}`);
+        const categoryRes = await fetch(`${API_URL}/api/categories/${categorySlug}`);
         if (!categoryRes.ok) {
           throw new Error('Không tìm thấy danh mục');
         }
@@ -49,13 +49,15 @@ export default function CategoryPage() {
         setCategory(categoryData);
         
         // 2. Lấy sản phẩm theo categorySlug
-        const productsRes = await fetch(`${API_URL}/products/categories/${categorySlug}`);
+        const productsRes = await fetch(`${API_URL}/api/products?category=${categorySlug}`);
         if (!productsRes.ok) {
           throw new Error('Không thể kết nối đến server');
         }
         
         const productsData = await productsRes.json();
-        setProducts(Array.isArray(productsData) ? productsData : []);
+        // Handle response format { success: true, data: [...] }
+        const actualData = productsData.data || productsData;
+        setProducts(Array.isArray(actualData) ? actualData : []);
         
       } catch (err) {
         console.error(`Lỗi khi lấy danh sách sản phẩm:`, err);

@@ -23,12 +23,6 @@
       ],
       "@app/*": [
         "./app/*"
-      ],
-      "@tech-store/types": [
-        "../../packages/types/src"
-      ],
-      "@tech-store/constants": [
-        "../../packages/constants/src"
       ]
     },
     "plugins": [

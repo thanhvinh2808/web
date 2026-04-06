@@ -25,10 +25,12 @@ export default function ContactsTab({ contacts, token, onRefresh, showMessage }:
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [filter, setFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [replyMessage, setReplyMessage] = useState('');
+  const [isSending, setIsSending] = useState(false);
 
   const updateStatus = async (contactId: string, newStatus: string) => {
     try {
-      const res = await fetch(`${API_URL}/admin/contacts/${contactId}/status`, {
+      const res = await fetch(`${API_URL}/api/admin/contacts/${contactId}/status`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -52,11 +54,46 @@ export default function ContactsTab({ contacts, token, onRefresh, showMessage }:
     }
   };
 
+  const handleReply = async (contactId: string) => {
+    if (!replyMessage.trim()) {
+      showMessage('⚠️ Vui lòng nhập nội dung phản hồi');
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const res = await fetch(`${API_URL}/api/admin/contacts/${contactId}/reply`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ replyMessage })
+      });
+
+      const data = await res.json();
+      
+      if (data.success) {
+        showMessage('✅ Đã gửi phản hồi thành công!');
+        setReplyMessage('');
+        onRefresh();
+        setSelectedContact(null);
+      } else {
+        showMessage(data.error || 'Lỗi gửi phản hồi');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      showMessage('Lỗi kết nối server');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   const deleteContact = async (contactId: string) => {
     if (!confirm('⚠️ Bạn có chắc muốn xóa liên hệ này?')) return;
 
     try {
-      const res = await fetch(`${API_URL}/admin/contacts/${contactId}`, {
+      const res = await fetch(`${API_URL}/api/admin/contacts/${contactId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -271,9 +308,40 @@ export default function ContactsTab({ contacts, token, onRefresh, showMessage }:
                  </div>
               </div>
 
+              {/* Reply Section */}
+              <div className="pt-4 border-t border-gray-100">
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <Mail size={14} className="text-blue-600"/> Phản hồi qua Email
+                </label>
+                <textarea
+                  value={replyMessage}
+                  onChange={(e) => setReplyMessage(e.target.value)}
+                  placeholder="Nhập nội dung phản hồi cho khách hàng..."
+                  rows={4}
+                  className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-sm focus:ring-2 focus:ring-black focus:border-black outline-none transition-all resize-none mb-3 font-medium"
+                ></textarea>
+                <button
+                  onClick={() => handleReply(selectedContact._id)}
+                  disabled={isSending || !replyMessage.trim()}
+                  className="w-full py-4 bg-black text-white rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 shadow-lg shadow-black/10"
+                >
+                  {isSending ? (
+                    <>
+                      <RefreshCw size={16} className="animate-spin" />
+                      Đang gửi phản hồi...
+                    </>
+                  ) : (
+                    <>
+                      <Mail size={16} />
+                      Gửi phản hồi ngay
+                    </>
+                  )}
+                </button>
+              </div>
+
               <div>
                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">
-                  Xử lý yêu cầu
+                  Cập nhật trạng thái
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   <button

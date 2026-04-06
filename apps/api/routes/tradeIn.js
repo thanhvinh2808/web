@@ -5,9 +5,9 @@ import { sendTradeInUpdateEmail } from '../services/emailService.js';
 // Giả sử có middleware auth
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import { getJwtSecret } from '../config/secrets.js';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'vinh-super-secret-key-2024-techstore-12345';
 
 // Middleware xác thực (Tạm thời viết ở đây nếu chưa export từ middleware/auth.js)
 const authenticateToken = (req, res, next) => {
@@ -15,7 +15,7 @@ const authenticateToken = (req, res, next) => {
     if (!token) return res.status(401).json({ success: false, message: 'Token required' });
   
     try {
-      const decoded = jwt.verify(token, JWT_SECRET);
+      const decoded = jwt.verify(token, getJwtSecret());
       req.user = decoded;
       next();
     } catch (error) {
@@ -49,7 +49,11 @@ router.post('/', uploadMultiple, async (req, res) => {
     // Xử lý ảnh upload
     let imageUrls = [];
     if (req.files && req.files.length > 0) {
-      imageUrls = req.files.map(file => `/uploads/products/${file.filename}`);
+      imageUrls = req.files.map(file => 
+        (file.path && file.path.startsWith('http')) 
+          ? file.path 
+          : `/uploads/products/${file.filename}`
+      );
     }
 
     const newTradeIn = new TradeIn({

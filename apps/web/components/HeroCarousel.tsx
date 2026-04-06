@@ -7,19 +7,19 @@ import { ChevronLeft, ChevronRight, ArrowRight, Star } from 'lucide-react';
 const SLIDES = [
   {
     id: 1,
-    image: "https://images.unsplash.com/photo-1607522370275-f14bc3a5d288?q=80&w=2940&auto=format&fit=crop",
+    image: "/images/jordan-1-chicago-lost-and-found.png",
     title: "THE GRAIL IS BACK.",
     subtitle: "SIÊU PHẨM THÁNG 1",
     description: "Sự trở lại của huyền thoại Jordan 1 Chicago 'Lost & Found'. Phối màu Vintage độc bản, số lượng cực giới hạn.",
     buttonText: "Săn Ngay Kẻo Lỡ",
-    link: "/products/jordan-1-chicago-lost-and-found",
+    link: "/products/air-jordan-1-retro-6698",
     align: "left", 
     theme: "dark",
     highlight: true
   },
   {
     id: 2,
-    image: "https://images.unsplash.com/photo-1512374382149-233c42b6a83b?q=80&w=2235&auto=format&fit=crop",
+    image: "/images/nike_run.png",
     title: "RUN THE CITY",
     subtitle: "BỘ SƯU TẬP HÈ 2026",
     description: "Năng động, thoáng khí và đầy màu sắc. Thiết kế mới nhất từ Nike & Adidas Running.",
@@ -30,12 +30,12 @@ const SLIDES = [
   },
   {
     id: 3,
-    image: "https://images.unsplash.com/photo-1539185441755-769473a23570?q=80&w=2071&auto=format&fit=crop",
+    image: "/images/streetwear.png",
     title: "STREETWEAR ICONS",
     subtitle: "PHONG CÁCH KHÁC BIỆT",
     description: "Khám phá những mẫu giày 2hand tuyển chọn, độ mới 99% với mức giá không thể tốt hơn.",
     buttonText: "Khám Phá 2Hand",
-    link: "/products?condition=99%",
+    link: "/products?type=2hand",
     align: "right",
     theme: "dark"
   }
@@ -65,7 +65,7 @@ export default function HeroCarousel() {
 
   return (
     <div 
-      className="relative w-full h-[650px] md:h-[750px] overflow-hidden group bg-black"
+      className="relative w-full h-[500px] md:h-[600px] overflow-hidden group bg-black"
       onMouseEnter={() => setIsAutoPlaying(false)}
       onMouseLeave={() => setIsAutoPlaying(true)}
     >

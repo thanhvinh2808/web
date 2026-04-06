@@ -1,21 +1,16 @@
-import User from '../models/User.js';
+// ✅ isAdmin.js
+// Middleware này phải được dùng SAU authenticateToken
+// vì req.user đã được gán sẵn role từ DB trong authenticateToken
 
-export const isAdmin = async (req, res, next) => {
-  try {
-    const user = await User.findById(req.user.id);
-    
-    if (!user || user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Bạn không có quyền truy cập'
-      });
-    }
-    
-    next();
-  } catch (error) {
-    res.status(500).json({
+export const isAdmin = (req, res, next) => {
+  // req.user đã được verify từ authenticateToken (có zombie check)
+  // Không cần query DB lần 2, chỉ cần kiểm tra role
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({
       success: false,
-      message: 'Lỗi kiểm tra quyền: ' + error.message   
+      message: 'Bạn không có quyền truy cập',
     });
   }
+
+  next();
 };

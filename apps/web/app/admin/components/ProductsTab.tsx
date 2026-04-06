@@ -39,6 +39,7 @@ interface Product {
   description?: string;
   categorySlug?: string;
   slug?: string;
+  tags?: string[];
   specs?: ProductSpecs;
   stock?: number;
   soldCount?: number;
@@ -80,30 +81,49 @@ export default function ProductsTab({
 
   // ✅ Helper function để lấy URL ảnh
   const getImageUrl = (product: Product): string => {
+    const BASE_URL = (API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}`).replace('/api', '');
+    
     // Ưu tiên images array
     if (product.images && Array.isArray(product.images) && product.images.length > 0) {
       const firstImage = product.images[0];
       if (typeof firstImage === 'string') {
-        return firstImage;
+        if (firstImage.startsWith('http')) return firstImage;
+        return `${BASE_URL}${firstImage.startsWith('/') ? '' : '/'}${firstImage}`;
       }
     }
     // Fallback về image (string)
     if (product.image && typeof product.image === 'string') {
-      return product.image;
+      if (product.image.startsWith('http')) return product.image;
+      return `${BASE_URL}${product.image.startsWith('/') ? '' : '/'}${product.image}`;
     }
     
     // Default placeholder
     return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIzMiIgZmlsbD0iI2QxZDVkYiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPvCfk7c8L3RleHQ+PC9zdmc+';
   };
 
+
   // ✅ Lọc sản phẩm theo tìm kiếm và danh mục
   const filteredProducts = useMemo(() => {
-    return products.filter(product => {
+    const filtered = products.filter(product => {
       const matchSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (product.brand || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (product.description || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchCategory = !selectedCategory || product.categorySlug === selectedCategory;
       return matchSearch && matchCategory;
+    });
+
+    // ✅ Sắp xếp sản phẩm mới nhất lên đầu
+    return [...filtered].sort((a, b) => {
+      // 1. So sánh theo createdAt (Nếu không có, giả định là cực mới)
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : Date.now() + 10000;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : Date.now() + 10000;
+      
+      if (dateB !== dateA) return dateB - dateA;
+      
+      // 2. Dự phòng: So sánh theo _id (MongoDB _id contains timestamp)
+      const idA = a._id || '';
+      const idB = b._id || '';
+      return idB.localeCompare(idA);
     });
   }, [products, searchTerm, selectedCategory]);
 
@@ -191,6 +211,7 @@ export default function ProductsTab({
         description: formData.description || '',
         categorySlug: formData.categorySlug,
         slug: slug,
+        tags: formData.tags || [],
         // ✅ Cập nhật specs theo chuẩn FootMark
         specs: {
           condition: formData.specs?.condition || 'New',
@@ -412,7 +433,16 @@ export default function ProductsTab({
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex flex-col gap-1">
+                      <div className="flex flex-wrap gap-1 max-w-[150px]">
+                        {product.tags && product.tags.length > 0 ? (
+                          product.tags.map((tag, i) => (
+                            <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-700 uppercase border border-gray-200">
+                              {tag}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-gray-300 text-[10px] italic">None</span>
+                        )}
                         {product.isNew && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 uppercase">
                             New
@@ -518,12 +548,12 @@ export default function ProductsTab({
           <div className="flex gap-2">
             {[...Array(totalPages)].map((_, i) => {
               const pageNum = i + 1;
-              // Hiển thị tối đa 5 trang xung quanh trang hiện tại
-              if (
-                pageNum === 1 || 
-                pageNum === totalPages || 
-                (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
-              ) {
+              const isFirst = pageNum === 1;
+              const isLast = pageNum === totalPages;
+              const isNear = Math.abs(pageNum - currentPage) <= 1;
+              const isEllipsis = pageNum === currentPage - 2 || pageNum === currentPage + 2;
+
+              if (isFirst || isLast || isNear) {
                 return (
                   <button
                     key={pageNum}
@@ -537,11 +567,8 @@ export default function ProductsTab({
                     {pageNum}
                   </button>
                 );
-              } else if (
-                pageNum === currentPage - 2 || 
-                pageNum === currentPage + 2
-              ) {
-                return <span key={pageNum} className="flex items-end pb-2">...</span>;
+              } else if (isEllipsis) {
+                return <span key={pageNum} className="w-10 h-10 flex items-center justify-center text-gray-400 font-bold">...</span>;
               }
               return null;
             })}
