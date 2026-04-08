@@ -6,6 +6,10 @@ import Link from "next/link";
 import { ShoppingCart, User, Menu, X, Heart, Search, LogOut, LogIn } from "lucide-react";
 import { useCart } from '../app/contexts/CartContext';
 import { useAuth } from '../app/contexts/AuthContext';
+import { useWishlist } from '../app/contexts/WishlistContext';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+
+const API_URL = CLEAN_API_URL;
 
 interface HeaderProps {
   cartCount?: number;
@@ -36,7 +40,6 @@ export const Header = ({ cartCount = 0 }: HeaderProps) => {
       }
 
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
         const res = await fetch(`${API_URL}/api/products`);
         const data = await res.json();
         const allProducts = Array.isArray(data) ? data : data.data || [];
@@ -168,7 +171,7 @@ export const Header = ({ cartCount = 0 }: HeaderProps) => {
                          >
                             <div className="w-12 h-12 bg-gray-100 overflow-hidden flex-shrink-0">
                                <img 
-                                  src={p.image?.startsWith('http') ? p.image : `${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/api$/, '')}${p.image?.startsWith('/') ? '' : '/'}${p.image}`} 
+                                  src={p.image?.startsWith('http') ? p.image : `${API_URL}${p.image?.startsWith('/') ? '' : '/'}${p.image}`} 
                                   alt={p.name} 
                                   className="w-full h-full object-cover"
                                   onError={(e: any) => e.target.src = '/placeholder-product.jpg'}
@@ -224,16 +227,25 @@ export const Header = ({ cartCount = 0 }: HeaderProps) => {
                 </Link>
 
                 {/* User Menu Desktop */}
-                <div className="hidden md:block relative">
+                <div className="hidden md:flex items-center gap-3">
                    {user ? (
-                     <div className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1.5 pr-3 rounded-none transition" onClick={() => router.push('/profile')}>
-                        <div className="w-8 h-8 bg-blue-100 text-primary rounded-none flex items-center justify-center font-bold">
-                          {user.name?.charAt(0).toUpperCase() || 'U'}
-                        </div>
-                        <span className="text-sm font-bold max-w-[100px] truncate">{user.name}</span>
-                     </div>
+                     <>
+                       <div className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1.5 pr-3 rounded-none transition border-r border-gray-100 mr-1" onClick={() => router.push('/profile')}>
+                          <div className="w-8 h-8 bg-blue-100 text-primary rounded-none flex items-center justify-center font-bold">
+                            {user.name?.charAt(0).toUpperCase() || 'U'}
+                          </div>
+                          <span className="text-sm font-bold max-w-[100px] truncate uppercase tracking-tighter">{user.name}</span>
+                       </div>
+                       <button 
+                         onClick={handleLogout}
+                         className="text-gray-400 hover:text-red-500 transition-colors p-2"
+                         title="Đăng xuất"
+                       >
+                         <LogOut size={20} />
+                       </button>
+                     </>
                    ) : (
-                     <button onClick={() => router.push('/login')} className="flex items-center gap-2 text-sm font-bold hover:text-primary transition">
+                     <button onClick={() => router.push('/login')} className="flex items-center gap-2 text-sm font-bold hover:text-primary transition p-2">
                         <User size={24}/>
                      </button>
                    )}
@@ -282,7 +294,7 @@ export const Header = ({ cartCount = 0 }: HeaderProps) => {
                             className="flex items-center gap-3 p-3 border-b border-gray-50"
                          >
                             <img 
-                               src={p.image?.startsWith('http') ? p.image : `${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/api$/, '')}${p.image?.startsWith('/') ? '' : '/'}${p.image}`} 
+                               src={p.image?.startsWith('http') ? p.image : `${API_URL}${p.image?.startsWith('/') ? '' : '/'}${p.image}`} 
                                alt={p.name} 
                                className="w-10 h-10 object-cover"
                             />

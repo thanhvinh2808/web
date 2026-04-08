@@ -13,14 +13,21 @@ import {
   Lock,
   CreditCard,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  LogOut
 } from 'lucide-react';
 import { useState } from 'react';
 
 export default function ProfileSidebar() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const pathname = usePathname();
   const [isAccountOpen, setIsAccountOpen] = useState(true);
+
+  const handleLogout = async () => {
+    if (window.confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+      await logout();
+    }
+  };
 
   const menuItems = [
     {
@@ -128,6 +135,17 @@ export default function ProfileSidebar() {
               )}
             </li>
           ))}
+          <li>
+            <button 
+              onClick={handleLogout}
+              className="flex items-center gap-3 w-full py-3 px-2 font-bold text-red-500 hover:bg-red-50 transition group mt-4 border-t border-gray-100 pt-6"
+            >
+              <span className="text-red-400 group-hover:text-red-600 transition">
+                <LogOut size={20} />
+              </span>
+              <span className="uppercase text-sm tracking-wide">Đăng xuất</span>
+            </button>
+          </li>
         </ul>
       </nav>
     </div>

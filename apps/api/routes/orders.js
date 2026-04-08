@@ -4,13 +4,16 @@ import {
   getOrderById,
   cancelOrder,
   markOrderAsPaid,
+  trackOrder,
 } from '../controller/orderController.js';
 import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Public: Tra cứu nhanh đơn hàng (Cho chatbot)
+router.get('/track/:orderNumber', trackOrder);
+
 // ✅ FIX: Thêm authenticateToken cho createOrder
-// Controller dùng req.user.id để gán userId — nếu không có auth, req.user = undefined → crash
 router.post('/', authenticateToken, createOrder);
 
 // ✅ FIX: Thêm authenticateToken cho getOrderById

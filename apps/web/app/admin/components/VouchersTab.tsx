@@ -145,15 +145,15 @@ export default function VouchersTab({ token, showMessage }: VouchersTabProps) {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h2 className="text-2xl font-black italic tracking-tighter text-black uppercase flex items-center gap-2">
-            <Tag /> Quản Lý Voucher
+             Quản Lý Voucher
           </h2>
           <p className="text-gray-500 text-sm font-medium">Chiến dịch khuyến mãi FootMark</p>
         </div>
         <button 
           onClick={() => { resetForm(); setShowModal(true); }}
-          className="bg-black text-white px-6 py-2.5 rounded-lg font-bold uppercase text-xs tracking-wider hover:bg-stone-800 transition flex items-center gap-2 shadow-lg"
+          className="px-6 py-2 border border-blue-600 text-blue-600 rounded-lg font-bold uppercase tracking-wider hover:bg-blue-600 hover:text-white transition shadow-lg"
         >
-          <Plus size={18} /> Thêm Voucher
+           Thêm Voucher
         </button>
       </div>
 

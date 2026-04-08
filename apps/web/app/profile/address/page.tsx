@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus, MapPin, Trash2, CheckCircle2, ChevronDown, X } from 'lucide-react';
+import { CLEAN_API_URL as API_URL } from '@lib/shared/constants';
 
-// --- Reusable Component: Autocomplete Select (Copied from ProfilePage) ---
+// --- Reusable Component: Autocomplete Select ---
 function removeAccents(str: string) {
   return str.normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -12,7 +13,7 @@ function removeAccents(str: string) {
     .toLowerCase();
 }
 
-const AutocompleteSelect = ({ label, value, options, onChange, placeholder, disabled }: any) => {
+const AutocompleteSelect = ({ value, options, onChange, placeholder, disabled }: any) => {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
 
@@ -60,7 +61,6 @@ export default function AddressPage() {
   const [addresses, setAddresses] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
   
-  // Form State
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -71,26 +71,42 @@ export default function AddressPage() {
     isDefault: false
   });
 
-  // Location Data
   const [provinces, setProvinces] = useState<any[]>([]);
   const [wards, setWards] = useState<any[]>([]);
   const [provinceCode, setProvinceCode] = useState('');
   const [wardCode, setWardCode] = useState('');
 
-  // 1. Initial Load
-  useEffect(() => {
-    const localUser = JSON.parse(localStorage.getItem('user') || '{}');
-    if (localUser.addresses) {
-      setAddresses(localUser.addresses);
+  const fetchAddresses = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/user/addresses`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setAddresses(data.addresses);
+          const u = JSON.parse(localStorage.getItem('user') || '{}');
+          u.addresses = data.addresses;
+          localStorage.setItem('user', JSON.stringify(u));
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching addresses:', err);
     }
+  };
+
+  useEffect(() => {
+    fetchAddresses();
     
-    // Fetch Provinces
     fetch('https://provinces.open-api.vn/api/p/')
       .then(res => res.json())
       .then(data => setProvinces(data));
   }, []);
 
-  // 2. Fetch Wards when Province changes
   useEffect(() => {
     if (provinceCode) {
       fetch(`https://provinces.open-api.vn/api/p/${provinceCode}?depth=3`)
@@ -117,15 +133,11 @@ export default function AddressPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!form.city || !form.ward) {
-        alert('Vui lòng chọn đầy đủ Tỉnh/Thành và Phường/Xã/Huyện');
-        return;
-    }
+    if (!form.city || !form.ward) return;
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch( `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/addresses`, {
+      const res = await fetch(`${API_URL}/api/user/addresses`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -135,17 +147,9 @@ export default function AddressPage() {
       });
 
       if (res.ok) {
-        const data = await res.json();
-        setAddresses(data.addresses);
-        // Sync local storage
-        const u = JSON.parse(localStorage.getItem('user') || '{}');
-        u.addresses = data.addresses;
-        localStorage.setItem('user', JSON.stringify(u));
-        
+        await fetchAddresses();
         setShowModal(false);
         resetForm();
-      } else {
-        alert('Lỗi thêm địa chỉ');
       }
     } catch (error) {
       console.error(error);
@@ -159,121 +163,101 @@ export default function AddressPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if(!confirm('Xóa địa chỉ này?')) return;
     const token = localStorage.getItem('token');
-    const res = await fetch(`$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/addresses/${id}`, {
+    const res = await fetch(`${API_URL}/api/user/addresses/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
     });
-    if (res.ok) {
-        const data = await res.json();
-        setAddresses(data.addresses);
-        const u = JSON.parse(localStorage.getItem('user') || '{}');
-        u.addresses = data.addresses;
-        localStorage.setItem('user', JSON.stringify(u));
-    }
+    if (res.ok) await fetchAddresses();
   };
 
   const handleSetDefault = async (id: string) => {
     const token = localStorage.getItem('token');
-    const res = await fetch(`$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/addresses/${id}/default`, {
+    const res = await fetch(`${API_URL}/api/user/addresses/${id}/default`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
     });
-    if (res.ok) {
-        const data = await res.json();
-        setAddresses(data.addresses);
-        // Update Local Storage
-        const u = JSON.parse(localStorage.getItem('user') || '{}');
-        u.addresses = data.addresses;
-        // Also update root fields for checkout compatibility
-        const def = data.addresses.find((a:any) => a.isDefault);
-        if(def) {
-            u.name = def.name;
-            u.phone = def.phone;
-            u.address = def.address;
-            u.city = def.city;
-            u.ward = def.ward;
-        }
-        localStorage.setItem('user', JSON.stringify(u));
-    }
+    if (res.ok) await fetchAddresses();
   };
 
   return (
     <div>
       <div className="flex justify-between items-center border-b border-gray-100 pb-4 mb-6">
-        <h1 className="text-xl font-medium text-gray-800">Địa Chỉ Của Tôi</h1>
+        <h1 className="text-xl font-black italic uppercase tracking-tighter text-black">Địa Chỉ Của Tôi</h1>
         <button 
           onClick={() => { resetForm(); setShowModal(true); }}
-          className="bg-blue-600 text-white px-4 py-2 rounded-sm text-sm flex items-center gap-2 hover:bg-blue-700 transition shadow-sm"
+          className="border-2 border-blue-600 bg-white text-blue-600 px-6 py-2 rounded-none text-xs font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-sm"
         >
-          <Plus size={16} /> Thêm Địa Chỉ Mới
+          <Plus size={14} className="inline mb-0.5 mr-1" /> Thêm Địa Chỉ Mới
         </button>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-6">
         {addresses.length === 0 ? (
-           <p className="text-center text-gray-500 py-10">Bạn chưa có địa chỉ nào.</p>
+           <p className="text-center text-gray-400 py-10 font-bold uppercase text-xs tracking-widest">Bạn chưa có địa chỉ nào.</p>
         ) : (
             addresses.map((addr: any) => (
-                <div key={addr._id} className="border-b border-gray-100 py-4 flex justify-between items-start last:border-0">
+                <div key={addr._id} className="border border-gray-100 p-6 flex justify-between items-start bg-white shadow-sm">
                     <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="font-bold text-gray-800 border-r border-gray-300 pr-2 mr-2">{addr.name}</span>
-                            <span className="text-gray-500">{addr.phone}</span>
+                        <div className="flex items-center gap-2 mb-2">
+                            <span className="font-black text-lg italic uppercase tracking-tighter text-black">{addr.name}</span>
+                            <span className="text-gray-300">|</span>
+                            <span className="text-gray-500 font-bold">{addr.phone}</span>
                         </div>
-                        <div className="text-sm text-gray-600">
-                            <p>{addr.address}</p>
-                            <p>{addr.ward}, {addr.city}</p>
+                        <div className="text-sm text-gray-600 font-medium space-y-1">
+                            <p className="flex items-start gap-2"><MapPin size={14} className="mt-1 text-gray-400"/> {addr.specificAddress || addr.address}</p>
+                            <p className="pl-5">{addr.ward}, {addr.city}</p>
                         </div>
                         {addr.isDefault && (
-                            <span className="mt-2 inline-block border border-blue-600 text-blue-600 text-xs px-2 py-0.5 rounded-sm">Mặc định</span>
+                            <span className="mt-4 inline-block border-2 border-blue-600 text-blue-600 text-[10px] font-black px-2 py-0.5 uppercase tracking-widest">Mặc định</span>
                         )}
                     </div>
-                    <div className="flex flex-col items-end gap-2">
-                        <div className="flex gap-3 text-sm">
-                            {/* Edit button could be added here later */}
-                            {!addr.isDefault && (
-                                <button onClick={() => handleDelete(addr._id)} className="text-blue-600 hover:underline">Xóa</button>
-                            )}
-                        </div>
+                    <div className="flex flex-col items-end gap-4">
+                        {!addr.isDefault && (
+                            <button onClick={() => handleDelete(addr._id)} className="text-gray-400 hover:text-red-600 font-bold text-xs uppercase tracking-widest underline transition-colors">Xóa</button>
+                        )}
                         {!addr.isDefault && (
                              <button 
                                 onClick={() => handleSetDefault(addr._id)}
-                                className="border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 bg-white"
+                                className="border-2 border-blue-600 bg-white text-blue-600 px-4 py-2 rounded-none text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-sm"
                              >
                                 Thiết lập mặc định
                              </button>
                         )}
-                       
                     </div>
                 </div>
             ))
         )}
       </div>
 
-      {/* MODAL */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white w-full max-w-lg rounded-sm shadow-xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100 font-medium text-lg">Địa chỉ mới</div>
-                <form onSubmit={handleSubmit} className="p-6 max-h-[80vh] overflow-y-auto">
-                    <div className="flex gap-4 mb-4">
-                        <input 
-                            type="text" required placeholder="Họ và tên"
-                            value={form.name} onChange={e => setForm({...form, name: e.target.value})}
-                            className="w-1/2 border border-gray-300 px-3 py-2 outline-none focus:border-gray-500 rounded-sm"
-                        />
-                         <input 
-                            type="text" required placeholder="Số điện thoại"
-                            value={form.phone} onChange={e => setForm({...form, phone: e.target.value})}
-                            className="w-1/2 border border-gray-300 px-3 py-2 outline-none focus:border-gray-500 rounded-sm"
-                        />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white w-full max-w-lg shadow-2xl overflow-hidden border border-gray-100">
+                <div className="px-8 py-6 border-b border-gray-100 font-black text-xl italic uppercase tracking-tighter">Địa chỉ mới</div>
+                <form onSubmit={handleSubmit} className="p-8 max-h-[80vh] overflow-y-auto space-y-4">
+                    <div className="flex gap-4">
+                        <div className="w-1/2">
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Họ và tên</label>
+                            <input 
+                                type="text" required
+                                value={form.name} onChange={e => setForm({...form, name: e.target.value})}
+                                className="w-full border-2 border-gray-100 px-4 py-3 outline-none focus:border-black transition-colors font-bold text-sm"
+                            />
+                        </div>
+                        <div className="w-1/2">
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Số điện thoại</label>
+                            <input 
+                                type="text" required
+                                value={form.phone} onChange={e => setForm({...form, phone: e.target.value})}
+                                className="w-full border-2 border-gray-100 px-4 py-3 outline-none focus:border-black transition-colors font-bold text-sm"
+                            />
+                        </div>
                     </div>
                     
-                    <div className="mb-4">
+                    <div>
+                         <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Tỉnh / Thành phố</label>
                          <AutocompleteSelect
-                            placeholder="Tỉnh/Thành phố"
+                            placeholder="Chọn tỉnh..."
                             value={provinceCode}
                             options={provinces.map(p => ({ code: p.code, name: p.name }))}
                             onChange={(code: string) => {
@@ -284,9 +268,10 @@ export default function AddressPage() {
                             }}
                          />
                     </div>
-                    <div className="mb-4">
+                    <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Phường / Xã / Quận / Huyện</label>
                         <AutocompleteSelect
-                            placeholder="Phường/Xã/Quận/Huyện"
+                            placeholder="Chọn phường/xã..."
                             value={wardCode}
                             options={wards.map(w => ({ code: w.code, name: w.name }))}
                             onChange={(code: string) => {
@@ -298,27 +283,28 @@ export default function AddressPage() {
                         />
                     </div>
                     
-                    <div className="mb-4">
+                    <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Địa chỉ cụ thể</label>
                         <textarea 
-                            required placeholder="Địa chỉ cụ thể (Số nhà, Tên đường...)"
+                            required placeholder="Số nhà, tên đường..."
                             value={form.address} onChange={e => setForm({...form, address: e.target.value})}
-                            className="w-full border border-gray-300 px-3 py-2 outline-none focus:border-gray-500 rounded-sm h-24 resize-none"
+                            className="w-full border-2 border-gray-100 px-4 py-3 outline-none focus:border-black transition-colors font-bold text-sm h-24 resize-none"
                         />
                     </div>
 
-                    <div className="mb-6 flex items-center">
+                    <div className="flex items-center gap-2 py-2">
                         <input 
                             type="checkbox" id="default"
                             checked={form.isDefault}
                             onChange={e => setForm({...form, isDefault: e.target.checked})}
-                            className="mr-2"
+                            className="w-4 h-4 accent-black"
                         />
-                        <label htmlFor="default" className="text-sm text-gray-500">Đặt làm địa chỉ mặc định</label>
+                        <label htmlFor="default" className="text-xs font-bold text-gray-500 uppercase tracking-widest cursor-pointer">Đặt làm địa chỉ mặc định</label>
                     </div>
 
-                    <div className="flex justify-end gap-2">
-                        <button type="button" onClick={() => setShowModal(false)} className="px-6 py-2 hover:bg-gray-100 text-gray-600 rounded-sm">Trở lại</button>
-                        <button type="submit" className="px-6 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-sm">Hoàn thành</button>
+                    <div className="flex justify-end gap-4 pt-6">
+                        <button type="button" onClick={() => setShowModal(false)} className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] hover:text-black transition-colors">Hủy bỏ</button>
+                        <button type="submit" className="border-2 border-blue-600 bg-white text-blue-600 px-10 py-4 font-black text-xs uppercase tracking-[0.2em] hover:bg-blue-600 hover:text-white transition-all shadow-xl">Hoàn thành</button>
                     </div>
                 </form>
             </div>

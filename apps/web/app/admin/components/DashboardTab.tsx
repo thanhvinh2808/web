@@ -4,7 +4,7 @@ import { Users, ShoppingBag, DollarSign, TrendingUp, Package, ArrowUpRight, Arro
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { API_URL } from '../config/constants';
 
-export default function DashboardTab({ stats }: { stats: any }) {
+export default function DashboardTab({ stats, setActiveTab }: { stats: any, setActiveTab: (tab: string) => void }) {
   const [revenueStats, setRevenueStats] = useState({
     totalAllTime: 0,
     totalInRange: 0,
@@ -95,18 +95,16 @@ export default function DashboardTab({ stats }: { stats: any }) {
           subValue="Toàn thời gian"
           icon={DollarSign} 
           color="bg-black"
-          trend="Lifetime"
           isUp={true}
         />
         
         {/* Box 2: Doanh thu theo lọc */}
         <StatCard 
-          title="Doanh Thu (Lọc)" 
+          title="Doanh Thu" 
           value={formatCurrency(revenueStats.totalInRange)} 
           subValue={`${dateRange.startDate.split('-').reverse().slice(0,2).join('/')} - ${dateRange.endDate.split('-').reverse().slice(0,2).join('/')}`}
           icon={TrendingUp} 
           color="bg-green-600"
-          trend="Selected"
           isUp={true}
         />
 
@@ -115,7 +113,6 @@ export default function DashboardTab({ stats }: { stats: any }) {
           value={stats.totalOrders || 0} 
           icon={ShoppingBag} 
           color="bg-blue-600"
-          trend="+5.2%"
           isUp={true}
         />
         <StatCard 
@@ -123,7 +120,6 @@ export default function DashboardTab({ stats }: { stats: any }) {
           value={stats.newUsersThisMonth || 0} 
           icon={Users} 
           color="bg-purple-600"
-          trend="+2.4%"
           isUp={true}
         />
       </div>
@@ -234,42 +230,50 @@ export default function DashboardTab({ stats }: { stats: any }) {
               </div>
             ))}
           </div>
-          <button className="w-full mt-8 py-3 bg-gray-50 text-gray-500 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-black hover:text-white transition-all">
+          <button 
+            onClick={() => window.location.hash = '#orders'}
+            className="w-full mt-8 py-3 bg-gray-50 text-gray-500 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-black hover:text-white transition-all"
+          >
              Tất cả giao dịch
-          </button>
-        </div>
+          </button>        </div>
       </div>
 
       {/* Secondary Chart Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-         <div className="bg-black p-8 rounded-[2.5rem] text-white">
+         <div className="border-2 border-black p-8 rounded-[2.5rem] bg-white text-black shadow-sm">
             <h3 className="text-xl font-black italic uppercase tracking-tighter mb-6">Lượng Đơn Hàng (Theo Ngày)</h3>
             <div className="h-[200px]">
                <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={revenueStats.chartData}>
-                     <Bar dataKey="orders" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={30} />
+                     <Bar 
+                        dataKey="orders" 
+                        fill="#000000" 
+                        radius={[4, 4, 0, 0]} 
+                        barSize={30} 
+                        background={{ fill: '#f3f4f6', radius: [4, 4, 0, 0] }}
+                     />
                      <XAxis dataKey="name" hide />
                      <Tooltip 
-                        cursor={{fill: 'rgba(255,255,255,0.1)'}}
-                        contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: 'none', color: '#000' }}
+                        cursor={{fill: 'rgba(0,0,0,0.05)'}}
+                        contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e5e7eb', color: '#000' }}
                      />
                   </BarChart>
                </ResponsiveContainer>
             </div>
          </div>
          
-         <div className="bg-blue-600 p-8 rounded-[2.5rem] text-white flex flex-col justify-center">
+         <div className="border-2 border-blue-600 p-8 rounded-[2.5rem] bg-white text-black flex flex-col justify-center shadow-sm">
             <div className="flex items-center gap-4 mb-4">
-               <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+               <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100">
                   <TrendingUp className="text-white"/>
                </div>
                <h3 className="text-2xl font-black italic uppercase tracking-tighter">Phát Triển</h3>
             </div>
-            <p className="text-blue-100 font-medium mb-6">Theo dõi doanh thu thường xuyên giúp tối ưu hóa chiến lược bán hàng. Dữ liệu trên biểu đồ được cập nhật theo thời gian thực.</p>
+            <p className="text-gray-600 font-medium mb-6">Theo dõi doanh thu thường xuyên giúp tối ưu hóa chiến lược bán hàng. Dữ liệu trên biểu đồ được cập nhật theo thời gian thực.</p>
             <div className="flex gap-4">
-               <div className="bg-white/10 px-4 py-2 rounded-xl border border-white/20">
-                  <span className="text-[10px] font-bold uppercase block opacity-60">Trung bình ngày</span>
-                  <span className="font-black italic">
+               <div className="bg-blue-50 px-4 py-2 rounded-xl border border-blue-100">
+                  <span className="text-[10px] font-bold uppercase block text-blue-400 tracking-widest">Trung bình ngày</span>
+                  <span className="font-black italic text-blue-600">
                     {revenueStats.chartData.length > 0 
                       ? formatCurrency(revenueStats.totalInRange / revenueStats.chartData.length) 
                       : '0₫'}

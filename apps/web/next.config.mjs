@@ -8,31 +8,42 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    domains: ['localhost', 'images.unsplash.com', 'footmark-api.onrender.com'], // ? Th�m domain Render
+    domains: [
+      'localhost', 
+      'images.unsplash.com', 
+      'footmark-api.onrender.com', 
+      'res.cloudinary.com'
+    ],
     remotePatterns: [
       {
-        protocol: 'https', // ? HTTPS cho Render
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
         hostname: 'footmark-api.onrender.com',
         pathname: '/uploads/**',
       },
       {
         protocol: 'http',
         hostname: 'localhost',
-        port: '5000',
+        port: '5001',
         pathname: '/uploads/**',
       },
     ],
   },
   async rewrites() {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
     return [
       {
         source: '/uploads/:path*',
-        destination: `${API_URL}/uploads/:path*`, // ? D�ng bi?n m�i tru?ng
+        destination: `${API_URL}/uploads/:path*`,
       },
+      // Khng proxy cc route auth c?a NextAuth (ch? proxy cc API khc sang backend)
       {
-        source: '/api/:path*',
-        destination: `${API_URL}/api/:path*`, // ? Proxy API lu�n cho ch?c
+        source: '/api/((?!auth).*)', 
+        destination: `${API_URL}/api/:1`,
       },
     ];
   },

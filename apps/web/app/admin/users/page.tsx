@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Search, Edit2, Trash2, User, UserCheck, Shield, Lock, RotateCcw } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { CLEAN_API_URL } from '@lib/shared/constants';
 
 interface UserData {
   _id: string;
@@ -25,7 +25,7 @@ export default function AdminUsersPage() {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/users?page=${page}&search=${searchTerm}`, {
+      const res = await fetch(`${CLEAN_API_URL}/api/admin/users?page=${page}&search=${searchTerm}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -34,8 +34,7 @@ export default function AdminUsersPage() {
         setTotalPages(data.pagination.pages);
       }
     } catch (error) {
-      console.error(error);
-      toast.error('Lỗi tải danh sách user');
+      console.error('Lỗi tải danh sách user', error);
     } finally {
       setLoading(false);
     }
@@ -48,7 +47,7 @@ export default function AdminUsersPage() {
   const handleChangeRole = async (userId: string, newRole: string) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/users/${userId}/role`, {
+      const res = await fetch(`${CLEAN_API_URL}/api/admin/users/${userId}/role`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -58,13 +57,12 @@ export default function AdminUsersPage() {
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(`Đã cập nhật quyền thành ${newRole}`);
         fetchUsers();
       } else {
-        toast.error('Lỗi cập nhật quyền');
+        console.error('Lỗi cập nhật quyền');
       }
     } catch (error) {
-      toast.error('Lỗi kết nối');
+      console.error('Lỗi kết nối', error);
     }
   };
 
@@ -73,19 +71,18 @@ export default function AdminUsersPage() {
     
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/users/${userId}`, {
+      const res = await fetch(`${CLEAN_API_URL}/api/admin/users/${userId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
       if (res.ok) {
-        toast.success('Đã xóa user');
         fetchUsers();
       } else {
-        toast.error('Lỗi xóa user');
+        console.error('Lỗi xóa user');
       }
     } catch (error) {
-      toast.error('Lỗi kết nối');
+      console.error('Lỗi kết nối', error);
     }
   };
    // 🔑 Xử lý Reset Password
@@ -95,7 +92,7 @@ export default function AdminUsersPage() {
 
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/users/${selectedUser._id}/password`, {
+      const res = await fetch(`${CLEAN_API_URL}/api/admin/users/${selectedUser._id}/password`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -107,15 +104,14 @@ export default function AdminUsersPage() {
       const data = await res.json();
 
       if (data.success) {
-        toast.success('Đã reset mật khẩu thành công!');
         setResetModalOpen(false);
         setNewPassword('');
         setSelectedUser(null);
       } else {
-        toast.error(data.message || 'Lỗi reset mật khẩu');
+        console.error(data.message || 'Lỗi reset mật khẩu');
       }
     } catch (error) {
-      toast.error('Lỗi kết nối server');
+      console.error('Lỗi kết nối server', error);
     }
   };
 

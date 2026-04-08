@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { CreditCard, Plus, Trash2, Building } from 'lucide-react';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+
+const API_URL = CLEAN_API_URL;
 
 export default function BankPage() {
   const { user } = useAuth(); // Assume 'user' updated via context refresh or local storage sync
@@ -28,7 +31,7 @@ export default function BankPage() {
     if (!confirm('Bạn có chắc chắn muốn xóa tài khoản này?')) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`$ {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/banks/${bankId}`, {
+      const res = await fetch(`${API_URL}/api/user/banks/${bankId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -50,7 +53,7 @@ export default function BankPage() {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/banks`, {
+      const res = await fetch(`${API_URL}/api/user/banks`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

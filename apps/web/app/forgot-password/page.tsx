@@ -5,18 +5,20 @@ import { useState } from "react";
 import { Mail, ChevronRight, ArrowLeft, KeyRound, CheckCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import toast from "react-hot-toast";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+const API_URL = CLEAN_API_URL;
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
 
     try {
       const res = await fetch(`${API_URL}/api/forgot-password`, {
@@ -27,13 +29,12 @@ export default function ForgotPasswordPage() {
 
       const data = await res.json();
       if (res.ok) {
-        toast.success('Mã OTP đã được gửi vào Email của bạn!');
         router.push(`/reset-password?email=${encodeURIComponent(email)}`);
       } else {
-        toast.error(data.message || 'Email không tồn tại trong hệ thống!');
+        setError(data.message || 'Email không tồn tại trong hệ thống!');
       }
     } catch (error) {
-      toast.error('Lỗi kết nối server!');
+      setError('Lỗi kết nối server! Vui lòng thử lại sau.');
     } finally {
       setIsLoading(false);
     }
@@ -90,6 +91,13 @@ export default function ForgotPasswordPage() {
             <h2 className="text-4xl font-black italic uppercase tracking-tighter mb-2">Quên mật khẩu?</h2>
             <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Nhập email để nhận mã xác thực OTP khôi phục tài khoản</p>
           </div>
+
+          {error && (
+            <div className="mb-8 p-4 bg-red-50 border-l-4 border-red-600 animate-in fade-in slide-in-from-left-2 duration-300">
+              <p className="text-xs font-black uppercase tracking-widest text-red-600">Yêu cầu thất bại</p>
+              <p className="text-sm font-bold text-red-900 mt-1">{error}</p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-10">
             <div className="space-y-2 group">

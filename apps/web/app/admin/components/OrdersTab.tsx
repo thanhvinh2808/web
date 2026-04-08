@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, User, Mail, Phone, Package, CreditCard, Clock, Search, CheckCircle, DollarSign } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+const API_URL = CLEAN_API_URL;
 
 interface OrderItem {
   productId: string,
@@ -33,8 +34,8 @@ interface Order {
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   paymentStatus?: 'paid' | 'unpaid';
   paymentMethod?: string;
-  discountAmount?: number; // ✅ THÊM
-  voucherCode?: string; // ✅ THÊM
+  discountAmount?: number; 
+  voucherCode?: string; 
   createdAt: string;
 }
 
@@ -86,13 +87,12 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
     return price.toLocaleString('vi-VN') + 'đ';
   };
 
-  // ✅ Helper function để lấy URL ảnh đầy đủ
   const getImageUrl = (url: any): string => {
     if (!url) return '/placeholder.png';
     const cleanUrl = typeof url === 'string' ? url : (url.url || '');
     if (!cleanUrl || cleanUrl.includes('[object')) return '/placeholder.png';
     if (cleanUrl.startsWith('http')) return cleanUrl;
-    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace('/api', '');
+    const baseUrl = API_URL;
     return `${baseUrl}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`;
   };
 
@@ -101,7 +101,7 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
     setCurrentPage(1);
   }, [searchTerm, statusFilter, sortPaystatus]);
 
-  // ✅ TÍNH TOÁN CHÍNH XÁC THEO LOGIC CHECKOUT
+  // ✅ TÍNH TOÁN
   const calculateOrderDetails = (order: Order) => {
     // Tạm tính
     const subtotal = order.items.reduce((total, item) => {
@@ -219,7 +219,7 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
       {/* Header */}
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-3xl font-black italic tracking-tighter text-black uppercase mb-2">📦 Quản Lý Đơn Hàng</h2>
+          <h2 className="text-3xl font-black italic tracking-tighter text-black uppercase mb-2"> Quản Lý Đơn Hàng</h2>
           <p className="text-gray-500 font-medium text-sm">Theo dõi và xử lý đơn hàng của FootMark</p>
         </div>
       </div>
@@ -290,12 +290,12 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-4 py-3 bg-gray-50 border-none rounded-xl font-bold text-xs uppercase tracking-wider focus:ring-2 focus:ring-black outline-none cursor-pointer hover:bg-gray-100 transition"
           >
-            <option value="all">⚡ Tất cả trạng thái</option>
-            <option value="pending">⏳ Chờ duyệt</option>
-            <option value="processing">⚙️ Đang xử lý</option>
-            <option value="shipped">🚚 Đang giao</option>
-            <option value="delivered">✅ Hoàn thành</option>
-            <option value="cancelled">❌ Đã hủy</option>
+            <option value="all"> Tất cả trạng thái</option>
+            <option value="pending"> Chờ duyệt</option>
+            <option value="processing"> Đang xử lý</option>
+            <option value="shipped"> Đang giao</option>
+            <option value="delivered"> Hoàn thành</option>
+            <option value="cancelled"> Đã hủy</option>
           </select>
 
           <select
@@ -307,10 +307,10 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
             }}
             className="px-4 py-3 bg-gray-50 border-none rounded-xl font-bold text-xs uppercase tracking-wider focus:ring-2 focus:ring-black outline-none cursor-pointer hover:bg-gray-100 transition"
           >
-            <option value="date-desc">📅 Mới nhất</option>
-            <option value="date-asc">📅 Cũ nhất</option>
-            <option value="amount-desc">💰 Giá cao nhất</option>
-            <option value="amount-asc">💰 Giá thấp nhất</option>
+            <option value="date-desc"> Mới nhất</option>
+            <option value="date-asc"> Cũ nhất</option>
+            <option value="amount-desc"> Giá cao nhất</option>
+            <option value="amount-asc"> Giá thấp nhất</option>
           </select>
           
           <select
@@ -321,7 +321,7 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
               }}
               className="px-4 py-3 bg-gray-50 border-none rounded-xl font-bold text-xs uppercase tracking-wider focus:ring-2 focus:ring-black outline-none cursor-pointer hover:bg-gray-100 transition"
             >
-              <option value="">💳 Thanh toán</option>
+              <option value=""> Thanh toán</option>
               <option value="paid">Đã Thanh Toán</option>
               <option value="unpaid">Chưa Thanh Toán</option>
             </select>
@@ -469,21 +469,47 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
                               statusColors[order.status]
                             } ${
                               order.status === 'delivered' || order.status === 'cancelled'
-                                ? 'opacity-60 cursor-not-allowed'
-                                : 'cursor-pointer hover:brightness-95 ring-black/5 shadow-sm'
+                                ? 'opacity-60 cursor-not-allowed shadow-none'
+                                : 'cursor-pointer hover:brightness-95 ring-black/5 shadow-sm active:scale-95'
                             }`}
                           >
-                            <option value="pending" disabled={order.status !== 'pending'}>Chờ Duyệt</option>
-                            <option value="processing" disabled={!['pending', 'processing'].includes(order.status)}>Xử Lý</option>
-                            <option value="shipped" disabled={!['processing', 'shipped'].includes(order.status)}>Đang Giao</option>
-                            <option value="delivered" disabled={!['shipped', 'delivered'].includes(order.status)}>Hoàn Thành</option>
-                            <option value="cancelled">Hủy</option>
+                            {/* Trạng thái hiện tại luôn hiển thị */}
+                            <option value={order.status} disabled>
+                              {order.status === 'pending' ? 'Chờ Duyệt' : 
+                               order.status === 'processing' ? 'Xử Lý' : 
+                               order.status === 'shipped' ? 'Đang Giao' : 
+                               order.status === 'delivered' ? 'Hoàn Thành' : 'Hủy'}
+                            </option>
+
+                            {/* Các lựa chọn hợp lệ dựa trên trạng thái hiện tại */}
+                            {order.status === 'pending' && (
+                              <>
+                                <option value="processing">Xử Lý</option>
+                                <option value="cancelled">Hủy</option>
+                              </>
+                            )}
+
+                            {order.status === 'processing' && (
+                              <>
+                                <option value="shipped">Đang Giao</option>
+                                <option value="cancelled">Hủy</option>
+                              </>
+                            )}
+
+                            {order.status === 'shipped' && (
+                              <>
+                                <option value="delivered">Hoàn Thành</option>
+                                <option value="cancelled">Hủy</option>
+                              </>
+                            )}
                           </select>
-                          <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </div>
+                          {order.status !== 'delivered' && order.status !== 'cancelled' && (
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </div>
+                          )}
                         </div>
                       </td>
 

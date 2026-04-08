@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "../contexts/AuthContext";
 import Link from "next/link";
 import AuthLayout from "../../components/AuthLayout";
-import toast from "react-hot-toast";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -21,11 +20,19 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
     if (formData.password !== formData.confirmPassword) {
-      toast.error('Mật khẩu nhập lại không khớp!');
+      setError("Mật khẩu xác nhận không khớp");
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError("Mật khẩu phải có ít nhất 6 ký tự");
       return;
     }
 
@@ -40,10 +47,9 @@ export default function RegisterPage() {
         email: formData.email, 
         password: formData.password
       });
-      toast.success('Đăng ký thành công! Đang chuyển hướng...');
       setTimeout(() => router.push('/'), 1500);
-    } catch (error: any) {
-      toast.error(error.message || 'Email này đã được sử dụng!');
+    } catch (err: any) {
+      setError(err.message || 'Email này đã được sử dụng hoặc có lỗi xảy ra');
       setIsLoading(false);
     }
   };
@@ -63,6 +69,17 @@ export default function RegisterPage() {
         <h2 className="text-4xl font-black italic uppercase tracking-tighter mb-2">Gia nhập đội.</h2>
         <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Trở thành thành viên để nhận ưu đãi đặc quyền</p>
       </div>
+
+      {error && (
+        <div className="mb-8 p-4 bg-red-50 border-l-4 border-red-600 animate-in fade-in slide-in-from-right-2 duration-300">
+          <p className="text-xs font-black uppercase tracking-widest text-red-600">
+            Lỗi đăng ký
+          </p>
+          <p className="text-sm font-bold text-red-900 mt-1">
+            {error}
+          </p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-2 group">

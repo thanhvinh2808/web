@@ -1,15 +1,15 @@
 // app/reset-password/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { Lock, KeyRound, ChevronRight, CheckCircle, Mail } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import toast from "react-hot-toast";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+const API_URL = CLEAN_API_URL;
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const emailFromQuery = searchParams.get('email') || '';
@@ -21,19 +21,31 @@ export default function ResetPasswordPage() {
     confirmPassword: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     if (!emailFromQuery) {
-      toast.error('Vui lòng bắt đầu từ trang quên mật khẩu!');
       router.push('/forgot-password');
     }
   }, [emailFromQuery, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     
+    if (formData.otp.length !== 6) {
+      setError("Mã OTP phải có đúng 6 chữ số");
+      return;
+    }
+
+    if (formData.newPassword.length < 6) {
+      setError("Mật khẩu mới phải có ít nhất 6 ký tự");
+      return;
+    }
+
     if (formData.newPassword !== formData.confirmPassword) {
-      toast.error('Mật khẩu xác nhận không khớp!');
+      setError("Mật khẩu xác nhận không khớp");
       return;
     }
 
@@ -52,13 +64,13 @@ export default function ResetPasswordPage() {
 
       const data = await res.json();
       if (res.ok) {
-        toast.success('Đổi mật khẩu thành công! Vui lòng đăng nhập lại.');
-        setTimeout(() => router.push('/login'), 2000);
+        setSuccess(true);
+        setTimeout(() => router.push('/login'), 3000);
       } else {
-        toast.error(data.message || 'Mã xác thực không đúng hoặc đã hết hạn!');
+        setError(data.message || 'Mã xác thực không đúng hoặc đã hết hạn!');
       }
     } catch (error) {
-      toast.error('Lỗi kết nối server!');
+      setError('Lỗi kết nối server! Vui lòng thử lại sau.');
     } finally {
       setIsLoading(false);
     }
@@ -109,6 +121,20 @@ export default function ResetPasswordPage() {
             <h2 className="text-4xl font-black italic uppercase tracking-tighter mb-2">Đặt lại mật khẩu.</h2>
             <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Nhập mã xác thực 6 số và mật khẩu mới của bạn</p>
           </div>
+
+          {error && (
+            <div className="mb-8 p-4 bg-red-50 border-l-4 border-red-600 animate-in fade-in slide-in-from-left-2 duration-300">
+              <p className="text-xs font-black uppercase tracking-widest text-red-600">Lỗi xác thực</p>
+              <p className="text-sm font-bold text-red-900 mt-1">{error}</p>
+            </div>
+          )}
+
+          {success && (
+            <div className="mb-8 p-4 bg-green-50 border-l-4 border-green-600 animate-in fade-in slide-in-from-left-2 duration-300">
+              <p className="text-xs font-black uppercase tracking-widest text-green-600">Thành công</p>
+              <p className="text-sm font-bold text-green-900 mt-1">Mật khẩu đã được thay đổi. Đang chuyển hướng về trang đăng nhập...</p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="space-y-2 group">
@@ -198,5 +224,17 @@ export default function ResetPasswordPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white flex justify-center items-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

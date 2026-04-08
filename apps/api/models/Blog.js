@@ -77,8 +77,9 @@ const blogSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for search
+// Index for search and category filtering
 blogSchema.index({ title: 'text', content: 'text', tags: 'text' });
+blogSchema.index({ category: 1 });
 
 const Blog = mongoose.models.Blog || mongoose.model('Blog', blogSchema);
 export default Blog;

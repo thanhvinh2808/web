@@ -2,10 +2,12 @@
 import { useSearchParams } from 'next/navigation';
 import { useOrders } from '../contexts/OrderContext';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { Order } from '../contexts/OrderContext';
-import { CheckCircle, ShoppingBag, Truck, Receipt } from 'lucide-react';
+import { CheckCircle, ShoppingBag, Truck, Receipt, Star, MessageSquare } from 'lucide-react';
 import QRCodePayment from '../../components/QRCodePayment';
+import ReviewModal from '../../components/ReviewModal';
+import { CLEAN_API_URL } from '@lib/shared/constants';
 
 // ─── Đồng bộ với OrderDetailPage & OrdersPage ─────────────────────────────────
 function calcSummary(order: any) {
@@ -32,7 +34,7 @@ function calcSummary(order: any) {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function OrderSuccessPage() {
+function OrderSuccessContent() {
   const searchParams = useSearchParams();
   const { getOrderById } = useOrders();
 
@@ -41,14 +43,17 @@ export default function OrderSuccessPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Review states
+  const [selectedProduct, setSelectedProduct] = useState<{id: string, name: string, image: string} | null>(null);
+  const [reviewedIds, setReviewedIds] = useState<string[]>([]);
+
   // Helper: URL ảnh
   const getImageUrl = (url: any): string => {
     if (!url) return '/placeholder.png';
     const cleanUrl = typeof url === 'string' ? url : (url.url || '');
     if (!cleanUrl || cleanUrl.includes('[object')) return '/placeholder.png';
     if (cleanUrl.startsWith('http')) return cleanUrl;
-    const base = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace('/api', '');
-    return `${base}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`;
+    return `${CLEAN_API_URL}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`;
   };
 
   useEffect(() => {
@@ -58,9 +63,8 @@ export default function OrderSuccessPage() {
       try {
         let foundOrder = getOrderById(orderId);
         if (!foundOrder) {
-          const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
           const token = localStorage.getItem('token');
-          const res = await fetch(`${API_URL}/api/orders/${orderId}`, {
+          const res = await fetch(`${CLEAN_API_URL}/api/orders/${orderId}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (res.ok) {
@@ -111,9 +115,13 @@ export default function OrderSuccessPage() {
           <div className="w-24 h-24 bg-green-50 flex items-center justify-center mx-auto mb-6 border-2 border-green-100">
             <CheckCircle className="text-green-600 w-12 h-12" />
           </div>
-          <h1 className="text-4xl font-black italic tracking-tighter mb-2 uppercase">ĐẶT HÀNG THÀNH CÔNG!</h1>
+          <h1 className="text-4xl font-black italic tracking-tighter mb-2 uppercase">
+            {order.paymentStatus === 'paid' || (order as any).isPaid ? 'THANH TOÁN THÀNH CÔNG!' : 'ĐẶT HÀNG THÀNH CÔNG!'}
+          </h1>
           <p className="text-gray-500 mb-10 font-medium italic uppercase">
-            Cảm ơn {order.customerInfo.fullName}, đơn hàng của bạn đang được xử lý.
+            {order.paymentStatus === 'paid' || (order as any).isPaid 
+              ? `Cảm ơn ${order.customerInfo.fullName}, đơn hàng của bạn đang được chuẩn bị để giao.`
+              : `Cảm ơn ${order.customerInfo.fullName}, vui lòng hoàn tất thanh toán để đơn hàng được xử lý.`}
           </p>
 
           {/* QR banking */}
@@ -128,10 +136,22 @@ export default function OrderSuccessPage() {
             </div>
           )}
 
+          {/* VNPay pending */}
+          {order.paymentMethod === 'vnpay' && order.paymentStatus === 'unpaid' && (
+            <div className="mb-10 bg-yellow-50 p-4 border border-yellow-200 text-yellow-700 font-bold uppercase tracking-widest text-sm flex items-center justify-center gap-2">
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M2 10h20" stroke="currentColor" strokeWidth="1.5"/>
+              </svg>
+              Đang chờ thanh toán VNPay
+            </div>
+          )}
+
           {/* Đã thanh toán */}
           {(order.paymentStatus === 'paid' || (order as any).isPaid) && (
             <div className="mb-10 bg-green-50 p-4 border border-green-200 text-green-700 font-bold uppercase tracking-widest text-sm flex items-center justify-center gap-2">
-              <CheckCircle size={18} /> Đơn hàng đã được thanh toán
+              <CheckCircle size={18} />
+              {order.paymentMethod === 'vnpay' ? 'Đã thanh toán qua VNPay' : 'Đơn hàng đã được thanh toán'}
             </div>
           )}
 
@@ -287,7 +307,77 @@ export default function OrderSuccessPage() {
           </div>
         </div>
 
+        {/* ── Review Prompt (Popup style) ───────────────── */}
+        <div className="mt-8 bg-black text-white p-8 relative overflow-hidden">
+          <div className="absolute top-0 right-0 opacity-10 -rotate-12 translate-x-1/4 -translate-y-1/4">
+            <Star size={200} fill="white" />
+          </div>
+          
+          <div className="relative z-10">
+            <h3 className="text-2xl font-black italic uppercase tracking-tighter mb-2">Chia sẻ trải nghiệm</h3>
+            <p className="text-gray-400 text-sm font-medium italic mb-6 uppercase">Đánh giá sản phẩm để nhận thêm ưu đãi từ FootMark</p>
+            
+            <div className="space-y-4">
+              {order.items.map((item: any, idx: number) => {
+                const isReviewed = reviewedIds.includes(item.productId);
+                return (
+                  <div key={idx} className="flex items-center justify-between bg-white/10 p-4 border border-white/10 hover:bg-white/20 transition group">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-white overflow-hidden flex-shrink-0">
+                         <img src={getImageUrl(item.productImage)} alt="" className="w-full h-full object-cover" />
+                      </div>
+                      <span className="font-bold text-xs uppercase italic tracking-tight line-clamp-1 max-w-[200px]">{item.productName}</span>
+                    </div>
+                    
+                    {isReviewed ? (
+                      <span className="flex items-center gap-1 text-[10px] font-black text-green-400 uppercase italic">
+                        <CheckCircle size={14} /> Đã đánh giá
+                      </span>
+                    ) : (
+                      <button 
+                        onClick={() => setSelectedProduct({
+                          id: item.productId,
+                          name: item.productName,
+                          image: getImageUrl(item.productImage)
+                        })}
+                        className="flex items-center gap-2 bg-primary text-white px-4 py-2 font-black text-[10px] uppercase tracking-widest hover:bg-white hover:text-black transition"
+                      >
+                        <MessageSquare size={14} /> Đánh giá ngay
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
       </div>
+
+      {selectedProduct && (
+        <ReviewModal 
+          isOpen={!!selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          product={selectedProduct}
+          onSuccess={() => {
+            if (selectedProduct) {
+              setReviewedIds(prev => [...prev, selectedProduct.id]);
+            }
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+export default function OrderSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+      </div>
+    }>
+      <OrderSuccessContent />
+    </Suspense>
   );
 }

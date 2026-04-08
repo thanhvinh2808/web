@@ -1,4 +1,5 @@
 // apps/web/lib/imageHelper.ts
+import { CLEAN_API_URL } from '@lib/shared/constants';
 
 /**
  * Helper to get the correct image URL for a product or variant.
@@ -10,7 +11,7 @@
  */
 export const getImageUrl = (item: any): string => {
   try {
-    const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace('/api', '');
+    const API_URL = CLEAN_API_URL;
     
     // Determine the source of the image (Variant > Product > Fallback)
     // Supports structure: item.image, item.url, item.product.image, item.selectedVariant.image

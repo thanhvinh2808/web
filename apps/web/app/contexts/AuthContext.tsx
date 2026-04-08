@@ -2,8 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { CLEAN_API_URL as API_URL } from '../../lib/shared/constants'; // ✅ Dùng hằng số chuẩn
-import toast from 'react-hot-toast';
+import { useSession, signOut } from 'next-auth/react';
+import { CLEAN_API_URL as API_URL } from '@lib/shared/constants';
 
 interface User {
   id: string;
@@ -13,7 +13,6 @@ interface User {
   phone: number;
   role: string;
   avatar?: string;
-  
 }
 
 interface AuthContextType {
@@ -22,8 +21,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: any) => Promise<void>; // Add register to interface
-  logout: () => void;
+  register: (data: any) => Promise<void>;
+  logout: () => Promise<void>;
   updateUser: (user: User) => void;
   refreshUser: () => Promise<void>;
 }
@@ -34,7 +33,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const router = useRouter();
+  const { data: session, status } = useSession();
 
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
@@ -49,9 +50,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     
-    // Always verify token with server on load
     checkAuth(storedToken);
   }, []);
+
+  useEffect(() => {
+    if (isLoggingOut) return;
+
+    if (status === 'authenticated' && session) {
+      const googleToken = (session as any).accessToken;
+      const googleUser = (session as any).user;
+
+      if (googleToken && googleToken !== token) {
+        setToken(googleToken);
+        setUser(googleUser);
+        localStorage.setItem('token', googleToken);
+        localStorage.setItem('user', JSON.stringify(googleUser));
+      }
+    }
+  }, [session, status, token, isLoggingOut]);
 
   const checkAuth = async (currentToken: string | null) => {
     if (!currentToken) {
@@ -61,19 +77,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const res = await fetch(`${API_URL}/api/user/me`, {
-        headers: {
-          'Authorization': `Bearer ${currentToken}`
-        }
+        headers: { 'Authorization': `Bearer ${currentToken}` }
       });
 
       if (res.ok) {
-        const userData = await res.json();
-        setUser(userData);
-        localStorage.setItem('user', JSON.stringify(userData));
-        console.log('✅ Token verified');
+        const data = await res.json();
+        if (data.success && data.user) {
+          setUser(data.user);
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
       } else {
-        console.warn('❌ Token invalid/expired');
-        // Silent logout on load failure to avoid redirect loop if on public page
         setToken(null);
         setUser(null);
         localStorage.removeItem('token');
@@ -95,19 +108,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Đăng nhập thất bại');
 
-      if (!res.ok) {
-        throw new Error(data.message || 'Đăng nhập thất bại');
-      }
-
-      const { token: newToken, user: userData } = data;
-
-      setToken(newToken);
-      setUser(userData);
-      localStorage.setItem('token', newToken);
-      localStorage.setItem('user', JSON.stringify(userData));
-      
-      // router.push('/'); // Let the page handle redirect
+      setToken(data.token);
+      setUser(data.user);
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
     } catch (error) {
       throw error;
     }
@@ -122,13 +128,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || 'Đăng ký thất bại');
-      }
+      if (!res.ok) throw new Error(data.message || 'Đăng ký thất bại');
       
-      // Auto login after register? Or just return success.
-      // Usually register returns token too.
       if (data.token) {
          setToken(data.token);
          setUser(data.user);
@@ -140,13 +141,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    toast.success('Đã đăng xuất');
-    router.push('/login');
+  const logout = async () => {
+    try {
+      setIsLoggingOut(true);
+      if (status === 'authenticated') {
+        await signOut({ redirect: false });
+      }
+      setToken(null);
+      setUser(null);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const updateUser = (updatedUser: User) => {
@@ -160,15 +170,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ 
-      user, 
-      token, 
-      isAuthenticated: !!token, 
-      isLoading, 
-      login, 
-      register,
-      logout, 
-      updateUser,
-      refreshUser
+      user, token, isAuthenticated: !!token, isLoading, 
+      login, register, logout, updateUser, refreshUser
     }}>
       {children}
     </AuthContext.Provider>

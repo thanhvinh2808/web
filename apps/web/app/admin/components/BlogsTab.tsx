@@ -4,12 +4,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, Loader2, Search } from 'lucide-react';
 import { Blog } from '@/data/blog/types';
-import toast from 'react-hot-toast';
 import Image from 'next/image';
 import BlogForm from './BlogForm'; // Import the new form component
 
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+const API_URL = CLEAN_API_URL;
 
 // Function to check if a URL is absolute
 const isAbsoluteUrl = (url: string) => {
@@ -55,7 +55,7 @@ export default function BlogsTab({ token, showMessage }: BlogsTabProps) {
     } catch (err: any) {
       const msg = err.message || 'Error fetching blogs';
       setError(msg);
-      toast.error(msg);
+      console.error(msg);
     } finally {
       setLoading(false);
     }
@@ -91,10 +91,9 @@ export default function BlogsTab({ token, showMessage }: BlogsTabProps) {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (!res.ok) throw new Error((await res.json()).message || 'Failed to delete blog');
-      toast.success('Blog post deleted successfully!');
       fetchBlogs(); // Re-fetch
     } catch (err: any) {
-      toast.error(err.message || 'Error deleting blog post.');
+      console.error(err.message || 'Error deleting blog post.');
     }
   };
 
@@ -122,8 +121,9 @@ export default function BlogsTab({ token, showMessage }: BlogsTabProps) {
       <div className="flex justify-between items-center mb-6">
         {/* Title is handled by the main page */}
         <div></div>
-        <button onClick={handleAddNew} className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-semibold rounded-md shadow-md hover:bg-blue-700 transition-colors">
-          <Plus size={20} className="mr-2" /> Thêm Bài viết mới
+        <button onClick={handleAddNew} className="px-6 py-2 border border-blue-600 text-blue-600 rounded-lg font-bold uppercase tracking-wider hover:bg-blue-600 hover:text-white transition shadow-lg"
+        >
+           Thêm bài viết
         </button>
       </div>
 

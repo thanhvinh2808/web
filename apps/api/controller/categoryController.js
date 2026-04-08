@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-const Category = require('../models/Category');
-=======
 import Category from '../models/Category.js';
->>>>>>> 9520cf96838d6006a1127e0ed95989833b5aa1c4
 
 // @desc    Get all categories
 // @route   GET /api/categories
@@ -17,10 +13,4 @@ const getAllCategories = async (req, res) => {
   }
 };
 
-<<<<<<< HEAD
-module.exports = {
-  getAllCategories,
-};
-=======
 export { getAllCategories };
->>>>>>> 9520cf96838d6006a1127e0ed95989833b5aa1c4

@@ -1,8 +1,9 @@
 // app/admin/components/ProductModal.tsx
 'use client';
 import React, { useState, useEffect } from 'react';
+import { CLEAN_API_URL } from '@lib/shared/constants';
 
-
+const baseUrl = CLEAN_API_URL;
 
 // ✅ Cập nhật Specs cho Giày
 interface ProductSpecs {
@@ -107,6 +108,12 @@ export default function ProductModal({
     options: [{ name: '', price: 0, stock: 0, sku: '', image: '' }]
   });
 
+  const getImageUrl = (url: string) => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
   useEffect(() => {
     if (product) {
       setFormData({
@@ -175,8 +182,9 @@ export default function ProductModal({
     if (!formData.name?.trim()) newErrors.name = 'Tên sản phẩm không được để trống';
     if (!formData.categorySlug) newErrors.categorySlug = 'Vui lòng chọn danh mục';
     if (!formData.price || formData.price <= 0) newErrors.price = 'Giá phải lớn hơn 0';
-    if (formData.originalPrice && formData.originalPrice < (formData.price || 0)) {
-      newErrors.originalPrice = 'Giá gốc phải lớn hơn hoặc bằng giá bán';
+    // Chỉ validate giá gốc nếu người dùng có nhập (lớn hơn 0)
+    if (formData.originalPrice && formData.originalPrice > 0 && formData.originalPrice < (formData.price || 0)) {
+      newErrors.originalPrice = 'Giá niêm yết (giá cũ) phải lớn hơn hoặc bằng giá bán hiện tại';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -191,8 +199,8 @@ export default function ProductModal({
     const newImages: string[] = [];
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      
+      const API_BASE = baseUrl;
+
       // Upload từng file một (hoặc dùng endpoint upload multiple nếu backend hỗ trợ)
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -205,7 +213,7 @@ export default function ProductModal({
         const uploadFormData = new FormData();
         uploadFormData.append('image', file);
 
-        const response = await fetch(`${API_URL}/upload/single`, {
+        const response = await fetch(`${API_BASE}/api/upload/single`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` },
           body: uploadFormData
@@ -310,8 +318,7 @@ export default function ProductModal({
     try {
       const uploadFormData = new FormData();
       uploadFormData.append('image', file);
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const response = await fetch(`${API_URL}/upload/single`, {
+      const response = await fetch(`${baseUrl}/api/upload/single`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: uploadFormData
@@ -449,7 +456,7 @@ export default function ProductModal({
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Giá gốc (VNĐ)</label>
                 <input
                   type="number"
-                  value={formData.originalPrice || ''}
+                  value={formData.originalPrice !== undefined ? formData.originalPrice : 0}
                   onChange={(e) => handleChange('originalPrice', Number(e.target.value))}
                   className="w-full px-4 py-3 bg-gray-50 border-none rounded-lg focus:ring-2 focus:ring-black outline-none"
                   placeholder="0"

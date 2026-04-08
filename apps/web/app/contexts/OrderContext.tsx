@@ -3,6 +3,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useAuth } from './AuthContext';
+import { CLEAN_API_URL } from '@lib/shared/constants';
 
 // --- TYPES ---
 export interface OrderItem {
@@ -70,8 +71,7 @@ interface OrderContextType {
 // --- CONTEXT ---
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
 
-// --- API URL ---
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const BASE_URL = CLEAN_API_URL;
 const API_URL = BASE_URL.endsWith('/api') ? BASE_URL : `${BASE_URL}/api`;
 
 // --- PROVIDER ---

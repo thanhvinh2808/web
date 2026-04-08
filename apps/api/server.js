@@ -1,10 +1,12 @@
 // ✅ COMPLETE VERSION - server.js (With ALL Admin Routes)
+// Load .env BEFORE any config/service imports (ES module hoisting)
+import './env.js';
+
 import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
@@ -50,14 +52,17 @@ import orderRoutes from './routes/orders.js'; // ✅ Imported Order Routes
 import authRoutes from './routes/auth.js'; // ✅ Auth Routes
 import notificationRoutes from './routes/notifications.js';
 import productRoutes from './routes/products.js';
+import vnpayRoutes from './routes/vnpay.js';
+import chatRoutes from './routes/chat.js';
 
 import { getJwtSecret } from './config/secrets.js';
+import { getVnpay } from './config/vnpay.js';
 
-// ✅ Load environment variables
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.join(__dirname, '.env') });
+
+import { trackOrder } from './controller/orderController.js';
 
 // ✅ App setup
 const app = express();
@@ -67,27 +72,57 @@ const JWT_SECRET = getJwtSecret();
 // ✅ Create HTTP server
 const server = createServer(app);
 
-// ✅ Middleware - NO DUPLICATES
+// ✅ CORS: allow frontend origin(s) and preflight for register/login
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3001'
+].filter(Boolean);
+
+const isLocalOrigin = (origin) => {
+  if (!origin) return false;
+  try {
+    const u = new URL(origin);
+    return u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+  } catch {
+    return false;
+  }
+};
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
-  credentials: true
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin) || isLocalOrigin(origin)) {
+      callback(null, origin || true);
+    } else {
+      callback(null, true);
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  credentials: true,
+  optionsSuccessStatus: 204
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static('uploads'));
 
 // Routes
+app.use('/api', authRoutes); // ✅ Auth Routes first
+app.use('/api/chat', chatRoutes); // ✅ AI Chat Route
 app.use('/api/trade-in', tradeInRoutes);
 app.use('/api/blogs', blogRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 // ✅ Register New Routes
 app.use('/api/brands', brandRoutes);
-app.use('/api/addresses', addressRoutes);
+app.use('/api/user/addresses', addressRoutes);
 app.use('/api/size-guides', sizeGuideRoutes);
-app.use('/api/orders', orderRoutes); // ✅ Use Order Routes
+app.use('/api/orders', orderRoutes); 
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/products', productRoutes);
-app.use('/api', authRoutes); // ✅ Use Auth Routes
+app.use('/api/vnpay', vnpayRoutes);
+app.use('/api/chat', chatRoutes);
 
 // ✅ Socket.io setup
 const io = new Server(server, {
@@ -300,7 +335,7 @@ app.get('/api/products/:productId/can-review', authenticateToken, async (req, re
 // ✅ SUBMIT A REVIEW
 app.post('/api/products/:productId/reviews', authenticateToken, async (req, res) => {
   try {
-    const { rating, comment } = req.body;
+    const { rating, comment, isAnonymous } = req.body;
     const productId = req.params.productId;
     const userId = req.user.id;
 
@@ -320,7 +355,8 @@ app.post('/api/products/:productId/reviews', authenticateToken, async (req, res)
       productId,
       rating,
       comment,
-      isPurchased: true
+      isPurchased: true,
+      isAnonymous: !!isAnonymous
     });
 
     // 🔔 Notify Admin via Socket.io
@@ -375,8 +411,9 @@ app.post('/api/products/:productId/reviews', authenticateToken, async (req, res)
 // Get all products (admin)
 app.get('/api/admin/products', authenticateToken, requireAdmin, async (req, res) => {
   try {
+    // Sắp xếp theo _id giảm dần là cách chính xác nhất để lấy hàng mới nhất trong MongoDB
     const products = await Product.find()
-      .sort({ createdAt: -1, _id: -1 })
+      .sort({ _id: -1 })
       .lean();
     
     res.json({
@@ -440,6 +477,13 @@ app.post('/api/admin/products', authenticateToken, requireAdmin, async (req, res
       }));
     }
 
+    // Tính toán lại tổng tồn kho từ các biến thể (nếu có)
+    let finalStock = parseInt(stock) || 0;
+    if (processedVariants.length > 0) {
+      finalStock = processedVariants.reduce((total, v) => 
+        total + v.options.reduce((sum, opt) => sum + (parseInt(opt.stock) || 0), 0), 0);
+    }
+
     const productData = {
       name: name.trim(),
       brand: brand?.trim() || '',
@@ -449,7 +493,7 @@ app.post('/api/admin/products', authenticateToken, requireAdmin, async (req, res
       rating: rating || 5,
       description: description?.trim() || '',
       categorySlug: categorySlug?.trim() || '',
-      stock: parseInt(stock) || 0,
+      stock: finalStock, // ✅ Luôn là tổng của các variants
       images: processedImages,
       image: processedImages.length > 0 ? processedImages[0].url : '',
       specs: specs || {},
@@ -528,6 +572,13 @@ app.put('/api/admin/products/:slug', authenticateToken, requireAdmin, async (req
       }));
     }
 
+    // ✅ TÍNH TOÁN LẠI TỒN KHO TỔNG (Tránh lỗi tồn kho bằng 0)
+    let finalStock = stock !== undefined ? parseInt(stock) : 0;
+    if (processedVariants.length > 0) {
+      finalStock = processedVariants.reduce((total, v) => 
+        total + v.options.reduce((sum, opt) => sum + (parseInt(opt.stock) || 0), 0), 0);
+    }
+
     const updateData = {
       name: name?.trim(),
       brand: brand?.trim(),
@@ -537,7 +588,7 @@ app.put('/api/admin/products/:slug', authenticateToken, requireAdmin, async (req
       rating: rating || 5,
       description: description?.trim(),
       categorySlug: categorySlug?.trim(),
-      stock: stock !== undefined ? parseInt(stock) : undefined,
+      stock: finalStock, // ✅ Cập nhật stock đã tính toán
       images: processedImages.length > 0 ? processedImages : undefined,
       image: processedImages.length > 0 ? processedImages[0].url : undefined,
       specs: specs,
@@ -553,11 +604,7 @@ app.put('/api/admin/products/:slug', authenticateToken, requireAdmin, async (req
       updateData[key] === undefined && delete updateData[key]
     );
     
-    const product = await Product.findOneAndUpdate(
-      { slug: req.params.slug },
-      updateData,
-      { new: true, runValidators: true }
-    );
+    const product = await Product.findOne({ slug: req.params.slug });
     
     if (!product) {
       return res.status(404).json({
@@ -565,6 +612,36 @@ app.put('/api/admin/products/:slug', authenticateToken, requireAdmin, async (req
         message: 'Product not found' 
       });
     }
+
+    // 🛡️ SECURITY: Cleanup old images that are no longer in the new set
+    if (processedImages.length > 0) {
+      const oldImageUrls = product.images.map(img => img.url);
+      const newImageUrls = processedImages.map(img => img.url);
+      
+      const imagesToDelete = oldImageUrls.filter(url => !newImageUrls.includes(url));
+      
+      if (imagesToDelete.length > 0) {
+        console.log(`🧹 Cleaning up ${imagesToDelete.length} unused images...`);
+        for (const url of imagesToDelete) {
+          await deleteFile(url);
+        }
+      }
+    }
+
+    // Also check for variant images if they were removed
+    if (processedVariants.length > 0) {
+       const oldVariantImages = product.variants.flatMap(v => v.options.map(o => o.image)).filter(Boolean);
+       const newVariantImages = processedVariants.flatMap(v => v.options.map(o => o.image)).filter(Boolean);
+       const variantImagesToDelete = oldVariantImages.filter(url => !newVariantImages.includes(url));
+       
+       for (const url of variantImagesToDelete) {
+         await deleteFile(url);
+       }
+    }
+    
+    // Apply updates
+    Object.assign(product, updateData);
+    await product.save();
     
     console.log('✅ Product updated:', product.slug);
     
@@ -1463,11 +1540,16 @@ app.get('/api/about', (req, res) => {
   });
 });
 
+// ✅ Route tra cứu đơn hàng công khai (Dành cho Chatbot)
+app.get('/api/track-order/:orderNumber', trackOrder);
+
 // ✅ Start server
 server.listen(PORT, () => {
   console.log(`\n🚀 Server is running on port ${PORT}`);
   console.log(`🔗 API URL: http://localhost:${PORT}`);
-  console.log(`🔌 Socket.io is ready\n`);
+  console.log(`🔌 Socket.io is ready`);
+  getVnpay();
+  console.log('');
 });
 
 export default app;

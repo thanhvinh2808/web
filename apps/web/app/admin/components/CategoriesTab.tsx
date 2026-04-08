@@ -2,8 +2,11 @@
 'use client';
 import React, { useState } from 'react';
 import { API_URL } from '../config/constants';
+import { CLEAN_API_URL } from '@lib/shared/constants';
 import { Category } from '../types';
 import { FolderTree, Plus, Pencil, Trash2, X, Image as ImageIcon } from 'lucide-react';
+
+const BASE_URL = CLEAN_API_URL;
 
 interface CategoriesTabProps {
   categories: Category[];
@@ -43,14 +46,8 @@ export default function CategoriesTab({ categories, token, onRefresh, showMessag
     try {
       const uploadFormData = new FormData();
       uploadFormData.append('image', file);
-      
-      const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace('/api', '');
-      
+
       const res = await fetch(`${BASE_URL}/api/upload/single`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: uploadFormData
-      });
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: uploadFormData
@@ -145,15 +142,15 @@ export default function CategoriesTab({ categories, token, onRefresh, showMessag
       <div className="flex justify-between items-center mb-8">
         <div>
           <h2 className="text-2xl font-black italic tracking-tighter text-black uppercase flex items-center gap-2">
-            <FolderTree /> Quản lý Danh mục
+             Quản lý Danh mục
           </h2>
           <p className="text-gray-500 text-sm font-medium">Phân loại sản phẩm FootMark</p>
         </div>
         <button
           onClick={handleAdd}
-          className="bg-black text-white px-6 py-2.5 rounded-lg font-bold uppercase text-xs tracking-wider hover:bg-stone-800 transition flex items-center gap-2 shadow-lg"
+          className="px-6 py-2 border border-blue-600 text-blue-600 rounded-lg font-bold uppercase tracking-wider hover:bg-blue-600 hover:text-white transition shadow-lg"
         >
-          <Plus size={18}/> Thêm danh mục
+           Thêm mới
         </button>
       </div>
       

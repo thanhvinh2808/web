@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Tag, X, Check, AlertCircle, Award, ChevronDown, ChevronUp, Ticket } from 'lucide-react';
 import { Voucher } from '../app/types/voucher';
+import { CLEAN_API_URL } from '@lib/shared/constants';
 
 interface VoucherSelectorProps {
   totalAmount: number;
@@ -21,14 +22,11 @@ export const VoucherSelector = ({ totalAmount, onVoucherApply, selectedVoucher }
   useEffect(() => {
     const fetchVouchers = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL;
-        if (API_URL) {
-          const response = await fetch(`${API_URL}/api/vouchers`);
-          if (response.ok) {
-            const data = await response.json();
-            setVouchers(data);
-            return;
-          }
+        const response = await fetch(`${CLEAN_API_URL}/api/vouchers`);
+        if (response.ok) {
+          const data = await response.json();
+          setVouchers(data);
+          return;
         }
       } catch (error) {
         console.error('Error fetching vouchers:', error);

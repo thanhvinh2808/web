@@ -11,7 +11,7 @@ export default function BrandSection() {
           {BRANDS.map((b, i) => (
             <div key={i} className="flex items-center gap-2 font-bold text-xl text-gray-400">
               <Link 
-                  href={`http://localhost:3000/products?category=${b.name.toLowerCase()}`} 
+                  href={`/products?category=${b.name.toLowerCase()}`} 
                   className="hover:underline hover:lowercase"
                 >
                   <span className="hover:text-black cursor-pointer uppercase">

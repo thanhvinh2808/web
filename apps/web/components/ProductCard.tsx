@@ -1,88 +1,80 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { ShoppingCart, Check, TrendingUp } from 'lucide-react';
 import { useCart } from '../app/contexts/CartContext';
 import { useRouter } from 'next/navigation';
-import toast from 'react-hot-toast';
 import { getImageUrl } from '../lib/imageHelper';
 import { Product } from '../lib/shared/types';
 
 interface ProductCardProps {
   product: Product;
-  showSoldCount?: boolean; // Prop mới
+  showSoldCount?: boolean;
 }
 
 export default function ProductCard({ product, showSoldCount = false }: ProductCardProps) {
   const router = useRouter();
   const { addToCart } = useCart();
-  const [showSizes, setShowSizes] = useState(false);
+
+  // State quản lý UI và lựa chọn
+  const [showOptions, setShowOptions] = useState(false);
+  const [selectedSize, setSelectedSize] = useState<any>(null);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
-  const productId = product.id || product._id || '';
 
-  const rawSlug = product.slug || productId;
-  const productSlug = typeof rawSlug === 'string' ? rawSlug : productId;
+  const productId = product._id || product.id || '';
+  const productSlug = product.slug || productId;
 
+  // Tách các loại biến thể
+  const sizeVariant = useMemo(() => 
+    product.variants?.find(v => v.name.toLowerCase().includes('size')) || null, 
+  [product.variants]);
 
-  const getLowestPrice = (p: Product): number => {
-    if (!p.variants || p.variants.length === 0) return p.price;
-    const variantPrices = p.variants.flatMap(v => v.options.map(opt => opt.price));
-    if (variantPrices.length === 0) return p.price;
-    return Math.min(p.price, ...variantPrices);
-  };
+  const colorVariant = useMemo(() => 
+    product.variants?.find(v => v.name.toLowerCase().includes('màu') || v.name.toLowerCase().includes('color')) || null, 
+  [product.variants]);
 
-  const lowestPrice = getLowestPrice(product);
-  const hasDiscount = product.originalPrice && product.originalPrice > lowestPrice;
-  const discountPercent = hasDiscount 
-    ? Math.round(((product.originalPrice! - lowestPrice) / product.originalPrice!) * 100)
-    : 0;
-  
-  // ✅ Improved Check Stock Logic
-  const isOutOfStock = React.useMemo(() => {
-    // 1. Check main stock
-    const hasMainStock = product.stock !== undefined && product.stock > 0;
-    
-    // 2. Check variants stock
-    const hasVariantStock = product.variants && product.variants.length > 0 && 
-      product.variants.some(v => v.options.some(opt => opt.stock > 0));
-    
-    // Nếu có variants thì ưu tiên check theo variants, nếu không có variants thì check theo stock chính
+  // Logic tính giá hiển thị
+  const displayPrice = useMemo(() => {
+    const basePrice = product.price || 0;
+    const surcharge = selectedSize ? (selectedSize.price || 0) : 0;
+    return basePrice + surcharge;
+  }, [product.price, selectedSize]);
+
+  const isOutOfStock = useMemo(() => {
     if (product.variants && product.variants.length > 0) {
-      return !hasVariantStock;
+      return !product.variants.some(v => v.options.some(opt => opt.stock > 0));
     }
-    
-    return !hasMainStock;
-  }, [product]);
-
-  const sizeOptions = React.useMemo(() => {
-    if (!product.variants) return [];
-    const sizeVar = product.variants.find(v => v.name.toLowerCase().includes('size')) || product.variants[0];
-    return sizeVar?.options || [];
+    return !(product.stock && product.stock > 0);
   }, [product]);
 
   const handleAddToCartClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (isOutOfStock) return;
 
-    if (isOutOfStock) return; // Prevent click
-
-    if (sizeOptions.length > 0) {
-      setShowSizes(true);
+    if (product.variants && product.variants.length > 0) {
+      setShowOptions(true);
     } else {
-      handleAddItem(undefined);
+      handleAddItem();
     }
   };
 
-  const handleAddItem = (variantOption: any) => {
+  const handleAddItem = () => {
+    if ((sizeVariant && !selectedSize) || (colorVariant && !selectedColor)) {
+      return;
+    }
+
     setIsAdding(true);
     // @ts-ignore
-    addToCart({ ...product, _id: productId }, 1, variantOption);
-    toast.success('Đã thêm vào giỏ hàng!');
+    addToCart({ ...product, _id: productId }, 1, selectedSize, selectedColor);
     
     setTimeout(() => {
       setIsAdding(false);
-      setShowSizes(false);
+      setShowOptions(false);
+      setSelectedSize(null);
+      setSelectedColor(null);
     }, 500);
   };
 
@@ -93,19 +85,19 @@ export default function ProductCard({ product, showSoldCount = false }: ProductC
   return (
     <div 
       className={`group relative bg-white rounded-none overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 ${isOutOfStock ? 'opacity-75 grayscale-[0.5]' : ''}`}
-      onMouseLeave={() => setShowSizes(false)}
+      onMouseLeave={() => {
+        setShowOptions(false);
+        setSelectedSize(null);
+        setSelectedColor(null);
+      }}
     >
       <Link href={`/products/${productSlug}`} className="block relative aspect-square overflow-hidden bg-gray-50">
         <img
           src={getImageUrl(product)}
           alt={product.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          onError={(e: any) => {
-            e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI2YzZjRmNiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNjQiIGZpbGw9IiNkMWQ1ZGIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7wn5O3PC90ZXh0Pjwvc3ZnPg==';
-          }}
         />
         
-        {/* 🚫 OUT OF STOCK OVERLAY */}
         {isOutOfStock && (
           <div className="absolute inset-0 bg-white/50 z-30 flex items-center justify-center pointer-events-none">
              <div className="bg-black text-white text-xs font-black px-4 py-2 uppercase tracking-[0.2em] border-2 border-white transform -rotate-12 shadow-xl">
@@ -114,80 +106,83 @@ export default function ProductCard({ product, showSoldCount = false }: ProductC
           </div>
         )}
         
-        <div className={`absolute inset-0 bg-white/95 backdrop-blur-sm z-20 flex flex-col justify-center items-center p-4 transition-opacity duration-300 ${showSizes ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}>
-           <p className="text-xs font-bold uppercase tracking-widest mb-4 text-gray-500">Chọn Size</p>
-           <div className="grid grid-cols-4 gap-2 w-full">
-              {sizeOptions.map((opt, idx) => (
-                 <button
-                    key={idx}
-                    disabled={opt.stock === 0}
-                    onClick={(e) => {
-                       e.preventDefault();
-                       e.stopPropagation();
-                       handleAddItem(opt);
-                    }}
-                    className={`py-2 text-xs font-bold border transition rounded-none ${
-                       opt.stock > 0 
-                       ? 'border-gray-300 hover:border-primary hover:bg-primary hover:text-white text-gray-800' 
-                       : 'border-gray-100 text-gray-300 bg-gray-50 cursor-not-allowed decoration-slice'
-                    }`}
-                 >
-                    {opt.name}
-                 </button>
-              ))}
+        {/* OVERLAY CHỌN BIẾN THỂ */}
+        <div className={`absolute inset-0 bg-white/95 backdrop-blur-sm z-20 flex flex-col justify-center p-4 transition-opacity duration-300 ${showOptions ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}>
+           
+           {/* CHỌN SIZE */}
+           {sizeVariant && (
+             <div className="mb-4">
+               <p className="text-[10px] font-bold uppercase tracking-widest mb-2 text-gray-500">Kích thước {selectedSize && <span className="text-primary">(+{formatCurrency(selectedSize.price)})</span>}</p>
+               <div className="grid grid-cols-4 gap-1">
+                  {sizeVariant.options.map((opt, idx) => (
+                     <button
+                        key={idx}
+                        disabled={opt.stock === 0}
+                        onClick={(e) => {
+                           e.preventDefault(); e.stopPropagation();
+                           setSelectedSize(opt);
+                        }}
+                        className={`py-2 text-[10px] font-bold border transition ${
+                           opt.stock === 0 ? 'border-gray-100 text-gray-300 bg-gray-50 cursor-not-allowed' :
+                           selectedSize?.name === opt.name ? 'border-black bg-black text-white' : 'border-gray-200 hover:border-black text-gray-800'
+                        }`}
+                     >
+                        {opt.name}
+                     </button>
+                  ))}
+               </div>
+             </div>
+           )}
+
+           {/* CHỌN MÀU (KHÔNG TĂNG GIÁ) */}
+           {colorVariant && (
+             <div className="mb-4">
+               <p className="text-[10px] font-bold uppercase tracking-widest mb-2 text-gray-500">Màu sắc</p>
+               <div className="flex flex-wrap gap-1">
+                  {colorVariant.options.map((opt, idx) => (
+                     <button
+                        key={idx}
+                        onClick={(e) => {
+                           e.preventDefault(); e.stopPropagation();
+                           setSelectedColor(opt.name);
+                        }}
+                        className={`px-3 py-1.5 text-[10px] font-bold border transition ${
+                           selectedColor === opt.name ? 'border-black bg-black text-white' : 'border-gray-200 hover:border-black text-gray-800'
+                        }`}
+                     >
+                        {opt.name}
+                     </button>
+                  ))}
+               </div>
+             </div>
+           )}
+
+           <div className="flex gap-2 mt-auto">
+              <button 
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddItem(); }}
+                className="flex-1 bg-black text-white py-3 font-bold text-[10px] uppercase tracking-widest hover:bg-gray-800"
+              >
+                Xác nhận thêm
+              </button>
+              <button 
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowOptions(false); }}
+                className="px-4 py-3 border border-gray-200 text-gray-400 hover:text-black text-[10px] font-bold uppercase"
+              >
+                Hủy
+              </button>
            </div>
-           <button 
-              onClick={(e) => {
-                 e.preventDefault();
-                 e.stopPropagation();
-                 setShowSizes(false);
-              }}
-              className="mt-4 text-[10px] font-bold text-gray-400 hover:text-black uppercase tracking-widest"
-           >
-              Đóng
-           </button>
         </div>
         
+        {/* TAGS */}
         <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
-          {product.tags && product.tags.length > 0 ? (
-            product.tags.map((tag, idx) => {
-              const isCondition = ['new', '2hand', 'used', 'brand new', '100%', '99%', '95%'].includes(tag.toLowerCase());
-              return (
-                <span 
-                  key={idx}
-                  className={`${
-                    tag.toLowerCase() === 'new' || tag.toLowerCase() === 'brand new' || tag.toLowerCase() === '100%'
-                    ? 'bg-black text-white' 
-                    : isCondition 
-                    ? 'bg-white/90 backdrop-blur text-black border border-black' 
-                    : 'bg-primary text-white'
-                  } text-[10px] font-bold px-2 py-1 uppercase tracking-wider rounded-none`}
-                >
-                  {tag}
-                </span>
-              );
-            })
-          ) : (
-            <>
-              {product.isNew && (
-                <span className="bg-black text-white text-[10px] font-bold px-2 py-1 uppercase tracking-wider rounded-none">New</span>
-              )}
-              {product.specs?.condition && product.specs.condition !== 'New' && (
-                <span className="bg-white/90 backdrop-blur text-black text-[10px] font-bold px-2 py-1 border border-black uppercase tracking-wider rounded-none">
-                  {product.specs.condition}
-                </span>
-              )}
-            </>
-          )}
+          {product.tags?.map((tag, idx) => (
+            <span key={idx} className="bg-black text-white text-[10px] font-bold px-2 py-1 uppercase tracking-wider">
+              {tag}
+            </span>
+          ))}
         </div>
 
-        {hasDiscount && (
-          <div className="absolute top-3 right-3 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-none">
-            -{discountPercent}%
-          </div>
-        )}
-
-        {!showSizes && !isOutOfStock && (
+        {!showOptions && !isOutOfStock && (
            <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 flex gap-2 z-10">
               <button 
                  onClick={handleAddToCartClick}
@@ -201,36 +196,42 @@ export default function ProductCard({ product, showSoldCount = false }: ProductC
       </Link>
 
       <div className="p-4">
-        <div className="flex justify-between items-start mb-2">
-        <Link href={`/products?category=${encodeURIComponent(product.categorySlug || 'unknown')} `} className="hover:underline lowercase">
+        <div className="flex justify-between items-start mb-1">
            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{product.brand || 'No Brand'}</span>
-           </Link>
-           {/* Hiển thị số lượng đã bán nếu được yêu cầu */}
-           {showSoldCount && product.soldCount && product.soldCount > 0 && (
-              <div className="flex items-center gap-1 text-[10px] font-black text-primary uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-none">
-                 <TrendingUp size={10}/> Đã bán {product.soldCount >= 1000 ? `${(product.soldCount/1000).toFixed(1)}k` : product.soldCount}
+           {showSoldCount && Number(product.soldCount) > 0 ? (
+              <div className="flex items-center gap-1 text-[10px] font-black text-primary uppercase tracking-widest bg-blue-50 px-2 py-0.5">
+                 <TrendingUp size={10}/> Đã bán {product.soldCount}
               </div>
-           )}
+           ) : null}
         </div>
 
-        <Link href={`/products/${productSlug}`} className="block">
-          <h3 className="font-bold text-gray-900 mb-2 line-clamp-1 hover:text-primary transition uppercase tracking-tighter italic" title={product.name}>
+        <Link href={`/products/${productSlug}`}>
+          <h3 className="font-bold text-gray-900 mb-2 line-clamp-1 hover:text-primary transition uppercase tracking-tighter italic">
             {product.name}
           </h3>
         </Link>
 
+        {/* PHẦN HIỂN THỊ GIÁ THEO YÊU CẦU */}
         <div className="flex items-end justify-between border-t border-dashed border-gray-100 pt-3 mt-3">
            <div>
               <div className="flex items-center gap-2">
+                {/* Giá bán hiện tại (Tự động cập nhật khi chọn Size ở Overlay) */}
                 <span className="text-lg font-black text-black italic">
-                  {formatCurrency(lowestPrice)}
+                  {formatCurrency(displayPrice)}
                 </span>
-                {hasDiscount && (
+                
+                {/* Giá gốc (Original Price) - Luôn hiển thị nếu có để làm mốc giảm giá */}
+                {product.originalPrice && product.originalPrice > displayPrice && (
                   <span className="text-xs text-gray-400 line-through decoration-gray-400">
-                    {formatCurrency(product.originalPrice!)}
+                    {formatCurrency(product.originalPrice)}
                   </span>
                 )}
               </div>
+              {selectedSize && selectedSize.price > 0 && (
+                <p className="text-[9px] text-primary font-bold uppercase mt-1">
+                  * Đã bao gồm phụ phí Size: +{formatCurrency(selectedSize.price)}
+                </p>
+              )}
            </div>
         </div>
       </div>

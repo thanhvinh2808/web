@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Bell, Mail, Package, User, Check, Trash2, Clock, Inbox, Ticket } from 'lucide-react';
-import toast from 'react-hot-toast';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+const API_URL = CLEAN_API_URL;
 
 interface Notification {
   _id: string;
@@ -70,10 +70,9 @@ export default function NotificationsPage() {
       if (res.ok) {
         setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
         setUnreadCount(0);
-        toast.success("Đã đánh dấu tất cả là đã đọc");
       }
     } catch (error) {
-      toast.error("Lỗi hệ thống");
+      console.error("Lỗi hệ thống", error);
     }
   };
 

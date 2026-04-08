@@ -4,9 +4,12 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { User, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+
+const API_URL = CLEAN_API_URL;
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -26,20 +29,23 @@ export default function ProfilePage() {
       if (!token) return;
 
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/me`, {
+        const res = await fetch(`${API_URL}/api/user/me`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
-          const userData = await res.json();
-          setFormData({
-            name: userData.name || '',
-            email: userData.email || '',
-            phone: userData.phone || '',
-            gender: userData.gender || 'other',
-            dateOfBirth: userData.dateOfBirth || '',
-            avatar: userData.avatar || ''
-          });
-          localStorage.setItem('user', JSON.stringify(userData));
+          const data = await res.json();
+          if (data.success && data.user) {
+            const userData = data.user;
+            setFormData({
+              name: userData.name || '',
+              email: userData.email || '',
+              phone: userData.phone || '',
+              gender: userData.gender || 'other',
+              dateOfBirth: userData.dateOfBirth ? new Date(userData.dateOfBirth).toISOString().split('T')[0] : '',
+              avatar: userData.avatar || ''
+            });
+            updateUser(userData);
+          }
         }
       } catch (error) {
         console.error("Lỗi tải hồ sơ:", error);
@@ -51,6 +57,16 @@ export default function ProfilePage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    
+    // Chỉ cho phép nhập số cho phone
+    if (name === 'phone') {
+      const numericValue = value.replace(/\D/g, '');
+      if (numericValue.length <= 11) {
+        setFormData(prev => ({ ...prev, [name]: numericValue }));
+      }
+      return;
+    }
+    
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -75,12 +91,19 @@ export default function ProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate phone length
+    if (formData.phone && (formData.phone.length < 10 || formData.phone.length > 11)) {
+      alert('Số điện thoại phải có từ 10 đến 11 chữ số');
+      return;
+    }
+
     setIsLoading(true);
     setSuccessMessage('');
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/update`, {
+      const res = await fetch(`${API_URL}/api/user/update`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -96,11 +119,9 @@ export default function ProfilePage() {
       });
 
       const data = await res.json();
-      if (res.ok) {
+      if (res.ok && data.success) {
         setSuccessMessage('Lưu thông tin thành công!');
-        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-        const updatedUser = { ...currentUser, ...formData };
-        localStorage.setItem('user', JSON.stringify(updatedUser));
+        updateUser(data.user);
         setTimeout(() => setSuccessMessage(''), 3000);
       } else {
         alert(data.message || 'Lỗi cập nhật');

@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { 
-    RefreshCw, Eye, CheckCircle, XCircle, 
+import {
+    RefreshCw, Eye, CheckCircle, XCircle,
     Loader2, Send, DollarSign, MessageSquare, Search
 } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+
+const API_URL = CLEAN_API_URL;
 
 interface TradeInTabProps {
     token: string;
@@ -36,18 +38,17 @@ export default function TradeInTab({ token, showMessage }: TradeInTabProps) {
     const fetchRequests = async () => {
         try {
             setLoading(true);
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/trade-in`, {
+            const res = await fetch(`${API_URL}/api/trade-in`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
             if (data.success) {
                 setRequests(data.data);
             } else {
-                toast.error('Không thể tải dữ liệu Trade-in');
+                console.error('Không thể tải dữ liệu Trade-in');
             }
         } catch (error) {
             console.error(error);
-            toast.error('Lỗi kết nối');
         } finally {
             setLoading(false);
         }
@@ -75,7 +76,7 @@ export default function TradeInTab({ token, showMessage }: TradeInTabProps) {
         setSubmitting(true);
 
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/trade-in/${selectedRequest._id}/reply`, {
+            const res = await fetch(`${API_URL}/api/trade-in/${selectedRequest._id}/reply`, {
                 method: 'PUT',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -86,15 +87,13 @@ export default function TradeInTab({ token, showMessage }: TradeInTabProps) {
             const data = await res.json();
             
             if (data.success) {
-                toast.success('Đã cập nhật & gửi mail cho khách!');
                 setModalOpen(false);
                 fetchRequests(); // Reload list
             } else {
-                toast.error(data.message || 'Lỗi cập nhật');
+                console.error(data.message || 'Lỗi cập nhật');
             }
         } catch (error) {
             console.error(error);
-            toast.error('Lỗi hệ thống');
         } finally {
             setSubmitting(false);
         }

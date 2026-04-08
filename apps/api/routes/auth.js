@@ -7,7 +7,8 @@ import {
   updateProfile, 
   changePassword, 
   forgotPassword, 
-  resetPassword 
+  resetPassword,
+  googleLogin
 } from '../controller/authController.js';
 import * as addressController from '../controller/addressController.js';
 import * as orderController from '../controller/orderController.js';
@@ -21,6 +22,7 @@ const router = express.Router();
 // ============================
 router.post('/register', register);
 router.post('/login', login);
+router.post('/google-login', googleLogin);
 router.post('/logout', authenticateToken, logout);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
@@ -33,18 +35,8 @@ router.put('/user/update', authenticateToken, updateProfile);
 router.put('/user/change-password', authenticateToken, changePassword);
 
 // ============================
-// USER ADDRESS ROUTES
-// ============================
-// Frontend: /api/user/addresses
-router.get('/user/addresses', authenticateToken, addressController.getAddresses);
-router.post('/user/addresses', authenticateToken, addressController.addAddress);
-router.put('/user/addresses/:id/default', authenticateToken, addressController.setDefaultAddress);
-router.delete('/user/addresses/:id', authenticateToken, addressController.deleteAddress);
-
-// ============================
 // USER ORDER ROUTES
 // ============================
-// Frontend: /api/user/orders
 router.get('/user/orders', authenticateToken, orderController.getUserOrders);
 
 // ============================

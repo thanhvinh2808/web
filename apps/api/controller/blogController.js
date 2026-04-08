@@ -1,17 +1,23 @@
 import Blog from '../models/Blog.js';
 
-// @desc    Fetch all PUBLISHED blogs
+// @desc    Fetch all PUBLISHED blogs with optional filtering
 // @route   GET /api/blogs
 // @access  Public
 const getBlogs = async (req, res) => {
   try {
+    const { category, featured, limit } = req.query;
+    
     const query = { published: true };
-    console.log('Fetching public blogs with query:', query); // Log the query
-    const blogs = await Blog.find(query).sort({ publishedAt: -1 });
-    console.log(`Found ${blogs.length} public blogs.`); // Log the count
+    if (category) query.category = category;
+    if (featured === 'true') query.featured = true;
+
+    const blogs = await Blog.find(query)
+      .sort({ publishedAt: -1 })
+      .limit(limit ? parseInt(limit) : 0);
+      
     res.json(blogs);
   } catch (error) {
-    console.error(error);
+    console.error('Error fetching blogs:', error);
     res.status(500).json({ message: 'Server Error' });
   }
 };
@@ -21,20 +27,21 @@ const getBlogs = async (req, res) => {
 // @access  Public
 const getBlogBySlug = async (req, res) => {
   try {
-    // Find the blog and ensure it's published
-    const blog = await Blog.findOne({ slug: req.params.slug, published: true });
+    // Find the blog, ensure it's published, and increment view count atomically
+    const blog = await Blog.findOneAndUpdate(
+      { slug: req.params.slug, published: true },
+      { $inc: { views: 1 } },
+      { new: true } // Returns the updated document
+    );
 
     if (blog) {
-      // Increment view count
-      blog.views = (blog.views || 0) + 1;
-      await blog.save();
       res.json(blog);
     } else {
       // Use a generic message for public-facing 404
       res.status(404).json({ message: 'Blog not found' });
     }
   } catch (error) {
-    console.error(error);
+    console.error('Error fetching blog by slug:', error);
     res.status(500).json({ message: 'Server Error' });
   }
 };

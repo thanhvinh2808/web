@@ -2,9 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { CheckCircle, Copy, RefreshCw, Smartphone } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { useSocket } from '../app/contexts/SocketContext'; // Đảm bảo bạn đã có SocketContext
+import { useSocket } from '../app/contexts/SocketContext';
 import { useRouter } from 'next/navigation';
+import { CLEAN_API_URL } from '@lib/shared/constants';
 
 // ✅ CẤU HÌNH TÀI KHOẢN NGÂN HÀNG NHẬN TIỀN (THAY CỦA BẠN VÀO ĐÂY)
 const BANK_INFO = {
@@ -57,10 +57,14 @@ export default function QRCodePayment({ orderId, orderCode, amount, onSuccess }:
 
     const handleOrderStatus = (data: any) => {
       // Check đúng đơn hàng và trạng thái đã thanh toán
+      // Chỉ kích hoạt khi paymentStatus là 'paid' hoặc isPaid là true
       if (data.orderId === orderId && (data.paymentStatus === 'paid' || data.isPaid)) {
         setIsPaid(true);
-        toast.success('Thanh toán thành công! Cảm ơn bạn.');
-        if (onSuccess) onSuccess();
+        
+        // Đợi 2 giây để người dùng thấy thông báo thành công trước khi gọi onSuccess
+        setTimeout(() => {
+          if (onSuccess) onSuccess();
+        }, 2000);
       }
     };
 
@@ -75,7 +79,7 @@ export default function QRCodePayment({ orderId, orderCode, amount, onSuccess }:
   const simulatePayment = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/orders/${orderId}/pay`, {
+      const res = await fetch(`${CLEAN_API_URL}/api/orders/${orderId}/pay`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -147,7 +151,7 @@ export default function QRCodePayment({ orderId, orderCode, amount, onSuccess }:
           <div className="flex items-center gap-2">
              <span className="font-bold tracking-wider">{BANK_INFO.ACCOUNT_NO}</span>
              <button 
-               onClick={() => { navigator.clipboard.writeText(BANK_INFO.ACCOUNT_NO); toast.success('Đã sao chép'); }}
+               onClick={() => { navigator.clipboard.writeText(BANK_INFO.ACCOUNT_NO); }}
                className="text-primary hover:text-black"
              >
                <Copy size={12}/>
@@ -163,7 +167,7 @@ export default function QRCodePayment({ orderId, orderCode, amount, onSuccess }:
           <div className="flex items-center gap-2">
              <span className="font-bold text-black bg-yellow-100 px-2 py-0.5">{description}</span>
              <button 
-               onClick={() => { navigator.clipboard.writeText(description); toast.success('Đã sao chép nội dung'); }}
+               onClick={() => { navigator.clipboard.writeText(description); }}
                className="text-primary hover:text-black"
              >
                <Copy size={12}/>

@@ -26,6 +26,8 @@ import {
 import bcrypt from 'bcrypt';
 import User from '../models/User.js';
 
+import { getMe } from '../controller/authController.js';
+
 const router = express.Router();
 
 // ðŸ”’ Táº¥t cáº£ routes dÆ°á»›i Ä‘Ã¢y yÃªu cáº§u admin
@@ -33,6 +35,9 @@ router.use(authenticateToken);
 router.use(isAdmin);
 
 router.use('/blogs', adminBlogRoutes); // Mount admin blog routes
+
+// Verify
+router.get('/verify', getMe);
 
 // Dashboard
 router.get('/stats', getDashboardStats);

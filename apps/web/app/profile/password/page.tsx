@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from 'react';
+import { CLEAN_API_URL } from '@lib/shared/constants';
 import { useAuth } from '../../contexts/AuthContext';
 import { Lock, Save } from 'lucide-react';
 
+const API_URL = CLEAN_API_URL;
 export default function ChangePasswordPage() {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
@@ -35,7 +37,7 @@ export default function ChangePasswordPage() {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/user/change-password`, {
+      const res = await fetch(`${API_URL}/api/user/change-password`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

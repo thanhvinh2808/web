@@ -118,11 +118,7 @@ export default function HeroCarousel() {
                    >
                      {slide.buttonText} <ArrowRight size={24}/>
                    </Link>
-                   {slide.highlight && (
-                      <button className="hidden md:flex items-center justify-center w-16 h-16 border-2 border-white/30 text-white hover:bg-white hover:text-black hover:border-white transition-all rounded-none">
-                         <Star size={24} />
-                      </button>
-                   )}
+                  
                 </div>
               </div>
             </div>

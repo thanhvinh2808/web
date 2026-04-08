@@ -19,7 +19,7 @@ interface Variant {
 
 // --- TYPES ---
 interface Product {
-  _id: string; // Đổi sang string cho chuẩn MongoDB
+  _id: string; 
   id?: string;
   name: string;
   brand?: string;
@@ -39,7 +39,8 @@ interface CartItem {
   product: Product;
   quantity: number;
   selectedVariant?: VariantOption;
-  selectedColor?: string; // ✅ Thêm field màu sắc
+  selectedColor?: string; 
+  selected: boolean; // ✅ Trạng thái checkbox (Shopee style)
 }
 
 interface CartContextType {
@@ -47,11 +48,13 @@ interface CartContextType {
   addToCart: (product: Product, quantity?: number, selectedVariant?: VariantOption, selectedColor?: string) => void;
   updateQuantity: (productId: string, variantKey: string | null, color: string | null, newQty: number) => void;
   removeItem: (productId: string, variantKey?: string | null, color?: string | null) => void;
-  totalItems: number;
-  totalPrice: number;
+  toggleSelectItem: (productId: string, variantKey?: string | null, color?: string | null) => void;
+  toggleAllItems: (isSelected: boolean) => void;
   clearCart: () => void;
-  getTotalPrice: () => number;
+  getTotalPrice: () => number; // Tổng giỏ hàng (tất cả)
+  getSelectedTotalPrice: () => number; // Tổng tiền các món được chọn
   getTotalItems: () => number;
+  getSelectedItemsCount: () => number;
   selectedVoucher: Voucher | null;
   setSelectedVoucher: (voucher: Voucher | null) => void;
 }
@@ -79,10 +82,9 @@ export const CartProvider = ({
      return `${getStorageKey()}_voucher`;
   };
 
-  // Helper: Tạo Unique Key cho Variant (Dùng Name làm chuẩn nếu ko có SKU)
   const getVariantKey = (variant?: VariantOption | null): string | null => {
     if (!variant) return null;
-    return variant.name; // Size 40, Size 41...
+    return variant.name;
   };
 
   // 1. Load Cart & Voucher
@@ -92,7 +94,12 @@ export const CartProvider = ({
       const storageKey = getStorageKey();
       const savedCart = localStorage.getItem(storageKey);
       if (savedCart) {
-        setCart(JSON.parse(savedCart));
+        const parsedCart = JSON.parse(savedCart);
+        // Đảm bảo các item cũ cũng có trường selected
+        setCart(parsedCart.map((item: any) => ({
+          ...item,
+          selected: item.selected !== undefined ? item.selected : true
+        })));
       } else {
         setCart([]);
       }
@@ -113,10 +120,8 @@ export const CartProvider = ({
 
   // 2. Save Cart & Voucher
   useEffect(() => {
-    // Chỉ lưu khi đã initialized và không đang trong quá trình chuyển đổi userId (tránh reset cart)
     if (isInitialized) {
       const storageKey = getStorageKey();
-      console.log('💾 Saving cart to:', storageKey, cart);
       localStorage.setItem(storageKey, JSON.stringify(cart));
       
       const vKey = getVoucherStorageKey();
@@ -135,23 +140,56 @@ export const CartProvider = ({
 
   const getTotalPrice = () => {
     return cart.reduce((total, item) => {
-      const price = item.selectedVariant?.price || item.product.price;
-      return total + (price * item.quantity);
+      const basePrice = item.product.price || 0;
+      const surcharge = item.selectedVariant?.price || 0;
+      return total + ((basePrice + surcharge) * item.quantity);
     }, 0);
+  };
+
+  // ✅ Tính tổng tiền của những món được tích chọn
+  const getSelectedTotalPrice = () => {
+    return cart
+      .filter(item => item.selected)
+      .reduce((total, item) => {
+        const basePrice = item.product.price || 0;
+        const surcharge = item.selectedVariant?.price || 0;
+        return total + ((basePrice + surcharge) * item.quantity);
+      }, 0);
   };
 
   const getTotalItems = () => {
     return cart.reduce((total, item) => total + item.quantity, 0);
   };
 
-  // ✅ ADD TO CART (Logic mới - Bất biến hoàn toàn + Chặn vượt kho + Support Color)
+  const getSelectedItemsCount = () => {
+    return cart.filter(item => item.selected).reduce((total, item) => total + item.quantity, 0);
+  };
+
+  // ✅ Toggle chọn 1 sản phẩm
+  const toggleSelectItem = (productId: string, variantKey?: string | null, color?: string | null) => {
+    setCart(prevCart => prevCart.map(item => {
+      const itemId = String(item.product._id || item.product.id);
+      const itemKey = getVariantKey(item.selectedVariant);
+      const itemColor = item.selectedColor || null;
+      
+      if (itemId === productId && itemKey === (variantKey || null) && itemColor === (color || null)) {
+        return { ...item, selected: !item.selected };
+      }
+      return item;
+    }));
+  };
+
+  // ✅ Chọn tất cả / Bỏ chọn tất cả
+  const toggleAllItems = (isSelected: boolean) => {
+    setCart(prevCart => prevCart.map(item => ({ ...item, selected: isSelected })));
+  };
+
+  // ✅ ADD TO CART
   const addToCart = (product: Product, quantity: number = 1, selectedVariant?: VariantOption, selectedColor?: string) => {
     setCart(prevCart => {
       const productId = String(product._id || product.id);
       const variantKey = getVariantKey(selectedVariant);
-      const colorKey = selectedColor || null; // Normalize
-      
-      // Lấy giới hạn kho (ưu tiên kho của Size đã chọn, nếu không thì lấy kho tổng)
+      const colorKey = selectedColor || null;
       const maxStock = selectedVariant ? selectedVariant.stock : (product.stock || 0);
 
       const existingIndex = prevCart.findIndex(item => {
@@ -163,38 +201,20 @@ export const CartProvider = ({
 
       if (existingIndex > -1) {
         const currentQty = prevCart[existingIndex].quantity;
-        const potentialQty = currentQty + quantity;
+        const potentialQty = Math.min(currentQty + quantity, maxStock);
         
-        // Kiểm tra xem tổng số lượng có vượt kho không
-        if (potentialQty > maxStock) {
-           const allowedExtra = maxStock - currentQty;
-           if (allowedExtra <= 0) {
-              alert(`Sản phẩm này chỉ còn ${maxStock} cái trong kho (Size ${selectedVariant?.name}). Bạn đã có đủ số lượng tối đa trong giỏ hàng.`);
-              return prevCart;
-           }
-           alert(`Bạn chỉ có thể thêm tối đa ${allowedExtra} sản phẩm này vào giỏ hàng.`);
-           return prevCart.map((item, index) => 
-              index === existingIndex ? { ...item, quantity: maxStock } : item
-           );
-        }
-
         return prevCart.map((item, index) => 
           index === existingIndex 
-            ? { ...item, quantity: potentialQty } 
+            ? { ...item, quantity: potentialQty, selected: true } // Luôn chọn khi vừa thêm
             : item
         );
       } else {
-        // Kiểm tra nếu thêm mới có vượt kho không
         const finalQty = Math.min(quantity, maxStock);
-        if (quantity > maxStock) {
-           alert(`Sản phẩm này chỉ còn ${maxStock} cái trong kho.`);
-        }
-        return [...prevCart, { product, quantity: finalQty, selectedVariant, selectedColor }];
+        return [...prevCart, { product, quantity: finalQty, selectedVariant, selectedColor, selected: true }];
       }
     });
   };
 
-  // ✅ UPDATE QUANTITY
   const updateQuantity = (productId: string, variantKey: string | null, color: string | null, newQty: number) => {
     if (newQty <= 0) {
       removeItem(productId, variantKey, color);
@@ -215,7 +235,6 @@ export const CartProvider = ({
     );
   };
 
-  // ✅ REMOVE ITEM
   const removeItem = (productId: string, variantKey?: string | null, color?: string | null) => {
     setCart(prevCart => 
       prevCart.filter(item => {
@@ -223,13 +242,8 @@ export const CartProvider = ({
         const itemKey = getVariantKey(item.selectedVariant);
         const itemColor = item.selectedColor || null;
         
-        // Giữ lại nếu khác ID
         if (itemId !== productId) return true;
-        
-        // Giữ lại nếu cùng ID nhưng khác Size
         if (itemKey !== (variantKey || null)) return true;
-
-        // Giữ lại nếu cùng ID, cùng Size nhưng khác Màu
         if (itemColor !== (color || null)) return true;
         
         return false;
@@ -244,11 +258,13 @@ export const CartProvider = ({
         addToCart, 
         updateQuantity, 
         removeItem, 
-        totalItems: getTotalItems(), 
-        totalPrice: getTotalPrice(), 
+        toggleSelectItem,
+        toggleAllItems,
         clearCart, 
         getTotalPrice, 
-        getTotalItems,
+        getSelectedTotalPrice,
+        getTotalItems, 
+        getSelectedItemsCount,
         selectedVoucher,
         setSelectedVoucher
       }}
