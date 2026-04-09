@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Package, User, Mail, Check } from 'lucide-react';
+import { Bell, Package, User, Mail, Check, Clock, RefreshCw } from 'lucide-react';
 import { useSocket } from '../../contexts/SocketContext';
 import { API_URL } from '../config/constants';
 import { useRouter } from 'next/navigation';
@@ -95,7 +95,9 @@ export default function NotificationMenu() {
     }
   };
 
-  const getIcon = (type: string) => {
+  const getIcon = (type: string, refModel?: string) => {
+    if (refModel === 'TradeIn') return <RefreshCw size={16} className="text-orange-600" />;
+    
     switch (type) {
       case 'order': return <Package size={16} className="text-blue-600" />;
       case 'user': return <User size={16} className="text-green-600" />;
@@ -121,7 +123,7 @@ export default function NotificationMenu() {
       {isOpen && (
         <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="p-4 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
-            <h3 className="font-black text-sm uppercase tracking-wider text-gray-800">Thông báo</h3>
+            <h3 className="font-black text-sm uppercase tracking-wider text-gray-800">Thông báo mới</h3>
             {unreadCount > 0 && (
               <button onClick={handleMarkAllRead} className="text-[10px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-widest">
                 Đọc tất cả
@@ -129,7 +131,7 @@ export default function NotificationMenu() {
             )}
           </div>
           
-          <div className="max-h-[300px] overflow-y-auto">
+          <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
             {notifications.length === 0 ? (
               <div className="p-8 text-center text-gray-400 text-xs font-bold uppercase tracking-widest">
                 Không có thông báo
@@ -138,22 +140,23 @@ export default function NotificationMenu() {
               notifications.map((noti) => (
                 <div 
                   key={noti._id}
-                  onClick={() => !noti.isRead && handleMarkAsRead(noti._id)}
+                  onClick={() => handleMarkAsRead(noti._id)}
                   className={`p-4 border-b border-gray-50 hover:bg-gray-50 transition cursor-pointer flex gap-3 ${!noti.isRead ? 'bg-blue-50/30' : ''}`}
                 >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${!noti.isRead ? 'bg-white shadow-sm' : 'bg-gray-100'}`}>
-                    {getIcon(noti.type)}
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${!noti.isRead ? 'bg-white shadow-sm border border-blue-100' : 'bg-gray-100'}`}>
+                    {getIcon(noti.type, noti.referenceModel)}
                   </div>
                   <div className="flex-1">
-                    <p className={`text-xs ${!noti.isRead ? 'font-bold text-gray-900' : 'font-medium text-gray-600'}`}>
+                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-tighter mb-0.5">{noti.title}</p>
+                    <p className={`text-[11px] leading-relaxed ${!noti.isRead ? 'font-bold text-gray-900' : 'font-medium text-gray-500'}`}>
                       {noti.message}
                     </p>
-                    <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase tracking-wider">
-                      {new Date(noti.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} • {new Date(noti.createdAt).toLocaleDateString()}
+                    <p className="text-[9px] text-gray-400 font-bold mt-1.5 uppercase tracking-widest flex items-center gap-1">
+                      <Clock size={10} /> {new Date(noti.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} • {new Date(noti.createdAt).toLocaleDateString()}
                     </p>
                   </div>
                   {!noti.isRead && (
-                    <div className="w-2 h-2 bg-blue-600 rounded-full mt-1.5"></div>
+                    <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
                   )}
                 </div>
               ))

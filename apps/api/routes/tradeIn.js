@@ -4,6 +4,7 @@ import { uploadMultiple } from '../middleware/upload.js';
 import { sendTradeInUpdateEmail } from '../services/emailService.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { isAdmin } from '../middleware/isAdmin.js';
+import { createAdminNotification } from '../utils/helpers.js';
 
 const router = express.Router();
 
@@ -12,7 +13,7 @@ router.post('/', uploadMultiple, async (req, res) => {
   try {
     const { 
       name, phone, productName, brand, 
-      condition, note, userId 
+      condition, note, userId, expectedPrice
     } = req.body;
 
     // Validation cơ bản
@@ -43,11 +44,21 @@ router.post('/', uploadMultiple, async (req, res) => {
       brand,
       condition,
       images: imageUrls, 
-      expectedPrice: 0, 
+      expectedPrice: Number(expectedPrice) || 0, 
       status: 'pending'
     });
 
     await newTradeIn.save();
+
+    // ✅ Tạo thông báo cho Admin
+    await createAdminNotification({
+      type: 'contact', 
+      title: 'Yêu cầu Trade-In mới',
+      message: `Khách hàng ${name} muốn đổi giày ${productName}. Giá mong muốn: ${Number(expectedPrice).toLocaleString()}₫`,
+      referenceId: newTradeIn._id,
+      referenceModel: 'TradeIn',
+      userId: userId || null
+    });
 
     res.status(201).json({
       success: true,

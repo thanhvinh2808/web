@@ -50,6 +50,12 @@ export default function ProfileSidebar() {
       href: '/profile/orders'
     },
     {
+      id: 'wishlist',
+      label: 'Sản phẩm yêu thích',
+      icon: <User size={20} />,
+      href: '/profile/wishlist'
+    },
+    {
       id: 'notifications',
       label: 'Thông báo',
       icon: <Bell size={20} />,

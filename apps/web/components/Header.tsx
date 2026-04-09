@@ -28,8 +28,10 @@ export const Header = ({ cartCount = 0 }: HeaderProps) => {
   
   const { cart } = useCart();
   const { user, isLoading, logout } = useAuth();
+  const { wishlist } = useWishlist();
   
   const dynamicCartCount = cart.length;
+  const wishlistCount = wishlist.length;
 
   // ✅ Search Suggestions Logic
   useEffect(() => {
@@ -213,9 +215,14 @@ export const Header = ({ cartCount = 0 }: HeaderProps) => {
              </nav>
 
              <div className="flex items-center gap-2 md:gap-4 md:border-l md:pl-6">
-                <button className="relative group hidden md:block hover:bg-gray-100 p-2 rounded-none transition">
+                <Link href="/profile/wishlist" className="relative group hidden md:block hover:bg-gray-100 p-2 rounded-none transition">
                     <Heart size={24} className="group-hover:text-red-500 transition"/>
-                </button>
+                    {wishlistCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 rounded-none flex items-center justify-center font-bold group-hover:bg-red-600 transition">
+                        {wishlistCount}
+                      </span>
+                    )}
+                </Link>
                 
                 <Link href="/cart" className="relative group hover:bg-gray-100 p-2 rounded-none transition">
                    <ShoppingCart size={24} className="group-hover:text-primary transition"/>

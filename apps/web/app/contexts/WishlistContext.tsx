@@ -26,19 +26,19 @@ const API_URL = CLEAN_API_URL;
 
 export function WishlistProvider({ children }: { children: ReactNode }) {
   const [wishlist, setWishlist] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const { user, isAuthenticated } = useAuth();
+  const [isWishlistLoading, setIsWishlistLoading] = useState(true);
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
   const fetchWishlist = async () => {
-    if (!isAuthenticated) {
+    const token = localStorage.getItem('token');
+    if (!token) {
       setWishlist([]);
-      setIsLoading(false);
+      setIsWishlistLoading(false);
       return;
     }
 
     try {
-      const token = localStorage.getItem('token');
-      // Ensure we hit /api/wishlist correctly
+      setIsWishlistLoading(true);
       const response = await fetch(`${API_URL}/api/wishlist`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -52,13 +52,21 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('❌ Error fetching wishlist:', error);
     } finally {
-      setIsLoading(false);
+      setIsWishlistLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchWishlist();
-  }, [isAuthenticated]);
+    // Đợi AuthContext tải xong (xác minh token/session) rồi mới hành động
+    if (!isAuthLoading) {
+      if (isAuthenticated) {
+        fetchWishlist();
+      } else {
+        setWishlist([]);
+        setIsWishlistLoading(false);
+      }
+    }
+  }, [isAuthenticated, isAuthLoading]);
 
   const toggleWishlist = async (product: Product) => {
     if (!isAuthenticated) {
@@ -80,6 +88,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       if (response.ok) {
         const result = await response.json();
         if (result.action === 'added') {
+          // Khi thêm, ta lấy dữ liệu product từ tham số để update UI ngay lập tức
           setWishlist(prev => [...prev, product]);
         } else {
           setWishlist(prev => prev.filter(p => p._id !== product._id));
@@ -95,7 +104,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <WishlistContext.Provider value={{ wishlist, isLoading, toggleWishlist, isInWishlist }}>
+    <WishlistContext.Provider value={{ wishlist, isLoading: isWishlistLoading, toggleWishlist, isInWishlist }}>
       {children}
     </WishlistContext.Provider>
   );

@@ -97,7 +97,10 @@ function LoginContent() {
           </label>
           <div className="relative border-b-2 border-gray-100 group-focus-within:border-primary transition-all">
             <input
+              id="email"
+              name="email"
               type="email"
+              autoComplete="email"
               value={formData.email}
               onChange={(e) =>
                 setFormData({ ...formData, email: e.target.value })
@@ -131,7 +134,10 @@ function LoginContent() {
           </div>
           <div className="relative border-b-2 border-gray-100 group-focus-within:border-primary transition-all">
             <input
+              id="password"
+              name="password"
               type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
               value={formData.password}
               onChange={(e) =>
                 setFormData({ ...formData, password: e.target.value })

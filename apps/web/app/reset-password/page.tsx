@@ -141,7 +141,10 @@ function ResetPasswordContent() {
               <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Email xác thực</label>
               <div className="relative border-b-2 border-gray-100 transition-all opacity-60">
                  <input
+                   id="email"
+                   name="email"
                    type="email"
+                   autoComplete="email"
                    value={formData.email}
                    readOnly
                    className="w-full py-4 bg-transparent outline-none font-bold text-lg text-gray-400 cursor-not-allowed"
@@ -154,7 +157,10 @@ function ResetPasswordContent() {
               <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 group-focus-within:text-primary transition-colors">Mã xác thực OTP (6 số)</label>
               <div className="relative border-b-2 border-gray-100 group-focus-within:border-primary transition-all">
                  <input
+                   id="otp"
+                   name="otp"
                    type="text"
+                   autoComplete="one-time-code"
                    maxLength={6}
                    value={formData.otp}
                    onChange={(e) => setFormData({...formData, otp: e.target.value})}
@@ -172,7 +178,10 @@ function ResetPasswordContent() {
                 <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 group-focus-within:text-primary transition-colors">Mật khẩu mới</label>
                 <div className="relative border-b-2 border-gray-100 group-focus-within:border-primary transition-all">
                    <input
+                     id="newPassword"
+                     name="newPassword"
                      type="password"
+                     autoComplete="new-password"
                      value={formData.newPassword}
                      onChange={(e) => setFormData({...formData, newPassword: e.target.value})}
                      className="w-full py-4 bg-transparent outline-none font-bold text-lg placeholder:text-gray-200"
@@ -187,7 +196,10 @@ function ResetPasswordContent() {
                 <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 group-focus-within:text-primary transition-colors">Xác nhận mật khẩu</label>
                 <div className="relative border-b-2 border-gray-100 group-focus-within:border-primary transition-all">
                    <input
+                     id="confirmPassword"
+                     name="confirmPassword"
                      type="password"
+                     autoComplete="new-password"
                      value={formData.confirmPassword}
                      onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
                      className="w-full py-4 bg-transparent outline-none font-bold text-lg placeholder:text-gray-200"

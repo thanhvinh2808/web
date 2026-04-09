@@ -272,11 +272,19 @@ export const updateOrderStatus = async (req, res) => {
     const { orderId } = req.params;
     const { status } = req.body;
 
-    const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+    // ✅ FOOTMARK: Admin không được phép hủy đơn hàng của khách
+    if (status === 'cancelled') {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin không được phép hủy đơn hàng. Chỉ khách hàng mới có quyền này.'
+      });
+    }
+
+    const validStatuses = ['pending', 'processing', 'shipped', 'delivered'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
-        message: 'Status khÃ´ng há»£p lá»‡'
+        message: 'Trạng thái đơn hàng không hợp lệ'
       });
     }
 
@@ -431,7 +439,7 @@ export const getRevenueStats = async (req, res) => {
     ]);
     const totalAllTime = totalRevenueResult[0]?.total || 0;
 
-    // 2. Calculate Revenue in Range (Group by Date)
+    // 2. Calculate Revenue in Range (Group by Date with Vietnam Timezone)
     const revenueByDate = await Order.aggregate([
       { 
         $match: { 
@@ -441,7 +449,7 @@ export const getRevenueStats = async (req, res) => {
       },
       {
         $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: "+07:00" } },
           total: { $sum: '$totalAmount' },
           count: { $sum: 1 }
         }
@@ -453,8 +461,16 @@ export const getRevenueStats = async (req, res) => {
     const filledData = [];
     let currentDate = new Date(start);
 
+    // Hàm format YYYY-MM-DD local
+    const toLocalDateStr = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
     while (currentDate <= end) {
-      const dateStr = currentDate.toISOString().split('T')[0];
+      const dateStr = toLocalDateStr(currentDate);
       const existingData = revenueByDate.find(item => item._id === dateStr);
 
       if (existingData) {

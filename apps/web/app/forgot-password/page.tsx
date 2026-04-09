@@ -104,7 +104,10 @@ export default function ForgotPasswordPage() {
               <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 group-focus-within:text-primary transition-colors">Địa chỉ Email xác thực</label>
               <div className="relative border-b-2 border-gray-100 group-focus-within:border-primary transition-all">
                  <input
+                   id="email"
+                   name="email"
                    type="email"
+                   autoComplete="email"
                    value={email}
                    onChange={(e) => setEmail(e.target.value)}
                    className="w-full py-4 bg-transparent outline-none font-bold text-lg placeholder:text-gray-200"

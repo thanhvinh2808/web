@@ -4,7 +4,7 @@ import { Users, ShoppingBag, DollarSign, TrendingUp, Package, ArrowUpRight, Arro
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { API_URL } from '../config/constants';
 
-export default function DashboardTab({ stats, setActiveTab }: { stats: any, setActiveTab: (tab: string) => void }) {
+export default function DashboardTab({ stats, setActiveTab, refreshTrigger = 0 }: { stats: any, setActiveTab: (tab: string) => void, refreshTrigger?: number }) {
   const [revenueStats, setRevenueStats] = useState({
     totalAllTime: 0,
     totalInRange: 0,
@@ -20,7 +20,7 @@ export default function DashboardTab({ stats, setActiveTab }: { stats: any, setA
 
   useEffect(() => {
     fetchRevenue();
-  }, [dateRange]);
+  }, [dateRange, refreshTrigger]);
 
   const fetchRevenue = async () => {
     try {

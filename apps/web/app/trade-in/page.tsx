@@ -16,16 +16,34 @@ export default function TradeInPage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   
+  const [categories, setCategories] = useState<any[]>([]);
+  
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
     productName: '',
-    brand: 'nike',
+    brand: '',
+    brandOther: '',
+    expectedPrice: '',
     condition: 'new-99',
     note: ''
   });
 
-  // Effect to handle redirection if not logged in
+  // Fetch Categories (Brands)
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/categories`);
+        const data = await res.json();
+        if (Array.isArray(data)) setCategories(data);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // ✅ Tự động điền thông tin User
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
         sessionStorage.setItem('redirectAfterLogin', '/trade-in');
@@ -34,7 +52,7 @@ export default function TradeInPage() {
         setFormData(prev => ({
             ...prev,
             name: user.name || '',
-            phone: user.phone || ''
+            phone: user.phone ? String(user.phone) : ''
         }));
     }
   }, [authLoading, isAuthenticated, router, user]);
@@ -71,6 +89,7 @@ export default function TradeInPage() {
     if (!isAuthenticated) return;
     
     if (selectedFiles.length === 0) {
+        alert('Vui lòng tải lên ít nhất 1 hình ảnh sản phẩm');
         return;
     }
 
@@ -81,10 +100,17 @@ export default function TradeInPage() {
       data.append('name', formData.name);
       data.append('phone', formData.phone);
       data.append('productName', formData.productName);
-      data.append('brand', formData.brand);
+      data.append('expectedPrice', formData.expectedPrice);
+      
+      // Thương hiệu được lấy từ Category
+      const finalBrand = formData.brand === 'other' ? formData.brandOther : formData.brand;
+      
+      data.append('brand', finalBrand);
       data.append('condition', formData.condition);
       data.append('note', formData.note);
-      if (user?.id) data.append('userId', user.id);
+      
+      const userId = user?.id || user?._id;
+      if (userId) data.append('userId', userId);
       
       selectedFiles.forEach(file => {
           data.append('images', file);
@@ -101,19 +127,21 @@ export default function TradeInPage() {
       const result = await res.json();
 
       if (result.success) {
-        // Reset form
+        alert('Gửi yêu cầu định giá thành công!');
         setFormData({
             name: user?.name || '',
-            phone: user?.phone || '',
+            phone: user?.phone ? String(user?.phone) : '',
             productName: '',
-            brand: 'nike',
+            brand: '',
+            brandOther: '',
+            expectedPrice: '',
             condition: 'new-99',
             note: ''
         });
         setSelectedFiles([]);
         setPreviewUrls([]);
       } else {
-        // Handle error
+        alert('Lỗi: ' + result.message);
       }
     } catch (error) {
       console.error('Submit error:', error);
@@ -236,30 +264,57 @@ export default function TradeInPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-2">Tên sản phẩm giày</label>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">Thương hiệu</label>
+                     <select 
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black focus:ring-0 transition bg-gray-50 appearance-none"
+                        value={formData.brand}
+                        required
+                        onChange={e => setFormData({...formData, brand: e.target.value})}
+                     >
+                        <option value="">Chọn thương hiệu</option>
+                        {categories && Array.isArray(categories) && categories.map(c => (
+                           <option key={c._id} value={c.name}>{c.name}</option>
+                        ))}
+                        <option value="other">Thương hiệu khác</option>
+                     </select>
+                     {formData.brand === 'other' && (
+                        <input 
+                           type="text"
+                           required
+                           className="w-full mt-3 px-4 py-3 rounded-xl border border-gray-200 focus:border-black focus:ring-0 transition bg-gray-50 animate-in slide-in-from-top-2"
+                           placeholder="Nhập tên thương hiệu của bạn..."
+                           value={formData.brandOther}
+                           onChange={e => setFormData({...formData, brandOther: e.target.value})}
+                        />
+                     )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">Tên sản phẩm giày (Model)</label>
                      <input 
                         type="text" 
                         required
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black focus:ring-0 transition bg-gray-50"
-                        placeholder="Ví dụ: Nike Air Jordan 1 High..."
+                        placeholder="Ví dụ: Air Jordan 1 High 'Chicago'..."
                         value={formData.productName}
                         onChange={e => setFormData({...formData, productName: e.target.value})}
                      />
                   </div>
                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-2">Thương hiệu</label>
-                     <select 
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black focus:ring-0 transition bg-gray-50 appearance-none"
-                        value={formData.brand}
-                        onChange={e => setFormData({...formData, brand: e.target.value})}
-                     >
-                        <option value="nike">Nike</option>
-                        <option value="adidas">Adidas</option>
-                        <option value="jordan">Jordan</option>
-                        <option value="newbalance">New Balance</option>
-                        <option value="converse">Converse</option>
-                        <option value="other">Khác</option>
-                     </select>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">Giá bạn muốn bán (VND)</label>
+                     <input 
+                        type="text" 
+                        required
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-black focus:ring-0 transition bg-gray-50 font-bold text-blue-600"
+                        placeholder="Ví dụ: 2.000.000"
+                        value={formData.expectedPrice ? new Intl.NumberFormat('vi-VN').format(Number(formData.expectedPrice.replace(/\D/g, ''))) : ''}
+                        onChange={e => {
+                           const val = e.target.value.replace(/\D/g, '');
+                           setFormData({...formData, expectedPrice: val});
+                        }}
+                     />
                   </div>
                 </div>
 

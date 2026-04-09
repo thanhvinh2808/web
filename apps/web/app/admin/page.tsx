@@ -21,7 +21,8 @@ export default function AdminDashboard() {
   const { socket, isConnected } = useSocket();
   const [token, setToken] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [stats, setStats] = useState(null);
+  const [stats, setStats] = useState<any>(null);
+  const [dashboardRefresh, setDashboardRefresh] = useState(0); 
   const [users, setUsers] = useState([]);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
@@ -45,18 +46,20 @@ export default function AdminDashboard() {
       
       // Refresh data
       fetchStats(token);
+      setDashboardRefresh(prev => prev + 1);
       if (activeTab === 'orders') fetchOrders();
-      if (activeTab === 'dashboard') fetchStats(token);
     };
 
     const handleStatusUpdate = (data: any) => {
       console.log('📝 Order status updated via socket:', data);
+      fetchStats(token);
+      setDashboardRefresh(prev => prev + 1);
       if (activeTab === 'orders') fetchOrders();
     };
 
     socket.on('newOrder', handleNewOrder);
     socket.on('orderStatusUpdated', handleStatusUpdate);
-    socket.on('orderCancelled', handleNewOrder); // Dùng chung logic thông báo
+    socket.on('orderCancelled', handleNewOrder);
 
     return () => {
       socket.off('newOrder', handleNewOrder);
@@ -190,23 +193,27 @@ export default function AdminDashboard() {
   const fetchUsers = async () => { 
       const res = await fetch(`${API_URL}/api/admin/users`, { headers: { 'Authorization': `Bearer ${token}` } });
       const data = await res.json();
-      if(data.success) setUsers(data.data);
+      if(data.success) {
+        setUsers(data.data);
+        setDashboardRefresh(prev => prev + 1);
+      }
   };
   const fetchOrders = async () => { 
       const res = await fetch(`${API_URL}/api/admin/orders?limit=100`, { headers: { 'Authorization': `Bearer ${token}` } });
       const data = await res.json();
-      if(data.success) setOrders(data.data);
+      if(data.success) {
+        setOrders(data.data);
+        setDashboardRefresh(prev => prev + 1);
+      }
   };
   const fetchProducts = async () => { 
-      // Thêm limit=all và sort=newest để lấy toàn bộ dữ liệu đã được sắp xếp từ Server
       const res = await fetch(`${API_URL}/api/admin/products?limit=all&sort=newest&t=${Date.now()}`, { 
           headers: { 'Authorization': `Bearer ${token}` } 
       });
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
         setProducts(data.data);
-      } else if (Array.isArray(data)) {
-        setProducts(data);
+        setDashboardRefresh(prev => prev + 1);
       }
   };
   const fetchCategories = async () => { 
@@ -444,7 +451,7 @@ export default function AdminDashboard() {
           )}
 
           <div className="animate-fade-in-up">
-            {activeTab === 'dashboard' && stats && <DashboardTab stats={stats} setActiveTab={setActiveTab} />}
+            {activeTab === 'dashboard' && stats && <DashboardTab stats={stats} setActiveTab={setActiveTab} refreshTrigger={dashboardRefresh} />}
             {activeTab === 'users' && <UsersTab users={users} token={token} onRefresh={fetchUsers} showMessage={showMessage} />}
             {activeTab === 'orders' && <OrdersTab orders={orders} token={token} onRefresh={fetchOrders} showMessage={showMessage} />}
             {activeTab === 'products' && <ProductsTab products={products} categories={categories} token={token} onRefresh={fetchProducts} showMessage={showMessage} />}

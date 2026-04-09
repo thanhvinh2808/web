@@ -2,8 +2,9 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { ShoppingCart, Check, TrendingUp } from 'lucide-react';
+import { ShoppingCart, Check, TrendingUp, Heart } from 'lucide-react';
 import { useCart } from '../app/contexts/CartContext';
+import { useWishlist } from '../app/contexts/WishlistContext';
 import { useRouter } from 'next/navigation';
 import { getImageUrl } from '../lib/imageHelper';
 import { Product } from '../lib/shared/types';
@@ -16,6 +17,7 @@ interface ProductCardProps {
 export default function ProductCard({ product, showSoldCount = false }: ProductCardProps) {
   const router = useRouter();
   const { addToCart } = useCart();
+  const { isInWishlist, toggleWishlist } = useWishlist();
 
   // State quản lý UI và lựa chọn
   const [showOptions, setShowOptions] = useState(false);
@@ -25,6 +27,13 @@ export default function ProductCard({ product, showSoldCount = false }: ProductC
 
   const productId = product._id || product.id || '';
   const productSlug = product.slug || productId;
+  const isFavorite = isInWishlist(productId);
+
+  const handleToggleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleWishlist(product as any);
+  };
 
   // Tách các loại biến thể
   const sizeVariant = useMemo(() => 
@@ -181,6 +190,17 @@ export default function ProductCard({ product, showSoldCount = false }: ProductC
             </span>
           ))}
         </div>
+
+        {/* WISHLIST BUTTON */}
+        <button 
+          onClick={handleToggleWishlist}
+          className="absolute top-3 right-3 z-30 p-2 bg-white/80 backdrop-blur-md rounded-none shadow-sm hover:bg-white transition-all group/heart"
+        >
+          <Heart 
+            size={18} 
+            className={`transition-all duration-300 ${isFavorite ? 'fill-red-500 text-red-500 scale-110' : 'text-gray-400 group-hover/heart:text-red-400'}`} 
+          />
+        </button>
 
         {!showOptions && !isOutOfStock && (
            <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 flex gap-2 z-10">

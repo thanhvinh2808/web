@@ -1,6 +1,6 @@
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
-import { createNotification } from './adminController.js';
+import { createAdminNotification } from '../utils/helpers.js';
 import { sendNewOrderEmail } from '../services/emailService.js';
 import mongoose from 'mongoose';
 import { ProductCode, VnpLocale } from 'vnpay';
@@ -151,9 +151,15 @@ export const createOrder = async (req, res) => {
 
       // 5. XỬ LÝ SAU KHI ĐẶT HÀNG (Ngoài Transaction)
       if (savedOrder.paymentMethod === 'cod') {
-        if (typeof createNotification === 'function') {
-          createNotification('order', `Đơn hàng mới #${savedOrder._id.toString().slice(-6).toUpperCase()}`, savedOrder._id, 'Order').catch(() => {});
-        }
+        createAdminNotification({
+          type: 'order',
+          title: 'Đơn hàng mới (COD)',
+          message: `Đơn hàng #${savedOrder._id.toString().slice(-6).toUpperCase()} - ${savedOrder.totalAmount.toLocaleString('vi-VN')}₫`,
+          referenceId: savedOrder._id,
+          referenceModel: 'Order',
+          userId: savedOrder.userId
+        }).catch(() => {});
+
         sendNewOrderEmail(savedOrder).catch(() => {});
         if (global.io) global.io.to('admin').emit('newOrder', savedOrder);
       }
@@ -204,6 +210,15 @@ export const createOrder = async (req, res) => {
 export const updateOrderStatus = async (req, res) => {
   try {
     const { status, paymentStatus } = req.body;
+
+    // ✅ FOOTMARK: Admin không được phép hủy đơn hàng của khách
+    if (status === 'cancelled' && req.user?.role === 'admin') {
+       return res.status(403).json({ 
+          success: false, 
+          message: 'Admin không được phép hủy đơn hàng của khách.' 
+       });
+    }
+
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
 
@@ -460,14 +475,14 @@ export const markOrderAsPaid = async (req, res) => {
 
     // ✅ CHỈ GỬI THÔNG BÁO CHO ADMIN & EMAIL CHO KHÁCH SAU KHI ĐÃ THANH TOÁN XONG (Đối với Banking/VNPay)
     if (order.paymentMethod !== 'cod') {
-        if (typeof createNotification === 'function') {
-            createNotification(
-              'order',
-              `Đơn hàng mới đã thanh toán #${order._id.toString().slice(-6).toUpperCase()} - ${order.totalAmount.toLocaleString('vi-VN')}đ`,
-              order._id,
-              'Order'
-            ).catch(err => console.error('Lỗi thông báo:', err));
-        }
+        createAdminNotification({
+          type: 'order',
+          title: 'Đơn hàng mới đã thanh toán',
+          message: `Đơn hàng #${order._id.toString().slice(-6).toUpperCase()} đã thanh toán thành công - ${order.totalAmount.toLocaleString('vi-VN')}₫`,
+          referenceId: order._id,
+          referenceModel: 'Order',
+          userId: order.userId
+        }).catch(() => {});
     
         sendNewOrderEmail(order).catch(err => console.error('Lỗi gửi email:', err));
         

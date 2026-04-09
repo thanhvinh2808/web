@@ -5,65 +5,81 @@ import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
-
 // ✅ GET: Wishlist of current user
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    let wishlist = await Wishlist.findOne({ userId: req.user.id })
+    const wishlist = await Wishlist.findOne({ userId: req.user.id })
       .populate({
         path: 'products.productId',
-        model: 'Product'
-      });
+        select: 'name price originalPrice brand slug image images variants tags stock soldCount status'
+      })
+      .lean();
 
     if (!wishlist) {
-      wishlist = await Wishlist.create({ userId: req.user.id, products: [] });
+      return res.json({ success: true, data: [] });
     }
 
-    // Filter out null products (if a product was deleted)
-    const validProducts = wishlist.products.filter(p => p.productId !== null);
+    // Lọc bỏ sản phẩm null và chuẩn hóa dữ liệu
+    const validProducts = wishlist.products
+      .filter(p => p.productId)
+      .map(p => {
+        const prod = p.productId;
+        if (!prod.image && prod.images?.length > 0) {
+          prod.image = prod.images.find(img => img.isPrimary)?.url || prod.images[0].url;
+        }
+        return prod;
+      });
     
     res.json({
       success: true,
-      data: validProducts.map(p => p.productId)
+      data: validProducts
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Wishlist GET Error:', error);
+    res.status(500).json({ success: false, message: 'Không thể tải danh sách yêu thích' });
   }
 });
 
-// ✅ POST: Add/Toggle product in wishlist
+// ✅ POST: Toggle product in wishlist (Atomic & Validated)
 router.post('/toggle', authenticateToken, async (req, res) => {
   try {
     const { productId } = req.body;
-    if (!productId) return res.status(400).json({ success: false, message: 'ProductId required' });
+    if (!productId) return res.status(400).json({ success: false, message: 'ProductId là bắt buộc' });
 
-    let wishlist = await Wishlist.findOne({ userId: req.user.id });
-    if (!wishlist) {
-      wishlist = await Wishlist.create({ userId: req.user.id, products: [] });
+    // 1. Kiểm tra tồn tại
+    const productExists = await Product.exists({ _id: productId });
+    if (!productExists) {
+      return res.status(404).json({ success: false, message: 'Sản phẩm không tồn tại' });
     }
 
-    const index = wishlist.products.findIndex(p => p.productId.toString() === productId);
+    // 2. Atomic Toggle Logic
+    const pullResult = await Wishlist.updateOne(
+      { userId: req.user.id, "products.productId": productId },
+      { $pull: { products: { productId } } }
+    );
 
-    let action = '';
-    if (index === -1) {
-      // Add
-      wishlist.products.push({ productId });
-      action = 'added';
-    } else {
-      // Remove
-      wishlist.products.splice(index, 1);
-      action = 'removed';
+    if (pullResult.modifiedCount > 0) {
+      return res.json({
+        success: true,
+        action: 'removed',
+        message: 'Đã xóa khỏi yêu thích'
+      });
     }
 
-    await wishlist.save();
-    
+    await Wishlist.updateOne(
+      { userId: req.user.id },
+      { $addToSet: { products: { productId } } },
+      { upsert: true }
+    );
+
     res.json({
       success: true,
-      action,
-      message: action === 'added' ? 'Đã thêm vào yêu thích' : 'Đã xóa khỏi yêu thích'
+      action: 'added',
+      message: 'Đã thêm vào yêu thích'
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Wishlist Toggle Error:', error);
+    res.status(500).json({ success: false, message: 'Lỗi server khi cập nhật yêu thích' });
   }
 });
 
@@ -71,16 +87,15 @@ router.post('/toggle', authenticateToken, async (req, res) => {
 router.delete('/:productId', authenticateToken, async (req, res) => {
   try {
     const { productId } = req.params;
-    const wishlist = await Wishlist.findOne({ userId: req.user.id });
     
-    if (wishlist) {
-      wishlist.products = wishlist.products.filter(p => p.productId.toString() !== productId);
-      await wishlist.save();
-    }
+    await Wishlist.updateOne(
+      { userId: req.user.id },
+      { $pull: { products: { productId } } }
+    );
 
     res.json({ success: true, message: 'Đã xóa khỏi yêu thích' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi server khi xóa sản phẩm' });
   }
 });
 

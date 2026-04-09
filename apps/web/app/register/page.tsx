@@ -86,7 +86,10 @@ export default function RegisterPage() {
           <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 group-focus-within:text-primary transition-colors">Họ và Tên</label>
           <div className="relative border-b-2 border-gray-100 group-focus-within:border-primary transition-all">
              <input
+               id="name"
+               name="name"
                type="text"
+               autoComplete="name"
                value={formData.name}
                onChange={(e) => setFormData({...formData, name: e.target.value})}
                className="w-full py-4 bg-transparent outline-none font-bold text-lg placeholder:text-gray-200"
@@ -103,7 +106,10 @@ export default function RegisterPage() {
           <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 group-focus-within:text-primary transition-colors">Địa chỉ Email</label>
           <div className="relative border-b-2 border-gray-100 group-focus-within:border-primary transition-all">
              <input
+               id="email"
+               name="email"
                type="email"
+               autoComplete="email"
                value={formData.email}
                onChange={(e) => setFormData({...formData, email: e.target.value})}
                className="w-full py-4 bg-transparent outline-none font-bold text-lg placeholder:text-gray-200"
@@ -120,7 +126,10 @@ export default function RegisterPage() {
             <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 group-focus-within:text-primary transition-colors">Mật khẩu</label>
             <div className="relative border-b-2 border-gray-100 group-focus-within:border-primary transition-all">
                <input
+                 id="password"
+                 name="password"
                  type={showPassword ? "text" : "password"}
+                 autoComplete="new-password"
                  value={formData.password}
                  onChange={(e) => setFormData({...formData, password: e.target.value})}
                  className="w-full py-4 bg-transparent outline-none font-bold text-lg placeholder:text-gray-200 pr-8"
@@ -142,7 +151,10 @@ export default function RegisterPage() {
             <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 group-focus-within:text-primary transition-colors">Xác nhận</label>
             <div className="relative border-b-2 border-gray-100 group-focus-within:border-primary transition-all">
                <input
+                 id="confirmPassword"
+                 name="confirmPassword"
                  type={showConfirmPassword ? "text" : "password"}
+                 autoComplete="new-password"
                  value={formData.confirmPassword}
                  onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
                  className="w-full py-4 bg-transparent outline-none font-bold text-lg placeholder:text-gray-200 pr-8"

@@ -485,21 +485,18 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
                             {order.status === 'pending' && (
                               <>
                                 <option value="processing">Xử Lý</option>
-                                <option value="cancelled">Hủy</option>
                               </>
                             )}
 
                             {order.status === 'processing' && (
                               <>
                                 <option value="shipped">Đang Giao</option>
-                                <option value="cancelled">Hủy</option>
                               </>
                             )}
 
                             {order.status === 'shipped' && (
                               <>
                                 <option value="delivered">Hoàn Thành</option>
-                                <option value="cancelled">Hủy</option>
                               </>
                             )}
                           </select>
