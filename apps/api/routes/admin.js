@@ -17,12 +17,29 @@ import {
   markNotificationRead,
   markAllNotificationsRead
 } from '../controller/adminController.js';
+
+import {
+  approveCancelOrder,
+  rejectCancelOrder
+} from '../controller/orderController.js';
 import {
   getAllVouchers,
   createVoucher,
   updateVoucher,
   deleteVoucher
 } from '../controller/voucherController.js';
+
+import {
+  createCategory,
+  updateCategory,
+  deleteCategory
+} from '../controller/categoryController.js';
+
+import {
+  createProduct,
+  updateProduct,
+  deleteProduct
+} from '../controller/productController.js';
 import bcrypt from 'bcrypt';
 import User from '../models/User.js';
 
@@ -54,12 +71,24 @@ router.put('/users/:userId/password', resetUserPassword);
 router.get('/orders', getAllOrders);
 router.get('/orders/:orderId', getOrderById);
 router.put('/orders/:orderId/status', updateOrderStatus);
+router.put('/orders/:id/approve-cancel', approveCancelOrder);
+router.put('/orders/:id/reject-cancel', rejectCancelOrder);
 
 // ðŸŽ« Voucher Management
 router.get('/vouchers', getAllVouchers);
 router.post('/vouchers', createVoucher);
 router.put('/vouchers/:id', updateVoucher);
 router.delete('/vouchers/:id', deleteVoucher);
+
+// ðŸ“‚ Category Management
+router.post('/categories', createCategory);
+router.put('/categories/:slug', updateCategory);
+router.delete('/categories/:slug', deleteCategory);
+
+// ðŸ’Ÿ Product Management
+router.post('/products', createProduct);
+router.put('/products/:id', updateProduct);
+router.delete('/products/:id', deleteProduct);
 
 // ðŸ”” Notifications
 router.get('/notifications', getNotifications);

@@ -184,7 +184,7 @@ export default function ProductsTab({
   const deleteProduct = async (productSlug: string) => {
     if (!window.confirm('⚠️ Xác nhận xóa sản phẩm này?')) return;
     try {
-      const res = await fetch(`${API_URL}/admin/products/${productSlug}`, {
+      const res = await fetch(`${API_URL}/api/admin/products/${productSlug}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

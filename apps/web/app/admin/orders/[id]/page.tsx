@@ -53,11 +53,13 @@ interface Order {
 }
 
 const statusLabels: { [key: string]: string } = {
-  pending: 'Chờ Duyệt',
-  processing: 'Đang Xử Lý',
-  shipped: 'Đang Giao Hàng',
-  delivered: 'Hoàn Thành',
-  cancelled: 'Hủy'
+  pending: 'Chờ xác nhận',
+  processing: 'Đang xử lý',
+  shipped: 'Đang giao hàng',
+  delivered: 'Hoàn thành',
+  cancelled: 'Đã hủy',
+  cancellation_requested: 'Chờ duyệt hủy',
+  refunded: 'Đã hoàn tiền'
 };
 
 export default function OrderDetailPage() {
@@ -258,10 +260,10 @@ export default function OrderDetailPage() {
         <div className="text-center">
           <p className="text-2xl text-gray-800 mb-4">❌ {error}</p>
           <button 
-            onClick={() => router.push('/admin')} 
-            className="text-teal-600 hover:text-teal-700 font-medium"
+            onClick={() => router.back()} 
+            className="text-teal-600 hover:text-teal-700 font-medium flex items-center gap-2 mx-auto"
           >
-            ← Quay lại danh sách
+            <ChevronLeft size={20} /> Quay lại trang trước
           </button>
         </div>
       </div>
@@ -274,10 +276,10 @@ export default function OrderDetailPage() {
         <div className="text-center">
           <p className="text-2xl text-gray-800 mb-4">❌ Không tìm thấy đơn hàng</p>
           <button 
-            onClick={() => router.push('/admin')} 
-            className="text-teal-600 hover:text-teal-700 font-medium"
+            onClick={() => router.back()} 
+            className="text-teal-600 hover:text-teal-700 font-medium flex items-center gap-2 mx-auto"
           >
-            ← Quay lại danh sách
+            <ChevronLeft size={20} /> Quay lại trang trước
           </button>
         </div>
       </div>
@@ -292,7 +294,7 @@ export default function OrderDetailPage() {
         <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <button
-              onClick={() => router.push('/admin')}
+              onClick={() => router.back()}
               className="text-gray-500 hover:text-black mb-3 flex items-center gap-1 text-sm font-medium transition-colors"
             >
               <ChevronLeft size={16} /> Quay lại danh sách

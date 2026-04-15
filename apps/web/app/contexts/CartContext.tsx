@@ -55,6 +55,7 @@ interface CartContextType {
   getSelectedTotalPrice: () => number; // Tổng tiền các món được chọn
   getTotalItems: () => number;
   getSelectedItemsCount: () => number;
+  removeSelectedItems: () => void;
   selectedVoucher: Voucher | null;
   setSelectedVoucher: (voucher: Voucher | null) => void;
 }
@@ -165,6 +166,11 @@ export const CartProvider = ({
     return cart.filter(item => item.selected).reduce((total, item) => total + item.quantity, 0);
   };
 
+  const removeSelectedItems = () => {
+    setCart(prevCart => prevCart.filter(item => !item.selected));
+    setSelectedVoucher(null);
+  };
+
   // ✅ Toggle chọn 1 sản phẩm
   const toggleSelectItem = (productId: string, variantKey?: string | null, color?: string | null) => {
     setCart(prevCart => prevCart.map(item => {
@@ -265,6 +271,7 @@ export const CartProvider = ({
         getSelectedTotalPrice,
         getTotalItems, 
         getSelectedItemsCount,
+        removeSelectedItems,
         selectedVoucher,
         setSelectedVoucher
       }}

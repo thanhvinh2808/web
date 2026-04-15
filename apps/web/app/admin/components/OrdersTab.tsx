@@ -47,11 +47,13 @@ interface OrdersTabProps {
 }
 
 const statusLabels: { [key: string]: string } = {
-  pending: 'Chờ Duyệt',
-  processing: 'Đang Xử Lý',
-  shipped: 'Đang Giao Hàng',
-  delivered: 'Hoàn Thành',
-  cancelled: 'Hủy'
+  pending: 'Chờ xác nhận',
+  processing: 'Đang xử lý',
+  shipped: 'Đang giao hàng',
+  delivered: 'Hoàn thành',
+  cancelled: 'Đã hủy',
+  cancellation_requested: 'Chờ duyệt hủy',
+  refunded: 'Đã hoàn tiền'
 };
 
 const statusColors: { [key: string]: string } = {
@@ -59,7 +61,9 @@ const statusColors: { [key: string]: string } = {
   processing: 'bg-blue-100 text-blue-800',
   shipped: 'bg-purple-100 text-purple-800',
   delivered: 'bg-green-100 text-green-800',
-  cancelled: 'bg-red-100 text-red-800'
+  cancelled: 'bg-red-100 text-red-800',
+  cancellation_requested: 'bg-orange-100 text-orange-800',
+  refunded: 'bg-teal-100 text-teal-800'
 };
 
 export default function OrdersTab({ orders, token, onRefresh, showMessage }: OrdersTabProps) {
@@ -160,6 +164,50 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
     } catch (error) {
       console.error('Error updating status:', error);
       showMessage('❌ Có lỗi xảy ra khi cập nhật trạng thái');
+    }
+  };
+
+  const handleApproveCancel = async (orderId: string) => {
+    if (!window.confirm('Bạn có chắc chắn muốn DUYỆT yêu cầu hủy đơn hàng này? Hệ thống sẽ tự động hoàn kho.')) return;
+    try {
+      const res = await fetch(`${API_URL}/api/admin/orders/${orderId}/approve-cancel`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        showMessage('✅ Đã duyệt hủy và hoàn kho đơn hàng!');
+        onRefresh();
+      } else {
+        showMessage('❌ ' + (data.message || 'Thao tác thất bại'));
+      }
+    } catch (error) {
+      showMessage('❌ Có lỗi xảy ra');
+    }
+  };
+
+  const handleRejectCancel = async (orderId: string) => {
+    if (!window.confirm('Từ chối yêu cầu hủy và tiếp tục xử lý đơn hàng này?')) return;
+    try {
+      const res = await fetch(`${API_URL}/api/admin/orders/${orderId}/reject-cancel`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        showMessage('✅ Đã từ chối yêu cầu hủy!');
+        onRefresh();
+      } else {
+        showMessage('❌ ' + (data.message || 'Thao tác thất bại'));
+      }
+    } catch (error) {
+      showMessage('❌ Có lỗi xảy ra');
     }
   };
 
@@ -291,9 +339,9 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
             className="px-4 py-3 bg-gray-50 border-none rounded-xl font-bold text-xs uppercase tracking-wider focus:ring-2 focus:ring-black outline-none cursor-pointer hover:bg-gray-100 transition"
           >
             <option value="all"> Tất cả trạng thái</option>
-            <option value="pending"> Chờ duyệt</option>
+            <option value="pending"> Chờ xác nhận</option>
             <option value="processing"> Đang xử lý</option>
-            <option value="shipped"> Đang giao</option>
+            <option value="shipped"> Đang giao hàng</option>
             <option value="delivered"> Hoàn thành</option>
             <option value="cancelled"> Đã hủy</option>
           </select>
@@ -331,196 +379,156 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
       {/* Orders Table */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full border-collapse">
             <thead className="bg-gray-50/50 border-b border-gray-100">
               <tr>
-                <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">ID Đơn hàng</th>
-                <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Sản phẩm</th>
+                <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Đơn hàng</th>
                 <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Khách hàng</th>
-                <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Thanh toán</th>
-                <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Trạng thái</th>
-                <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Thời gian</th>
-                <th className="px-6 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Thao tác</th>
+                <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Sản phẩm</th>
+                <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Giá trị</th>
+                <th className="px-6 py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">Trạng thái xử lý</th>
+                <th className="px-6 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Hành động</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-100">
               {currentOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                    Không tìm thấy đơn hàng nào
+                  <td colSpan={6} className="px-6 py-20 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <Package size={40} className="text-gray-200" />
+                      <p className="text-gray-400 font-bold text-sm uppercase tracking-widest">Không tìm thấy đơn hàng nào</p>
+                    </div>
                   </td>
                 </tr>
               ) : (
-                  currentOrders.map((order, OrderItem) => {
-                   
+                  currentOrders.map((order) => {
                   const orderDetails = calculateOrderDetails(order);
                   return (
-                    <tr key={order._id} className="hover:bg-gray-50/80 transition-all border-b border-gray-100 last:border-0">
-                      <td className="px-6 py-5 whitespace-nowrap">
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">ID Đơn hàng</span>
-                          <span className="text-sm font-black font-mono text-black bg-gray-100 px-2 py-1 rounded">
+                    <tr key={order._id} className="hover:bg-gray-50/80 transition-all group">
+                      {/* Cột 1: Đơn hàng & Thời gian */}
+                      <td className="px-6 py-5">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-sm font-black font-mono text-black leading-none">
                             #{order._id.slice(-8).toUpperCase()}
                           </span>
+                          <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                            <Clock size={10} />
+                            <span>{formatDate(order.createdAt)}</span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Cột 2: Khách hàng */}
+                      <td className="px-6 py-5">
+                        <div className="flex flex-col gap-1 max-w-[180px]">
+                          <span className="text-sm font-bold text-gray-900 line-clamp-1 italic uppercase tracking-tight">
+                            {order.userId?.name || order.customerInfo?.fullName || 'Khách vãng lai'}
+                          </span>
+                          <div className="flex flex-col text-[10px] text-gray-500 font-medium">
+                            <span className="truncate">{order.userId?.email || order.customerInfo?.email || 'N/A'}</span>
+                            <span className="flex items-center gap-1">
+                              <Phone size={10} /> {order.customerInfo?.phone || 'N/A'}
+                            </span>
+                          </div>
                         </div>
                       </td>
                       
+                      {/* Cột 3: Sản phẩm */}
                       <td className="px-6 py-5">
-                        <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-3">
                           <div className="flex -space-x-3 overflow-hidden">
                             {order.items.slice(0, 3).map((item, index) => (
-                              <div key={index} className="relative inline-block w-10 h-10 rounded-lg border-2 border-white bg-gray-100 overflow-hidden shadow-sm">
+                              <div key={index} className="relative inline-block w-9 h-9 rounded-lg border-2 border-white bg-gray-50 overflow-hidden shadow-sm">
                                 <img 
-                                  src={item.productImage || '/placeholder.png'} 
+                                  src={getImageUrl(item.productImage)} 
                                   alt={item.productName}
                                   className="w-full h-full object-cover"
                                 />
                               </div>
                             ))}
                             {order.items.length > 3 && (
-                              <div className="flex items-center justify-center w-10 h-10 rounded-lg border-2 border-white bg-black text-white text-[10px] font-black shadow-sm">
+                              <div className="flex items-center justify-center w-9 h-9 rounded-lg border-2 border-white bg-black text-white text-[9px] font-black shadow-sm">
                                 +{order.items.length - 3}
                               </div>
                             )}
                           </div>
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-gray-600">
-                            <Package size={14} className="text-gray-400" />
-                            <span>{order.items.length} sản phẩm</span>
-                          </div>
+                          <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest">{order.items.length} món</span>
                         </div>
                       </td>
 
+                      {/* Cột 4: Giá trị & TT Thanh toán */}
                       <td className="px-6 py-5">
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                              <User size={12} />
-                            </div>
-                            <span className="text-sm font-bold text-gray-900 line-clamp-1">
-                              {order.userId?.name || order.customerInfo?.fullName || 'Khách vãng lai'}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-[11px] text-gray-500">
-                            <Mail size={12} className="text-gray-400" />
-                            <span className="line-clamp-1">{order.userId?.email || order.customerInfo?.email || 'N/A'}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-[11px] text-gray-500">
-                            <Phone size={12} className="text-gray-400" />
-                            <span>{order.customerInfo?.phone || 'N/A'}</span>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="px-6 py-5">
-                        <div className="flex flex-col min-w-[140px]">
-                          {/* Tổng tiền chính */}
-                          <span className="text-xl font-black text-black leading-none mb-2">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-base font-black text-black leading-none italic tracking-tight">
                             {formatPrice(orderDetails.finalTotal)}
                           </span>
-                          
-                          {/* Bảng kê chi tiết nhỏ */}
-                          <div className="space-y-1 pb-2 mb-2 border-b border-dashed border-gray-100">
-                            <div className="flex justify-between text-[10px] font-bold uppercase tracking-tighter">
-                              <span className="text-gray-400">Tạm tính:</span>
-                              <span className="text-gray-600">{formatPrice(orderDetails.subtotal)}</span>
-                            </div>
-                            <div className="flex justify-between text-[10px] font-bold uppercase tracking-tighter">
-                              <span className="text-gray-400">VAT(1%):</span>
-                              <span className="text-gray-600">+{formatPrice(orderDetails.vatAmount)}</span>
-                            </div>
-                            
-                            {orderDetails.shippingFee > 0 && (
-                              <div className="flex justify-between text-[10px] font-bold uppercase tracking-tighter">
-                                <span className="text-gray-400">Phí Ship:</span>
-                                <span className="text-gray-800">+{formatPrice(orderDetails.shippingFee)}</span>
-                              </div>
-                            )}
-                            
-                            {orderDetails.discountAmount > 0 && (
-                              <div className="flex justify-between text-[10px] font-bold uppercase tracking-tighter">
-                                <span className="text-green-500">Giảm giá:</span>
-                                <span className="text-green-600">-{formatPrice(orderDetails.discountAmount)}</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Trạng thái thanh toán */}
                           <div className="flex items-center gap-1.5">
                             {order.paymentStatus === 'paid' || order.status === 'delivered' ? (
-                              <span className="flex items-center gap-1 text-[10px] font-black uppercase text-green-600 bg-green-50 px-2 py-1 rounded-md">
-                                <CreditCard size={10} /> Đã thanh toán
-                              </span>
+                              <span className="text-[9px] font-black uppercase text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100">Đã TT</span>
                             ) : (
-                              <span className="flex items-center gap-1 text-[10px] font-black uppercase text-orange-600 bg-orange-50 px-2 py-1 rounded-md">
-                                <Clock size={10} /> Chờ thanh toán
-                              </span>
+                              <span className="text-[9px] font-black uppercase text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-100 tracking-tighter">Chờ TT</span>
                             )}
+                            <span className="text-[9px] font-bold text-gray-400 uppercase">{order.paymentMethod === 'cod' ? 'COD' : 'Online'}</span>
                           </div>
                         </div>
                       </td>
 
-                      <td className="px-6 py-5">
-                        <div className="relative inline-block">
-                          <select
-                            value={order.status}
-                            onChange={(e) => handleUpdateStatus(order._id, e.target.value)}
-                            disabled={order.status === 'delivered' || order.status === 'cancelled'}
-                            className={`appearance-none pl-3 pr-8 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all border-none outline-none ring-1 ring-inset ${
-                              statusColors[order.status]
-                            } ${
-                              order.status === 'delivered' || order.status === 'cancelled'
-                                ? 'opacity-60 cursor-not-allowed shadow-none'
-                                : 'cursor-pointer hover:brightness-95 ring-black/5 shadow-sm active:scale-95'
-                            }`}
-                          >
-                            {/* Trạng thái hiện tại luôn hiển thị */}
-                            <option value={order.status} disabled>
-                              {order.status === 'pending' ? 'Chờ Duyệt' : 
-                               order.status === 'processing' ? 'Xử Lý' : 
-                               order.status === 'shipped' ? 'Đang Giao' : 
-                               order.status === 'delivered' ? 'Hoàn Thành' : 'Hủy'}
-                            </option>
-
-                            {/* Các lựa chọn hợp lệ dựa trên trạng thái hiện tại */}
-                            {order.status === 'pending' && (
-                              <>
-                                <option value="processing">Xử Lý</option>
-                              </>
-                            )}
-
-                            {order.status === 'processing' && (
-                              <>
-                                <option value="shipped">Đang Giao</option>
-                              </>
-                            )}
-
-                            {order.status === 'shipped' && (
-                              <>
-                                <option value="delivered">Hoàn Thành</option>
-                              </>
-                            )}
-                          </select>
-                          {order.status !== 'delivered' && order.status !== 'cancelled' && (
-                            <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
-                              </svg>
+                      {/* Cột 5: Trạng thái xử lý (TRỌNG TÂM) */}
+                      <td className="px-6 py-5 text-center">
+                        <div className="flex flex-col items-center gap-2">
+                          {order.status === 'cancellation_requested' ? (
+                            <div className="flex items-center gap-1 bg-orange-50 p-1 rounded-xl border border-orange-100 shadow-sm">
+                              <button
+                                onClick={() => handleApproveCancel(order._id)}
+                                title="Duyệt Hủy"
+                                className="px-3 py-1.5 bg-green-600 text-white text-[10px] font-black uppercase rounded-lg hover:bg-green-700 hover:scale-105 active:scale-95 transition shadow-sm"
+                              >
+                                Duyệt Hủy
+                              </button>
+                              <button
+                                onClick={() => handleRejectCancel(order._id)}
+                                title="Từ Chối"
+                                className="px-3 py-1.5 bg-red-600 text-white text-[10px] font-black uppercase rounded-lg hover:bg-red-700 hover:scale-105 active:scale-95 transition shadow-sm"
+                              >
+                                Từ Chối
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="relative inline-block w-full max-w-[140px]">
+                              <select
+                                value={order.status}
+                                onChange={(e) => handleUpdateStatus(order._id, e.target.value)}
+                                disabled={['delivered', 'cancelled', 'refunded'].includes(order.status)}
+                                className={`w-full appearance-none pl-3 pr-8 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border-none outline-none ring-1 ring-inset ${
+                                  statusColors[order.status]
+                                } ${
+                                  ['delivered', 'cancelled', 'refunded'].includes(order.status)
+                                    ? 'opacity-60 cursor-not-allowed shadow-none'
+                                    : 'cursor-pointer hover:brightness-95 ring-black/5 shadow-sm active:scale-95'
+                                }`}
+                              >
+                                <option value={order.status} disabled>{statusLabels[order.status]}</option>
+                                {order.status === 'pending' && <option value="processing">Đang xử lý</option>}
+                                {order.status === 'processing' && <option value="shipped">Đang giao hàng</option>}
+                                {order.status === 'shipped' && <option value="delivered">Hoàn thành</option>}
+                              </select>
+                              {!['delivered', 'cancelled', 'refunded'].includes(order.status) && (
+                                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
+                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
                       </td>
 
-                      <td className="px-6 py-5">
-                        <div className="flex flex-col">
-                          <span className="text-xs font-bold text-gray-700">{formatDate(order.createdAt).split(',')[0]}</span>
-                          <span className="text-[10px] text-gray-400 font-medium">{formatDate(order.createdAt).split(',')[1]}</span>
-                        </div>
-                      </td>
-
+                      {/* Cột 6: Hành động */}
                       <td className="px-6 py-5 text-right">
                         <button
                           onClick={() => handleViewOrder(order._id)}
-                          className="px-4 py-2 bg-black text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-stone-800 transition shadow-md"
+                          className="px-4 py-2 bg-black text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-stone-800 transition-all hover:shadow-lg active:scale-95 group-hover:bg-primary group-hover:shadow-primary/20"
                         >
                           Chi tiết
                         </button>

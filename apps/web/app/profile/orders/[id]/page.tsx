@@ -245,11 +245,18 @@ export default function OrderDetailPage() {
     shipped:    'bg-purple-100 text-purple-800',
     delivered:  'bg-green-100 text-green-800',
     cancelled:  'bg-red-100 text-red-800',
+    cancellation_requested: 'bg-orange-100 text-orange-800',
+    refunded:   'bg-teal-100 text-teal-800',
   }[s] ?? 'bg-gray-100 text-gray-800');
 
   const getStatusLabel = (s: string) => ({
-    pending: 'Chờ xác nhận', processing: 'Đang xử lý',
-    shipped: 'Đang giao', delivered: 'Hoàn thành', cancelled: 'Đã hủy',
+    pending: 'Chờ xác nhận', 
+    processing: 'Đang xử lý',
+    shipped: 'Đang giao hàng', 
+    delivered: 'Hoàn thành', 
+    cancelled: 'Đã hủy',
+    cancellation_requested: 'Chờ duyệt hủy',
+    refunded: 'Đã hoàn tiền',
   }[s] ?? s);
 
   const { subtotal, vatAmount, shippingFee, discountAmount, finalTotal } = calculateOrderSummary(order);
@@ -439,13 +446,19 @@ export default function OrderDetailPage() {
 
               {/* ACTIONS AREA */}
               <div className="px-5 pb-5 space-y-4">
-                {order.status === 'pending' && (
+                {(order.status === 'pending' || order.status === 'processing') && (
                   <button
                     onClick={() => setShowCancelConfirm(true)}
                     className="w-full border-2 border-red-100 text-red-600 font-bold py-3 hover:bg-red-50 active:scale-95 active:bg-red-100 transition-all duration-150 text-xs uppercase tracking-widest"
                   >
                     Hủy đơn hàng
                   </button>
+                )}
+
+                {order.status === 'cancellation_requested' && (
+                  <div className="w-full bg-orange-50 border-2 border-orange-100 text-orange-600 font-bold py-3 text-center text-xs uppercase tracking-widest">
+                    Đang chờ duyệt hủy
+                  </div>
                 )}
                 
                 {(order.status === 'delivered' || order.status === 'cancelled') && (

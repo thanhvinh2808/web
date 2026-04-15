@@ -19,6 +19,7 @@ interface VariantOption {
   stock: number;
   sku: string;
   image: string;
+  linkedOptions?: string[];
 }
 
 interface Variant {
@@ -102,6 +103,7 @@ export default function ProductModal({
   
   // State Variants
   const [variants, setVariants] = useState<Variant[]>([]);
+  const [isAddingVariant, setIsAddingVariant] = useState(false);
   const [editingVariantIndex, setEditingVariantIndex] = useState<number>(-1);
   const [variantFormData, setVariantFormData] = useState({
     name: '',
@@ -300,15 +302,18 @@ export default function ProductModal({
     }
     setVariantFormData({ name: '', options: [{ name: '', price: 0, stock: 0, sku: '', image: '' }] });
     setEditingVariantIndex(-1);
+    setIsAddingVariant(false);
   };
   const removeVariant = (index: number) => setVariants(variants.filter((_, i) => i !== index));
   const editVariant = (index: number) => {
     setVariantFormData(variants[index]);
     setEditingVariantIndex(index);
+    setIsAddingVariant(true);
   };
   const cancelEditVariant = () => {
     setVariantFormData({ name: '', options: [{ name: '', price: 0, stock: 0, sku: '', image: '' }] });
     setEditingVariantIndex(-1);
+    setIsAddingVariant(false);
   };
 
   // Variant Image Upload (Giữ nguyên)
@@ -590,6 +595,7 @@ export default function ProductModal({
                   onClick={() => {
                     setEditingVariantIndex(-1);
                     setVariantFormData({ name: '', options: [{ name: '', price: 0, stock: 0, sku: '', image: '' }] });
+                    setIsAddingVariant(true);
                   }}
                   className="bg-black text-white text-xs font-bold uppercase px-4 py-2 rounded hover:bg-gray-800 transition"
                >
@@ -622,7 +628,7 @@ export default function ProductModal({
             )}
 
             {/* Form Edit Variant */}
-            {(editingVariantIndex >= 0 || variantFormData.name !== '' || variants.length === 0) && (
+            {isAddingVariant && (
                <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
                   <div className="mb-4">
                      <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Tên nhóm biến thể</label>

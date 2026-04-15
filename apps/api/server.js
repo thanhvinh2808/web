@@ -104,9 +104,10 @@ app.use(cors({
   credentials: true,
   optionsSuccessStatus: 204
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static('uploads'));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads/products', express.static(path.join(__dirname, 'uploads/products')));
 
 // Routes
 app.use('/api', authRoutes); // ✅ Auth Routes first
@@ -291,10 +292,59 @@ app.get('/api/products/:productId/reviews', async (req, res) => {
     }
     const reviews = await Review.find({ productId: req.params.productId })
       .populate('userId', 'name avatar')
+      .populate('reply.adminId', 'name') // ✅ Populate admin info
       .sort({ createdAt: -1 });
-    res.json({ success: true, reviews });
+    
+    // ✅ SENIOR FIX: Protect privacy by sanitizing anonymous reviews at the source
+    const sanitizedReviews = reviews.map(rev => {
+      const r = rev.toObject();
+      if (r.isAnonymous) {
+        // Remove sensitive user info entirely
+        r.userId = {
+          name: 'Người dùng ẩn danh',
+          avatar: ''
+        };
+      }
+      return r;
+    });
+
+    res.json({ success: true, reviews: sanitizedReviews });
   } catch (error) {
     console.error("Get Reviews Error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ✅ ADMIN REPLY TO A REVIEW
+app.patch('/api/admin/reviews/:reviewId/reply', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const { content } = req.body;
+
+    if (!content || content.trim() === '') {
+      return res.status(400).json({ success: false, message: 'Nội dung phản hồi không được để trống' });
+    }
+
+    const review = await Review.findByIdAndUpdate(
+      reviewId,
+      {
+        reply: {
+          content: content.trim(),
+          adminId: req.user.id,
+          repliedAt: new Date()
+        }
+      },
+      { new: true }
+    ).populate('userId', 'name')
+     .populate('reply.adminId', 'name');
+
+    if (!review) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đánh giá' });
+    }
+
+    res.json({ success: true, review });
+  } catch (error) {
+    console.error("Admin Reply Error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -359,15 +409,40 @@ app.post('/api/products/:productId/reviews', authenticateToken, async (req, res)
       isAnonymous: !!isAnonymous
     });
 
-    // 🔔 Notify Admin via Socket.io
-    const io = req.app.get('socketio');
-    if (io) {
-      const product = await Product.findById(productId);
-      io.emit('newNotification', {
+    // 🔔 SENIOR NOTIFICATION SYSTEM: Database + Real-time Socket
+    const product = await Product.findById(productId);
+    const NotificationModel = mongoose.model('Notification');
+    
+    // 1. Save to Database for Admins
+    const admins = await User.find({ role: 'admin' });
+    let lastCreatedNotiId = null;
+    
+    for (const admin of admins) {
+      const newNoti = await NotificationModel.create({
+        user_id: admin._id,
         type: 'review',
-        message: `Đánh giá mới ${rating}⭐ cho sản phẩm ${product?.name || 'giày'}`,
-        relatedId: productId,
-        createdAt: new Date()
+        title: 'Đánh giá sản phẩm mới',
+        message: `Khách hàng đã đánh giá ${rating}⭐ cho sản phẩm ${product?.name || 'giày'}: "${comment.substring(0, 30)}..."`,
+        referenceId: productId,
+        referenceModel: 'Product'
+      });
+      lastCreatedNotiId = newNoti._id; // ✅ Capture ID for Socket
+    }
+
+    // 2. Emit Real-time Socket Event to Admin Room
+    if (global.io) {
+      global.io.to('admin').emit('newNotification', {
+        _id: lastCreatedNotiId, // ✅ Now ID is NOT undefined
+        type: 'review',
+        title: 'Đánh giá mới',
+        message: `Đánh giá ${rating}⭐ cho ${product?.name}`,
+        productId: productId,
+        productSlug: product?.slug,
+        createdAt: new Date(),
+        referenceId: {
+           _id: productId,
+           slug: product?.slug
+        }
       });
     }
 
@@ -1102,10 +1177,10 @@ app.put('/api/admin/orders/:id/status', authenticateToken, requireAdmin, async (
     if (order.userId) {
       const NotificationModel = mongoose.model('Notification');
       const statusLabels = {
-        'pending': 'Chờ xử lý',
-        'processing': 'Đang chuẩn bị hàng',
+        'pending': 'Chờ xác nhận',
+        'processing': 'Đang xử lý',
         'shipped': 'Đang giao hàng',
-        'delivered': 'Giao hàng thành công',
+        'delivered': 'Hoàn thành',
         'cancelled': 'Đã hủy'
       };
 

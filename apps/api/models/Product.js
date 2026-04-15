@@ -12,10 +12,24 @@ const variantSchema = new mongoose.Schema({
     stock:     { type: Number, required: true, min: 0, default: 0 },
     soldCount: { type: Number, default: 0, min: 0 },
     sku:       { type: String, trim: true },
-    image:     { type: String },
-    isDefault: { type: Boolean, default: false }
+    image:     { 
+      type: String,
+      get: function(val) {
+        if (!val) return val;
+        if (val.startsWith('http')) return val;
+        const baseUrl = process.env.API_URL || 'http://localhost:5000';
+        const cleanVal = val.startsWith('/') ? val : `/uploads/products/${val}`;
+        // Đảm bảo không bị lặp /uploads/products/ nếu val đã có prefix
+        if (cleanVal.startsWith('/uploads/products/')) {
+          return `${baseUrl}${cleanVal}`;
+        }
+        return `${baseUrl}/uploads/products/${val}`;
+      }
+    },
+    isDefault: { type: Boolean, default: false },
+    linkedOptions: [{ type: String, trim: true }] // Danh sách tên các tùy chọn liên quan (VD: ["Đỏ", "Vàng"])
   }]
-});
+}, { toJSON: { getters: true }, toObject: { getters: true } });
 
 const productSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
@@ -30,9 +44,28 @@ const productSchema = new mongoose.Schema({
 
   slug: { type: String, required: true, unique: true, trim: true, lowercase: true },
 
-  image:  String, // Ảnh đại diện chính
+  image: { 
+    type: String,
+    get: function(val) {
+      if (!val) return val;
+      if (val.startsWith('http')) return val;
+      const baseUrl = process.env.API_URL || 'http://localhost:5000';
+      const cleanPath = val.startsWith('/') ? val : `/uploads/products/${val}`;
+      return `${baseUrl}${cleanPath}`;
+    }
+  }, // Ảnh đại diện chính
   images: [{
-    url:       { type: String, required: true },
+    url: { 
+      type: String, 
+      required: true,
+      get: function(val) {
+        if (!val) return val;
+        if (val.startsWith('http')) return val;
+        const baseUrl = process.env.API_URL || 'http://localhost:5000';
+        const cleanPath = val.startsWith('/') ? val : `/uploads/products/${val}`;
+        return `${baseUrl}${cleanPath}`;
+      }
+    },
     alt:       { type: String, default: '' },
     isPrimary: { type: Boolean, default: false }
   }],

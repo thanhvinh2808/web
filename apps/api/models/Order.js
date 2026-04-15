@@ -10,13 +10,24 @@ const OrderItemSchema = new mongoose.Schema({
   },
   productName: { type: String, required: true },
   productBrand: { type: String },
-  productImage: { type: String },
+  productImage: { 
+    type: String,
+    get: function(val) {
+      if (!val) return val;
+      if (val.startsWith('http')) return val;
+      const baseUrl = process.env.API_URL || 'http://localhost:5000';
+      // Nếu đã có /uploads/ ở đầu
+      if (val.startsWith('/uploads')) return `${baseUrl}${val}`;
+      // Nếu chỉ có tên file
+      return `${baseUrl}/uploads/products/${val}`;
+    }
+  },
   price: { type: Number, required: true },
   quantity: { type: Number, required: true, min: 1 },
   variant: {
     name: { type: String }, // VD: "42", "Red/Black"
   },
-});
+}, { toJSON: { getters: true }, toObject: { getters: true } });
 
 // Schema cho thông tin khách hàng
 const CustomerInfoSchema = new mongoose.Schema({
@@ -67,7 +78,7 @@ const OrderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
+      enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'cancellation_requested', 'refunded'],
       default: 'pending',
     },
     paymentStatus: {
@@ -124,8 +135,16 @@ OrderSchema.virtual('canRefund').get(function () {
 
 // ===== METHODS =====
 OrderSchema.methods.cancel = function (cancelledBy, reason = null) {
+  const statusLabels = {
+    pending: 'Chờ xác nhận',
+    processing: 'Đang xử lý',
+    shipped: 'Đang giao hàng',
+    delivered: 'Hoàn thành',
+    cancelled: 'Đã hủy'
+  };
   if (!this.canCancel) {
-    throw new Error(`Không thể hủy đơn hàng ở trạng thái "${this.status}"`);
+    const label = statusLabels[this.status] || this.status;
+    throw new Error(`Không thể hủy đơn hàng ở trạng thái "${label}"`);
   }
   this.status = 'cancelled';
   this.cancelledAt = new Date();

@@ -103,7 +103,7 @@ export default function ChatBot() {
           pending: 'Chờ xác nhận',
           processing: 'Đang xử lý',
           shipped: 'Đang giao hàng',
-          delivered: 'Giao hàng thành công',
+          delivered: 'Hoàn thành',
           cancelled: 'Đã hủy'
         };
 

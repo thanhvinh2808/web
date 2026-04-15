@@ -1,5 +1,7 @@
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
+import Voucher from '../models/Voucher.js';
+import { createNotification } from './adminController.js';
 import { createAdminNotification } from '../utils/helpers.js';
 import { sendNewOrderEmail } from '../services/emailService.js';
 import mongoose from 'mongoose';
@@ -64,10 +66,26 @@ export const createOrder = async (req, res) => {
         const quantity = Math.max(1, parseInt(item.quantity) || 1);
         grandTotal += price * quantity;
 
+        // Ưu tiên lấy ảnh của biến thể nếu có, nếu không lấy ảnh chính của sản phẩm
+        let displayImage = product.image;
+        if (item.variant && item.variant.name) {
+          product.variants.forEach(v => {
+            const opt = v.options.find(o => o.name === item.variant.name);
+            if (opt && opt.image) {
+              displayImage = opt.image;
+            }
+          });
+        }
+
+        // CHUẨN HÓA ĐƯỜNG DẪN ẢNH (Đảm bảo luôn có prefix nếu là file nội bộ)
+        if (displayImage && !displayImage.startsWith('http') && !displayImage.startsWith('/uploads')) {
+          displayImage = `/uploads/products/${displayImage}`;
+        }
+
         trustedItems.push({
           productId: product._id,
           productName: product.name,
-          productImage: product.image,
+          productImage: displayImage,
           productBrand: product.brand,
           price,
           quantity,
@@ -145,11 +163,32 @@ export const createOrder = async (req, res) => {
 
       const [savedOrder] = await Order.create([finalOrderData], { session });
 
-      // 4. XÁC NHẬN GIAO DỊCH
+      // 4. CẬP NHẬT LƯỢT DÙNG VOUCHER (NẾU CÓ)
+      if (voucherCode) {
+        const updatedVoucher = await Voucher.findOneAndUpdate(
+          { 
+            code: voucherCode.toUpperCase(),
+            isActive: true,
+            endDate: { $gte: new Date() }
+          },
+          { $inc: { usedCount: 1 } },
+          { session, new: true }
+        );
+
+        if (!updatedVoucher) {
+          throw new Error('Mã giảm giá không hợp lệ hoặc đã hết hạn.');
+        }
+
+        if (updatedVoucher.usedCount > updatedVoucher.usageLimit) {
+          throw new Error('Mã giảm giá đã hết lượt sử dụng.');
+        }
+      }
+
+      // 5. XÁC NHẬN GIAO DỊCH
       await session.commitTransaction();
       session.endSession();
 
-      // 5. XỬ LÝ SAU KHI ĐẶT HÀNG (Ngoài Transaction)
+      // 6. XỬ LÝ SAU KHI ĐẶT HÀNG (Ngoài Transaction)
       if (savedOrder.paymentMethod === 'cod') {
         createAdminNotification({
           type: 'order',
@@ -363,30 +402,81 @@ export const getOrderById = async (req, res) => {
 };
 
 /**
- * HỦY ĐƠN HÀNG
+ * YÊU CẦU HỦY ĐƠN HÀNG (USER)
  */
-export const cancelOrder = async (req, res) => {
+export const requestCancelOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const order = await Order.findOne({ _id: id, userId: req.user.id });
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
+    }
+
+    const cancellableStatuses = ['pending', 'processing'];
+    if (!cancellableStatuses.includes(order.status)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Đơn hàng đã được giao hoặc đang vận chuyển, không thể yêu cầu hủy.' 
+      });
+    }
+
+    order.status = 'cancellation_requested';
+    order.cancelReason = reason || 'Người dùng yêu cầu hủy';
+    order.cancelledBy = 'user';
+    await order.save();
+
+    // 1. LƯU THÔNG BÁO VÀO DATABASE CHO ADMIN
+    await createNotification(
+      'order', 
+      `Đơn hàng #${order.orderNumber} có yêu cầu hủy mới. Lý do: ${order.cancelReason}`,
+      order._id,
+      'Order',
+      'Yêu cầu hủy đơn hàng'
+    );
+
+    // 2. SOCKET REAL-TIME (Dành cho UI cập nhật trạng thái đơn)
+    if (global.io) {
+      global.io.to('admin').emit('orderStatusUpdated', { 
+        orderId: order._id, 
+        status: 'cancellation_requested',
+        message: `Yêu cầu hủy mới cho đơn hàng #${order.orderNumber}`
+      });
+    }
+
+    return res.json({ 
+      success: true, 
+      message: 'Đã gửi yêu cầu hủy đơn hàng. Vui lòng chờ Admin xác nhận.', 
+      order 
+    });
+
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * ADMIN DUYỆT HỦY ĐƠN HÀNG (ADMIN)
+ */
+export const approveCancelOrder = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
     const { id } = req.params;
-    const { reason } = req.body;
-
-    // 1. Tìm đơn hàng (Sử dụng session)
-    const order = await Order.findOne({ _id: id, userId: req.user.id }).session(session);
+    const order = await Order.findById(id).session(session);
 
     if (!order) {
       throw new Error('Không tìm thấy đơn hàng');
     }
 
-    // Kiểm tra trạng thái có được phép hủy không
-    const forbiddenStatuses = ['shipped', 'delivered', 'cancelled', 'completed'];
-    if (forbiddenStatuses.includes(order.status)) {
-      throw new Error(`Không thể hủy đơn hàng đang ở trạng thái: ${order.status}`);
+    if (order.status !== 'cancellation_requested') {
+      throw new Error('Đơn hàng không ở trong trạng thái yêu cầu hủy');
     }
 
-    // 2. HOÀN KHO ATOMIC
+    // 1. HOÀN KHO ATOMIC
     if (order.items && order.items.length > 0) {
       for (const item of order.items) {
         let filter, update, arrayFilters = [];
@@ -404,48 +494,90 @@ export const cancelOrder = async (req, res) => {
             { 'opt.name': item.variant.name }
           ];
         } else {
-          // Hoàn kho cho sản phẩm đơn giản
           filter = { _id: item.productId };
           update = {
             $inc: { stock: item.quantity, soldCount: -item.quantity }
           };
         }
 
-        const result = await Product.updateOne(filter, update, { arrayFilters, session });
-        
-        if (result.matchedCount === 0) {
-          console.warn(`Cảnh báo: Không tìm thấy sản phẩm ${item.productId} để hoàn kho.`);
-        }
+        await Product.updateOne(filter, update, { arrayFilters, session });
       }
     }
 
-    // 3. Cập nhật trạng thái đơn hàng
-    order.status = 'cancelled';
-    order.cancelReason = reason || 'Người dùng hủy';
+    // 2. Cập nhật trạng thái cuối (Logic chính theo yêu cầu)
+    // Nếu đơn đó đã chuyển khoản (isPaid) thì hãy để là đã hoàn tiền (refunded) 
+    // Còn nếu chưa chuyển khoản thì chỉ để đã hủy (cancelled) thoi
+    if (order.isPaid || order.paymentStatus === 'paid') {
+      order.status = 'refunded';
+    } else {
+      order.status = 'cancelled';
+    }
+
+    // 3. HOÀN LẠI LƯỢT DÙNG VOUCHER (NẾU CÓ)
+    if (order.voucherCode) {
+      await Voucher.findOneAndUpdate(
+        { code: order.voucherCode.toUpperCase() },
+        { $inc: { usedCount: -1 } },
+        { session }
+      );
+    }
+
+    order.cancelledAt = new Date();
     await order.save({ session });
 
-    // 4. Xác nhận Transaction
     await session.commitTransaction();
     session.endSession();
 
-    // Thông báo cho Admin qua Socket
+    // Thông báo cho User
     if (global.io) {
-      global.io.to('admin').emit('orderStatusUpdated', { 
+      global.io.to(`user:${order.userId}`).emit('orderStatusUpdated', { 
         orderId: order._id, 
-        status: 'cancelled',
-        message: `Đơn hàng #${order._id.toString().slice(-6).toUpperCase()} đã bị hủy`
+        status: order.status,
+        message: `Đơn hàng #${order.orderNumber} đã được Admin duyệt hủy.`
       });
     }
 
-    return res.json({ success: true, message: 'Hủy đơn hàng và hoàn kho thành công', order });
+    return res.json({ success: true, message: 'Đã duyệt hủy đơn hàng và hoàn kho.', order });
 
   } catch (error) {
-    // Rollback nếu có lỗi
     await session.abortTransaction();
     session.endSession();
-    
-    console.error('❌ Cancel Order Error:', error.message);
-    return res.status(400).json({ success: false, message: error.message || 'Lỗi khi hủy đơn hàng' });
+    return res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * ADMIN TỪ CHỐI HỦY ĐƠN HÀNG (ADMIN)
+ */
+export const rejectCancelOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await Order.findById(id);
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
+    }
+
+    if (order.status !== 'cancellation_requested') {
+      return res.status(400).json({ success: false, message: 'Đơn hàng không yêu cầu hủy' });
+    }
+
+    // Quay lại trạng thái đang xử lý
+    order.status = 'processing';
+    await order.save();
+
+    // Thông báo cho User
+    if (global.io) {
+      global.io.to(`user:${order.userId}`).emit('orderStatusUpdated', { 
+        orderId: order._id, 
+        status: 'processing',
+        message: `Yêu cầu hủy đơn hàng #${order.orderNumber} đã bị từ chối.`
+      });
+    }
+
+    return res.json({ success: true, message: 'Đã từ chối yêu cầu hủy đơn hàng.', order });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 

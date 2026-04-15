@@ -2,7 +2,7 @@ import express from 'express';
 import {
   createOrder,
   getOrderById,
-  cancelOrder,
+  requestCancelOrder,
   markOrderAsPaid,
   trackOrder,
 } from '../controller/orderController.js';
@@ -21,7 +21,7 @@ router.post('/', authenticateToken, createOrder);
 router.get('/:id', authenticateToken, getOrderById);
 
 // Protected: Hủy đơn hàng
-router.put('/:id/cancel', authenticateToken, cancelOrder);
+router.put('/:id/cancel', authenticateToken, requestCancelOrder);
 
 // Protected: Đánh dấu đã thanh toán (sau khi quét QR)
 router.put('/:id/pay', authenticateToken, markOrderAsPaid);

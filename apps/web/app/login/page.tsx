@@ -129,7 +129,7 @@ function LoginContent() {
               className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline"
             >
               {" "}
-              Quên?
+              Quên mật khẩu?
             </Link>
           </div>
           <div className="relative border-b-2 border-gray-100 group-focus-within:border-primary transition-all">

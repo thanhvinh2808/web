@@ -91,8 +91,8 @@ export default function CategoriesTab({ categories, token, onRefresh, showMessag
       };
 
       const url = editingCategory
-        ? `${API_URL}/admin/categories/${editingCategory.slug}`
-        : `${API_URL}/admin/categories`;
+        ? `${BASE_URL}/api/admin/categories/${editingCategory.slug}`
+        : `${BASE_URL}/api/admin/categories`;
       
       const method = editingCategory ? 'PUT' : 'POST';
       
@@ -124,7 +124,7 @@ export default function CategoriesTab({ categories, token, onRefresh, showMessag
   const deleteCategory = async (categorySlug: string) => {
     if (!window.confirm('⚠️ Bạn có chắc muốn xóa danh mục này?')) return;
     try {
-      const res = await fetch(`${API_URL}/admin/categories/${categorySlug}`, {
+      const res = await fetch(`${BASE_URL}/api/admin/categories/${categorySlug}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

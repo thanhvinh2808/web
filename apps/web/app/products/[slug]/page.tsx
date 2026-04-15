@@ -35,11 +35,19 @@ interface Review {
   _id: string;
   userId: {
     _id: string;
-    fullName: string;
+    name: string;
     avatar?: string;
   };
   rating: number;
   comment: string;
+  reply?: {
+    content: string;
+    adminId: {
+      _id: string;
+      name: string;
+    };
+    repliedAt: string;
+  };
   createdAt: string;
   isPurchased?: boolean;
   isAnonymous?: boolean;
@@ -88,6 +96,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   const router = useRouter();
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
+  const { user: currentUser } = useAuth();
 
   // Data State
   const [product, setProduct] = useState<Product | null>(null);
@@ -95,7 +104,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   const [isLoading, setIsLoading] = useState(true);
   const [activeImage, setActiveImage] = useState<string>('');
   
-  // Selection State
+  // Selection State (Quay về cách cũ đơn giản)
   const [selectedSize, setSelectedSize] = useState<VariantOption | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
@@ -108,42 +117,56 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [fetchReviewsTrigger, setFetchReviewsTrigger] = useState(0);
 
+  // Admin Reply State
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyContent, setReplyContent] = useState('');
+  const [isReplying, setIsReplying] = useState(false);
+
   const productId = product?._id || product?.id || '';
   const isFavorite = isInWishlist(productId);
 
-  // --- LOGIC ẨN DANH & TÍNH SAO ---
   const averageRating = useMemo(() => {
     if (reviews.length === 0) return 0;
     const total = reviews.reduce((acc, rev) => acc + rev.rating, 0);
     return total / reviews.length;
   }, [reviews]);
 
-  const maskName = (name?: string) => {
-    if (!name) return "n*****g";
-    const parts = name.split(' ');
-    const lastPart = parts[parts.length - 1];
-    if (lastPart.length < 2) return lastPart + "*****";
-    return lastPart.charAt(0) + "*****" + lastPart.charAt(lastPart.length - 1);
+  // --- ACTIONS ---
+  const handleAdminReply = async (reviewId: string) => {
+    if (!replyContent.trim()) return;
+    setIsReplying(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/admin/reviews/${reviewId}/reply`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ content: replyContent })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Đã gửi phản hồi');
+        setReplyContent('');
+        setReplyingTo(null);
+        setFetchReviewsTrigger(prev => prev + 1);
+      }
+    } catch (err) {
+      toast.error('Lỗi kết nối máy chủ');
+    } finally {
+      setIsReplying(false);
+    }
   };
 
-  // ✅ RESET SỐ LƯỢNG KHI ĐỔI SIZE
-  useEffect(() => {
-    if (selectedSize) {
-      setQuantity(1);
-    }
-  }, [selectedSize]);
-
-  // --- FETCH REVIEWS ---
   useEffect(() => {
     const fetchReviewsData = async () => {
-      if (!productId || productId === 'undefined' || productId === '') return;
-      
+      if (!productId) return;
       try {
         const res = await fetch(`${API_URL}/api/products/${productId}/reviews`);
         const data = await res.json();
         if (data.success) setReviews(data.reviews);
 
-        // Check can review
         const token = localStorage.getItem('token');
         if (token) {
           const canRes = await fetch(`${API_URL}/api/products/${productId}/can-review`, {
@@ -152,21 +175,14 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
           const canData = await canRes.json();
           setCanReview(!!canData.canReview);
         }
-      } catch (err) {
-        console.error('Lỗi tải đánh giá:', err);
-      }
+      } catch (err) { console.error(err); }
     };
     fetchReviewsData();
   }, [productId, fetchReviewsTrigger]);
 
-  // --- FETCH DATA ---
   useEffect(() => {
     const fetchProduct = async () => {
-      if (!slug || slug === 'undefined') {
-        setIsLoading(false);
-        return;
-      }
-
+      if (!slug) return;
       setIsLoading(true);
       try {
         const res = await fetch(`${API_URL}/api/products/${slug}`);
@@ -174,7 +190,6 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
         const result = await res.json();
         const data = result.data || result;
         setProduct(data);
-        
         if (data.image) setActiveImage(getImageUrl(data.image));
         else if (data.images?.length > 0) setActiveImage(getImageUrl(data.images[0]));
 
@@ -199,9 +214,8 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
         }
 
         setRelatedProducts(related);
-
       } catch (err) {
-        console.error('Lỗi tải sản phẩm:', err);
+        console.error(err);
         setProduct(null);
       } finally {
         setIsLoading(false);
@@ -210,8 +224,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
     fetchProduct();
   }, [slug]);
 
-  // --- LOGIC TÍNH TOÁN ---
-  
+  // --- LOGIC TÍNH TOÁN (Quay về cách cũ) ---
   const sizeVariant = useMemo(() => 
     product?.variants?.find(v => v.name.toLowerCase().includes('size')) || null, 
   [product]);
@@ -242,7 +255,6 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
     return false;
   }, [product, selectedSize, isOutOfStock, sizeVariant]);
 
-  // --- ACTIONS ---
   const handleAddToCart = () => {
     if (!product) return;
     if (sizeVariant && !selectedSize) { toast.error('Vui lòng chọn Size'); return; }
@@ -282,11 +294,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             {product.images?.length > 1 && (
               <div className="grid grid-cols-5 gap-2">
                 {product.images.map((img: any, idx: number) => (
-                  <button 
-                    key={idx} 
-                    onClick={() => setActiveImage(getImageUrl(img))}
-                    className={`aspect-square border-2 ${activeImage === getImageUrl(img) ? 'border-black' : 'border-transparent'}`}
-                  >
+                  <button key={idx} onClick={() => setActiveImage(getImageUrl(img))} className={`aspect-square border-2 ${activeImage === getImageUrl(img) ? 'border-black' : 'border-transparent'}`}>
                     <img src={getImageUrl(img)} className="w-full h-full object-cover" />
                   </button>
                 ))}
@@ -317,29 +325,21 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 <div className="flex items-center gap-1 border-l border-gray-200 pl-4">
                   <div className="flex items-center gap-0.5">
                     {[1, 2, 3, 4, 5].map((s) => (
-                      <Star 
-                        key={s} 
-                        size={14} 
-                        className={s <= Math.round(averageRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-200"} 
-                      />
+                      <Star key={s} size={14} className={s <= Math.round(averageRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-200"} />
                     ))}
                   </div>
-                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">
-                    ({reviews.length} đánh giá)
-                  </span>
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">({reviews.length} đánh giá)</span>
                 </div>
-                {Number(product.soldCount) > 0 ? (
-                  <span className="text-[10px] font-bold bg-blue-50 text-primary px-2 py-1 uppercase flex items-center gap-1 ml-auto">
+                {Number(product.soldCount) > 0 && (
+                   <span className="text-[10px] font-bold bg-blue-50 text-primary px-2 py-1 uppercase flex items-center gap-1 ml-auto">
                     <TrendingUp size={12}/> Đã bán {product.soldCount}
                   </span>
-                ) : null}
+                )}
               </div>
             </div>
 
-            {/* CHỌN BIẾN THỂ */}
+            {/* CHỌN BIẾN THỂ (Template cũ) */}
             <div className="space-y-6 border-t border-dashed border-gray-100 pt-6">
-              
-              {/* SIZE */}
               {sizeVariant && (
                 <div>
                   <div className="flex justify-between items-center mb-3">
@@ -366,7 +366,6 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 </div>
               )}
 
-              {/* MÀU SẮC */}
               {colorVariant && (
                 <div>
                   <span className="text-xs font-black uppercase tracking-widest block mb-3">Màu sắc</span>
@@ -374,7 +373,10 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                     {colorVariant.options.map((opt, idx) => (
                       <button
                         key={idx}
-                        onClick={() => setSelectedColor(opt.name)}
+                        onClick={() => {
+                          setSelectedColor(opt.name);
+                          if (opt.image) setActiveImage(getImageUrl(opt.image));
+                        }}
                         className={`px-4 py-2 text-xs font-bold border transition ${
                           selectedColor === opt.name ? 'bg-black text-white border-black' : 'hover:border-black border-gray-200'
                         }`}
@@ -386,22 +388,16 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 </div>
               )}
 
-              {/* SỐ LƯỢNG VÀ CẢNH BÁO */}
               <div className="space-y-3">
                 <div className="flex items-center gap-4 pt-4">
                   <span className="text-xs font-black uppercase tracking-widest">Số lượng</span>
                   <div className="flex items-center border border-gray-200">
                     <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-2 hover:bg-gray-50"><Minus size={16}/></button>
                     <span className="w-12 text-center font-bold">{quantity}</span>
-                    <button 
-                      onClick={() => {
-                        const max = selectedSize ? selectedSize.stock : (product.stock || 0);
-                        if (quantity < max) setQuantity(quantity + 1);
-                      }} 
-                      className="p-2 hover:bg-gray-50"
-                    >
-                      <Plus size={16}/>
-                    </button>
+                    <button onClick={() => {
+                      const max = selectedSize ? selectedSize.stock : (product.stock || 0);
+                      if (quantity < max) setQuantity(quantity + 1);
+                    }} className="p-2 hover:bg-gray-50"><Plus size={16}/></button>
                   </div>
                   {selectedSize && <span className="text-[10px] font-bold text-gray-400 uppercase italic">Kho: {selectedSize.stock}</span>}
                 </div>
@@ -413,20 +409,11 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 )}
               </div>
 
-              {/* NÚT MUA */}
               <div className="grid grid-cols-2 gap-4 pt-6">
-                <button 
-                  onClick={handleAddToCart}
-                  disabled={isOutOfStock || isActionLoading}
-                  className="bg-black text-white py-4 font-black uppercase tracking-widest hover:bg-gray-900 transition disabled:opacity-30"
-                >
+                <button onClick={handleAddToCart} disabled={isOutOfStock || isActionLoading} className="bg-black text-white py-4 font-black uppercase tracking-widest hover:bg-gray-900 transition disabled:opacity-30">
                   {isOutOfStock ? 'Hết hàng' : 'Thêm vào giỏ'}
                 </button>
-                <button 
-                  onClick={handleBuyNow}
-                  disabled={isOutOfStock || isActionLoading}
-                  className="border-2 border-black text-black py-4 font-black uppercase tracking-widest hover:bg-black hover:text-white transition disabled:opacity-30"
-                >
+                <button onClick={handleBuyNow} disabled={isOutOfStock || isActionLoading} className="border-2 border-black text-black py-4 font-black uppercase tracking-widest hover:bg-black hover:text-white transition disabled:opacity-30">
                   Mua ngay
                 </button>
               </div>
@@ -436,26 +423,12 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             <div className="mt-10 border-t border-gray-100 pt-8 space-y-4">
               <h4 className="text-sm font-black uppercase italic tracking-widest">Thông tin chi tiết</h4>
               <div className="grid grid-cols-2 gap-y-3 text-xs">
-                <div className="flex justify-between pr-4 border-r border-gray-100">
-                  <span className="text-gray-400">Tình trạng</span>
-                  <span className="font-bold">{product.specs?.condition || 'Mới 100%'}</span>
-                </div>
-                <div className="flex justify-between pl-4">
-                  <span className="text-gray-400">Mã sản phẩm</span>
-                  <span className="font-bold uppercase">{product.specs?.styleCode || 'N/A'}</span>
-                </div>
-                <div className="flex justify-between pr-4 border-r border-gray-100">
-                  <span className="text-gray-400">Phụ kiện</span>
-                  <span className="font-bold">{product.specs?.accessories || 'Fullbox'}</span>
-                </div>
-                <div className="flex justify-between pl-4">
-                  <span className="text-gray-400">Chất liệu</span>
-                  <span className="font-bold">{product.specs?.material || 'Da/Lưới'}</span>
-                </div>
+                <div className="flex justify-between pr-4 border-r border-gray-100"><span className="text-gray-400">Tình trạng</span><span className="font-bold">{product.specs?.condition || 'Mới 100%'}</span></div>
+                <div className="flex justify-between pl-4"><span className="text-gray-400">Mã sản phẩm</span><span className="font-bold uppercase">{product.specs?.styleCode || 'N/A'}</span></div>
+                <div className="flex justify-between pr-4 border-r border-gray-100"><span className="text-gray-400">Phụ kiện</span><span className="font-bold">{product.specs?.accessories || 'Fullbox'}</span></div>
+                <div className="flex justify-between pl-4"><span className="text-gray-400">Chất liệu</span><span className="font-bold">{product.specs?.material || 'Da/Lưới'}</span></div>
               </div>
-              <p className="text-xs text-gray-500 leading-relaxed pt-4 border-t border-dashed border-gray-100">
-                {product.description}
-              </p>
+              <p className="text-xs text-gray-500 leading-relaxed pt-4 border-t border-dashed border-gray-100">{product.description}</p>
             </div>
             
             <div className="flex gap-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest pt-8">
@@ -476,117 +449,32 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
         )}
 
         {/* REVIEWS SECTION */}
-        <div className="mt-24 border-t border-gray-100 pt-16" id="review">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
-            <div>
-              <h3 className="text-3xl font-black italic uppercase tracking-tighter mb-2">Đánh giá từ khách hàng</h3>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <Star 
-                      key={s} 
-                      size={18} 
-                      className={s <= Math.round(averageRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-200"} 
-                    />
-                  ))}
-                </div>
-                <span className="text-sm font-bold text-gray-500 uppercase tracking-widest">
-                  {averageRating.toFixed(1)} / 5 ({reviews.length} đánh giá)
-                </span>
-              </div>
-            </div>
-            
-            {canReview && (
-              <button 
-                onClick={() => setIsReviewModalOpen(true)}
-                className="bg-primary text-white px-8 py-4 font-black uppercase text-xs tracking-[0.2em] hover:bg-primary-dark transition shadow-xl shadow-primary/20 flex items-center gap-2"
-              >
-                <MessageSquare size={16} /> Viết đánh giá của bạn
-              </button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {reviews.length > 0 ? (
-              reviews.map((rev) => (
-                <div key={rev._id} className="bg-gray-50 p-8 border border-gray-100 hover:bg-white hover:shadow-xl transition-all duration-300">
-                  <div className="flex justify-between items-start mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-black text-white flex items-center justify-center font-black italic uppercase text-lg">
-                        {rev.isAnonymous ? 'A' : (rev.userId?.fullName || 'U').charAt(0)}
-                      </div>
-                      <div>
-                        <p className="font-black uppercase italic tracking-tighter text-sm leading-none mb-1">
-                          {rev.isAnonymous ? maskName(rev.userId?.fullName || 'Người dùng') : (rev.userId?.fullName || 'Người dùng FootMark')}
-                        </p>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                          {new Date(rev.createdAt).toLocaleDateString('vi-VN')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <Star key={s} size={12} className={s <= rev.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'} />
-                      ))}
-                    </div>
+        <div className="mt-24 border-t border-gray-100 pt-16">
+          <h3 className="text-3xl font-black italic uppercase tracking-tighter mb-12">Đánh giá khách hàng</h3>
+          <div className="flex flex-col gap-6 max-w-4xl mx-auto">
+            {reviews.length > 0 ? reviews.map((rev) => (
+              <div key={rev._id} className="bg-gray-50 p-8 border border-gray-100">
+                <div className="flex justify-between items-start mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-black text-white flex items-center justify-center font-black italic uppercase text-lg">{(rev.userId?.name || 'U').charAt(0)}</div>
+                    <div><p className="font-black uppercase italic tracking-tighter text-sm leading-none mb-1">{rev.userId?.name || 'Khách hàng'}</p><p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{new Date(rev.createdAt).toLocaleDateString('vi-VN')}</p></div>
                   </div>
-                  
-                  {rev.isPurchased && (
-                    <div className="inline-flex items-center gap-1 text-[9px] font-black text-green-600 mb-4 bg-green-50 px-2 py-0.5 uppercase tracking-widest">
-                      <CheckCircle2 size={10} /> Đã mua hàng tại FootMark
-                    </div>
-                  )}
-                  
-                  <p className="text-gray-600 text-sm italic font-medium leading-relaxed mb-6">"{rev.comment}"</p>
-                  
-                  <div className="flex items-center gap-4 pt-4 border-t border-gray-200/50">
-                    <button className="flex items-center gap-1.5 text-[10px] font-black text-gray-400 hover:text-primary transition uppercase tracking-widest">
-                      <ThumbsUp size={12} /> Hữu ích
-                    </button>
-                    <button className="text-[10px] font-black text-gray-400 hover:text-black transition uppercase tracking-widest">Phản hồi</button>
-                  </div>
+                  <div className="flex items-center gap-0.5">{[1,2,3,4,5].map(s => <Star key={s} size={12} className={s <= rev.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'} />)}</div>
                 </div>
-              ))
-            ) : (
-              <div className="col-span-full py-20 text-center bg-gray-50 border border-dashed border-gray-200">
-                <MessageSquare size={48} className="mx-auto text-gray-200 mb-4" />
-                <p className="text-gray-400 font-bold uppercase tracking-widest text-sm italic">Chưa có đánh giá nào cho sản phẩm này</p>
-                {canReview && (
-                  <button 
-                    onClick={() => setIsReviewModalOpen(true)}
-                    className="mt-4 text-primary font-black uppercase text-xs tracking-widest hover:underline"
-                  >
-                    Hãy là người đầu tiên đánh giá
-                  </button>
+                <p className="text-gray-600 text-sm italic font-medium leading-relaxed italic">"{rev.comment}"</p>
+                {rev.reply && (
+                   <div className="mt-4 p-4 bg-blue-50 border-l-4 border-primary/30 text-xs italic">
+                      <strong>Phản hồi FootMark:</strong> {rev.reply.content}
+                   </div>
                 )}
               </div>
-            )}
+            )) : <p className="text-center text-gray-400 font-bold uppercase tracking-widest py-10">Chưa có đánh giá nào</p>}
           </div>
         </div>
       </div>
 
-      {showSizeGuide && (
-        <SizeGuideModal 
-          brandName={product.brand || 'FootMark'}
-          isOpen={showSizeGuide}
-          onClose={() => setShowSizeGuide(false)}
-        />
-      )}
-
-      {isReviewModalOpen && product && (
-        <ReviewModal 
-          isOpen={isReviewModalOpen}
-          onClose={() => setIsReviewModalOpen(false)}
-          product={{
-            id: productId,
-            name: product.name,
-            image: getImageUrl(product.image || product.images?.[0])
-          }}
-          onSuccess={() => {
-            setFetchReviewsTrigger(prev => prev + 1);
-          }}
-        />
-      )}
+      {showSizeGuide && <SizeGuideModal brandName={product.brand} isOpen={showSizeGuide} onClose={() => setShowSizeGuide(false)} />}
+      {isReviewModalOpen && <ReviewModal isOpen={isReviewModalOpen} onClose={() => setIsReviewModalOpen(false)} product={{ id: productId, name: product.name, image: getImageUrl(product.image || product.images?.[0]) }} onSuccess={() => setFetchReviewsTrigger(prev => prev + 1)} />}
     </div>
   );
 }

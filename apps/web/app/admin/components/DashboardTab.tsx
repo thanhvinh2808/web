@@ -222,9 +222,20 @@ export default function DashboardTab({ stats, setActiveTab, refreshTrigger = 0 }
                   <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${
                     order.status === 'delivered' ? 'text-green-600 bg-green-50' :
                     order.status === 'cancelled' ? 'text-red-600 bg-red-50' :
-                    'text-blue-600 bg-blue-50'
+                    order.status === 'pending' ? 'text-yellow-600 bg-yellow-50' :
+                    order.status === 'processing' ? 'text-blue-600 bg-blue-50' :
+                    order.status === 'shipped' ? 'text-purple-600 bg-purple-50' :
+                    'text-gray-600 bg-gray-50'
                   }`}>
-                    {order.status}
+                    {
+                      {
+                        pending: 'Chờ xác nhận',
+                        processing: 'Đang xử lý',
+                        shipped: 'Đang giao hàng',
+                        delivered: 'Hoàn thành',
+                        cancelled: 'Đã hủy'
+                      }[order.status as string] || order.status
+                    }
                   </span>
                 </div>
               </div>

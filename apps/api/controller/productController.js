@@ -136,8 +136,11 @@ export const createProduct = async (req, res) => {
  */
 export const updateProduct = async (req, res) => {
   try {
-    const { id } = req.params;
-    const updatedProduct = await Product.findByIdAndUpdate(id, req.body, { 
+    const { id } = req.params; // Có thể là ID hoặc Slug
+    const isId = mongoose.Types.ObjectId.isValid(id);
+    const filter = isId ? { _id: id } : { slug: id };
+
+    const updatedProduct = await Product.findOneAndUpdate(filter, req.body, { 
       new: true, 
       runValidators: true 
     });
@@ -157,18 +160,23 @@ export const updateProduct = async (req, res) => {
  */
 export const deleteProduct = async (req, res) => {
   try {
-    const { id } = req.params;
-    const product = await Product.findById(id);
+    const { id } = req.params; // Có thể là ID hoặc Slug
+    const isId = mongoose.Types.ObjectId.isValid(id);
+    const filter = isId ? { _id: id } : { slug: id };
+
+    const product = await Product.findOne(filter);
 
     if (!product) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
     }
 
     // Xóa file ảnh vật lý
-    const allImages = [product.image, ...(product.images?.map(img => img.url) || [])].filter(Boolean);
-    if (allImages.length > 0) await deleteMultipleFiles(allImages);
+    const allImages = [product.image, ...(product.images || [])].filter(img => typeof img === 'string');
+    if (allImages.length > 0) {
+      try { await deleteMultipleFiles(allImages); } catch (e) { console.warn('Lỗi xóa file ảnh:', e); }
+    }
 
-    await Product.findByIdAndDelete(id);
+    await Product.findOneAndDelete(filter);
 
     res.json({ success: true, message: 'Đã xóa sản phẩm thành công' });
   } catch (error) {

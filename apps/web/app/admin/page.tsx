@@ -1,8 +1,11 @@
 // app/admin/page.tsx
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Bell, Search, User, Menu, Package, ShoppingCart, Users } from 'lucide-react'; // Import icons
-import { API_URL } from './config/constants';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+const API_URL = CLEAN_API_URL;
+
 import { useSocket } from '../contexts/SocketContext';
 import LoginForm from './components/LoginForm';
 import Sidebar from './components/Sidebar';
@@ -17,10 +20,30 @@ import TradeInTab from './components/TradeInTab';
 import BlogsTab from './components/BlogsTab';
 import NotificationMenu from './components/NotificationMenu';
 
-export default function AdminDashboard() {
+function AdminDashboardContent() {
   const { socket, isConnected } = useSocket();
+  const searchParams = useSearchParams();
   const [token, setToken] = useState('');
+  
+  // ✅ ĐỒNG BỘ TAB VỚI URL
   const [activeTab, setActiveTab] = useState('dashboard');
+
+  // Khởi tạo tab từ URL
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    if (tabFromUrl) {
+      setActiveTab(tabFromUrl);
+    }
+  }, []);
+
+  // Cập nhật URL khi đổi Tab
+  const handleTabChange = (newTab: string) => {
+    setActiveTab(newTab);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', newTab);
+    window.history.replaceState({}, '', url.toString());
+  };
+
   const [stats, setStats] = useState<any>(null);
   const [dashboardRefresh, setDashboardRefresh] = useState(0); 
   const [users, setUsers] = useState([]);
@@ -132,7 +155,6 @@ export default function AdminDashboard() {
   // Check Auth Logic
   useEffect(() => {
     const checkAuth = async () => {
-      // Ưu tiên lấy token chung của hệ thống
       const savedToken = localStorage.getItem('token') || localStorage.getItem('adminToken');
       
       if (!savedToken) {
@@ -147,7 +169,6 @@ export default function AdminDashboard() {
           const data = await res.json();
           if (data.success) {
             setToken(savedToken);
-            // Đảm bảo lưu lại vào adminToken để tương thích với các logic cũ nếu có
             localStorage.setItem('adminToken', savedToken);
             
             if (data.user) {
@@ -161,7 +182,6 @@ export default function AdminDashboard() {
             }
             fetchStats(savedToken);
           } else {
-            // Nếu token không hợp lệ cho quyền admin
             setToken('');
           }
         } else if (res.status === 401 || res.status === 403) {
@@ -176,7 +196,6 @@ export default function AdminDashboard() {
     checkAuth();
   }, []);
 
-  // Fetch functions (Giữ nguyên)
   const handleTokenExpired = () => {
     setToken('');
     localStorage.removeItem('adminToken');
@@ -236,7 +255,6 @@ export default function AdminDashboard() {
       });
       const data = await res.json();
       if (data.success && data.token) {
-        // Kiểm tra role ngay lập tức
         if (data.user.role !== 'admin') {
            showMessage('❌ Bạn không có quyền truy cập trang quản trị');
            return;
@@ -244,12 +262,9 @@ export default function AdminDashboard() {
 
         setToken(data.token);
         setCurrentUser({ name: data.user.name, email: data.user.email, role: data.user.role });
-        
-        // Lưu vào cả 2 key để đồng bộ toàn hệ thống
         localStorage.setItem('adminToken', data.token);
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        
         fetchStats(data.token);
       } else {
         showMessage('❌ ' + (data.message || 'Đăng nhập thất bại'));
@@ -263,7 +278,7 @@ export default function AdminDashboard() {
     localStorage.removeItem('adminToken');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    window.location.href = '/login'; // Chuyển về trang login chính
+    window.location.href = '/login';
   };
 
   useEffect(() => {
@@ -299,26 +314,18 @@ export default function AdminDashboard() {
       {/* Sidebar Responsive */}
       <Sidebar 
         activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
+        setActiveTab={handleTabChange} 
         onLogout={handleLogout}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
       />
 
-      {/* Main Content Area - Điều chỉnh margin left trên desktop */}
       <main className="flex-1 flex flex-col min-w-0 md:ml-72 transition-all duration-300">
-        
-        {/* Top Header */}
         <header className="h-16 md:h-20 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30">
           <div className="flex items-center gap-3">
-            {/* Nút Hamburger cho Mobile */}
-            <button 
-              onClick={() => setIsSidebarOpen(true)}
-              className="md:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-lg"
-            >
+            <button onClick={() => setIsSidebarOpen(true)} className="md:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
               <Menu size={24} />
             </button>
-
             <div>
               <h1 className="text-lg md:text-2xl font-bold text-gray-800">{getTitle()}</h1>
               <p className="hidden md:block text-sm text-gray-500 mt-0.5">Xin chào, {currentUser?.name}</p>
@@ -337,25 +344,17 @@ export default function AdminDashboard() {
               />
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               
-              {/* 🔍 SEARCH RESULTS DROPDOWN */}
               {showResults && searchResults && (globalSearch.trim().length > 0) && (
-                <div className="absolute top-full mt-2 left-0 w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute top-full mt-2 left-0 w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
                   {isSearching ? (
                     <div className="p-4 text-center text-gray-400 text-xs font-bold uppercase tracking-widest">Đang tìm kiếm...</div>
                   ) : (
                     <>
-                      {/* Products */}
                       {searchResults.products.length > 0 && (
                         <div className="p-2">
-                           <div className="px-2 py-1 text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1 flex items-center gap-2">
-                              <Package size={12}/> Sản Phẩm
-                           </div>
+                           <div className="px-2 py-1 text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1 flex items-center gap-2"><Package size={12}/> Sản Phẩm</div>
                            {searchResults.products.map(p => (
-                             <div 
-                                key={p._id} 
-                                onClick={() => { setActiveTab('products'); setShowResults(false); }}
-                                className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition"
-                             >
+                             <div key={p._id} onClick={() => { handleTabChange('products'); setShowResults(false); }} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition">
                                <img src={p.image || '/placeholder.png'} className="w-8 h-8 rounded border object-cover" />
                                <div>
                                  <div className="text-sm font-bold text-gray-800 line-clamp-1">{p.name}</div>
@@ -365,57 +364,18 @@ export default function AdminDashboard() {
                            ))}
                         </div>
                       )}
-
-                      {/* Orders */}
                       {searchResults.orders.length > 0 && (
                         <div className="p-2 border-t border-gray-50">
-                           <div className="px-2 py-1 text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1 flex items-center gap-2">
-                              <ShoppingCart size={12}/> Đơn Hàng
-                           </div>
+                           <div className="px-2 py-1 text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1 flex items-center gap-2"><ShoppingCart size={12}/> Đơn Hàng</div>
                            {searchResults.orders.map(o => (
-                             <div 
-                                key={o._id} 
-                                onClick={() => { setActiveTab('orders'); setShowResults(false); }}
-                                className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition"
-                             >
+                             <div key={o._id} onClick={() => { handleTabChange('orders'); setShowResults(false); }} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition">
                                <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded flex items-center justify-center font-bold text-[10px]">#{o._id.slice(-4).toUpperCase()}</div>
                                <div>
                                  <div className="text-sm font-bold text-gray-800">{o.customerInfo?.fullName || 'Khách vãng lai'}</div>
-                                 <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
-                                    {parseInt(o.totalAmount).toLocaleString()}₫ • {o.status}
-                                 </div>
+                                 <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{parseInt(o.totalAmount).toLocaleString()}₫</div>
                                </div>
                              </div>
                            ))}
-                        </div>
-                      )}
-
-                      {/* Users */}
-                      {searchResults.users.length > 0 && (
-                        <div className="p-2 border-t border-gray-50">
-                           <div className="px-2 py-1 text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1 flex items-center gap-2">
-                              <Users size={12}/> Người Dùng
-                           </div>
-                           {searchResults.users.map(u => (
-                             <div 
-                                key={u._id} 
-                                onClick={() => { setActiveTab('users'); setShowResults(false); }}
-                                className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition"
-                             >
-                               <div className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center font-bold text-xs">{u.name.charAt(0)}</div>
-                               <div>
-                                 <div className="text-sm font-bold text-gray-800">{u.name}</div>
-                                 <div className="text-xs text-gray-500">{u.email}</div>
-                               </div>
-                             </div>
-                           ))}
-                        </div>
-                      )}
-
-                      {/* No Results */}
-                      {searchResults.products.length === 0 && searchResults.orders.length === 0 && searchResults.users.length === 0 && (
-                        <div className="p-6 text-center text-gray-400 text-xs font-bold uppercase tracking-widest">
-                           Không tìm thấy kết quả nào
                         </div>
                       )}
                     </>
@@ -423,35 +383,25 @@ export default function AdminDashboard() {
                 </div>
               )}
             </div>
-            
             <NotificationMenu />
-
             <div className="flex items-center gap-3 pl-3 md:pl-6 border-l border-gray-100">
               <div className="text-right hidden md:block">
                 <div className="text-sm font-bold text-gray-700">{currentUser?.name}</div>
                 <div className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded-full inline-block">Admin</div>
               </div>
-              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-tr from-blue-600 to-blue-400 flex items-center justify-center text-white shadow-md ring-2 ring-white">
-                <User size={18} />
-              </div>
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-tr from-blue-600 to-blue-400 flex items-center justify-center text-white shadow-md ring-2 ring-white"><User size={18} /></div>
             </div>
           </div>
         </header>
 
-        {/* Dynamic Content */}
         <div className="p-4 md:p-8 flex-1 overflow-x-hidden">
           {message && (
-            <div className={`mb-6 p-4 rounded-xl shadow-sm border flex items-center gap-3 ${
-              message.includes('thành công') || message.includes('✅') 
-                ? 'bg-green-50 border-green-100 text-green-700' 
-                : 'bg-red-50 border-red-100 text-red-700'
-            }`}>
+            <div className={`mb-6 p-4 rounded-xl shadow-sm border flex items-center gap-3 ${message.includes('thành công') || message.includes('✅') ? 'bg-green-50 border-green-100 text-green-700' : 'bg-red-50 border-red-100 text-red-700'}`}>
               {message}
             </div>
           )}
-
           <div className="animate-fade-in-up">
-            {activeTab === 'dashboard' && stats && <DashboardTab stats={stats} setActiveTab={setActiveTab} refreshTrigger={dashboardRefresh} />}
+            {activeTab === 'dashboard' && stats && <DashboardTab stats={stats} setActiveTab={handleTabChange} refreshTrigger={dashboardRefresh} />}
             {activeTab === 'users' && <UsersTab users={users} token={token} onRefresh={fetchUsers} showMessage={showMessage} />}
             {activeTab === 'orders' && <OrdersTab orders={orders} token={token} onRefresh={fetchOrders} showMessage={showMessage} />}
             {activeTab === 'products' && <ProductsTab products={products} categories={categories} token={token} onRefresh={fetchProducts} showMessage={showMessage} />}
@@ -464,5 +414,13 @@ export default function AdminDashboard() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function AdminDashboard() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-600"></div></div>}>
+      <AdminDashboardContent />
+    </Suspense>
   );
 }

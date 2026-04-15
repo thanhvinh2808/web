@@ -71,10 +71,20 @@ export default function VouchersTab({ token, showMessage }: VouchersTabProps) {
         ? `${API_URL}/api/admin/vouchers/${editingVoucher._id}`
         : `${API_URL}/api/admin/vouchers`;
       const method = editingVoucher ? 'PUT' : 'POST';
+
+      // Tối ưu dữ liệu trước khi gửi
+      const submitData = {
+        ...formData,
+        maxDiscount: formData.discountType === 'percent' ? Number(formData.maxDiscount) : undefined,
+        minOrderValue: Number(formData.minOrderValue),
+        discountValue: Number(formData.discountValue),
+        usageLimit: Number(formData.usageLimit)
+      };
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(submitData)
       });
       const data = await res.json();
       if (data.success) {

@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Package, User, Mail, Check, Clock, RefreshCw } from 'lucide-react';
+import { Bell, Package, User, Mail, Check, Clock, RefreshCw, Star } from 'lucide-react';
 import { useSocket } from '../../contexts/SocketContext';
 import { API_URL } from '../config/constants';
 import { useRouter } from 'next/navigation';
@@ -22,7 +22,7 @@ export default function NotificationMenu() {
         setUnreadCount(prev => prev + 1);
         
         // Play sound effect
-        const audio = new Audio('/notification.mp3'); // Optional
+        const audio = new Audio('/notification.mp3'); 
         audio.play().catch(() => {});
       });
     }
@@ -59,8 +59,9 @@ export default function NotificationMenu() {
     }
   };
 
-  const handleMarkAsRead = async (id: string, link?: string) => {
+  const handleMarkAsRead = async (noti: any) => {
     try {
+      const id = noti._id;
       const token = localStorage.getItem('adminToken');
       await fetch(`${API_URL}/api/admin/notifications/${id}/read`, {
         method: 'PUT',
@@ -70,11 +71,16 @@ export default function NotificationMenu() {
       setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
 
-      if (link) {
-         setIsOpen(false);
-         // Logic chuyển tab trong Dashboard (thường là set activeTab)
-         // Tạm thời reload hoặc emit event để parent handle
-         window.location.reload(); // Simple fix for now to refresh data
+      // ✅ Redirect based on notification type
+      setIsOpen(false);
+      
+      if (noti.type === 'review' && noti.referenceId?.slug) {
+        // Redirect to Public Product Detail page's review section
+        router.push(`/products/${noti.referenceId.slug}#review`);
+      } else if (noti.type === 'order') {
+        router.push('/admin?tab=orders'); 
+      } else if (noti.type === 'contact') {
+        router.push('/admin?tab=contacts');
       }
     } catch (error) {
       console.error('Read error:', error);
@@ -102,6 +108,7 @@ export default function NotificationMenu() {
       case 'order': return <Package size={16} className="text-blue-600" />;
       case 'user': return <User size={16} className="text-green-600" />;
       case 'contact': return <Mail size={16} className="text-purple-600" />;
+      case 'review': return <Star size={16} className="text-yellow-500 fill-yellow-500" />;
       default: return <Bell size={16} className="text-gray-600" />;
     }
   };
@@ -140,7 +147,7 @@ export default function NotificationMenu() {
               notifications.map((noti) => (
                 <div 
                   key={noti._id}
-                  onClick={() => handleMarkAsRead(noti._id)}
+                  onClick={() => handleMarkAsRead(noti)}
                   className={`p-4 border-b border-gray-50 hover:bg-gray-50 transition cursor-pointer flex gap-3 ${!noti.isRead ? 'bg-blue-50/30' : ''}`}
                 >
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${!noti.isRead ? 'bg-white shadow-sm border border-blue-100' : 'bg-gray-100'}`}>

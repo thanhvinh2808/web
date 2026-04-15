@@ -155,7 +155,38 @@ export const updateProfile = async (req, res) => {
     if (city !== undefined) user.city = String(city).trim();
     if (district !== undefined) user.district = String(district).trim();
     if (ward !== undefined) user.ward = String(ward).trim();
-    if (avatar !== undefined) user.avatar = avatar;
+    if (avatar !== undefined && avatar.startsWith('data:')) {
+      try {
+        const fs = await import('fs');
+        const path = await import('path');
+        
+        // 1. Prepare directory
+        const uploadDir = path.join(process.cwd(), 'uploads', 'profiles');
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+
+        // 2. Remove old avatar if it exists
+        if (user.avatar && user.avatar.includes('/uploads/profiles/')) {
+          const oldPath = path.join(process.cwd(), user.avatar.replace(/^\//, ''));
+          if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+        }
+
+        // 3. Process base64
+        const base64Data = avatar.replace(/^data:image\/\w+;base64,/, "");
+        const extension = avatar.split(';')[0].split('/')[1] || 'jpg';
+        const fileName = `avatar_${user._id}_${Date.now()}.${extension}`;
+        const filePath = path.join(uploadDir, fileName);
+
+        fs.writeFileSync(filePath, base64Data, 'base64');
+        user.avatar = `/uploads/profiles/${fileName}`;
+      } catch (uploadError) {
+        console.error('❌ Lỗi lưu avatar:', uploadError);
+        // Fallback: nếu lỗi thì không cập nhật avatar
+      }
+    } else if (avatar !== undefined) {
+      user.avatar = avatar;
+    }
 
     await user.save();
     res.json({ 

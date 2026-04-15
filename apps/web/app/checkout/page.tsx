@@ -143,7 +143,7 @@ interface Ward { name: string; code: number; }
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cart, getSelectedTotalPrice, removeItem, selectedVoucher, setSelectedVoucher } = useCart();
+  const { cart, getSelectedTotalPrice, removeItem, removeSelectedItems, selectedVoucher, setSelectedVoucher } = useCart();
   const { user, isAuthenticated } = useAuth();
   const { addOrder } = useOrders();
   
@@ -349,14 +349,7 @@ export default function CheckoutPage() {
 
   // ✅ CHỈ XÓA CÁC MÓN ĐÃ ĐẶT HÀNG (SHOPEE STYLE)
   const clearSelectedItems = () => {
-     selectedItems.forEach(item => {
-        removeItem(
-           item.product._id || item.product.id || '', 
-           item.selectedVariant?.name || null,
-           item.selectedColor || null
-        );
-     });
-     setSelectedVoucher(null);
+     removeSelectedItems();
   };
 
   const handleSubmit = async () => {

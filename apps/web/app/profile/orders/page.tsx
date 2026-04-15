@@ -33,15 +33,24 @@ const ORDER_TABS = [
   { id: 'unpaid',     label: 'Chưa thanh toán' },
   { id: 'pending',    label: 'Chờ xác nhận'    },
   { id: 'processing', label: 'Đang xử lý'      },
-  { id: 'shipped',    label: 'Đang giao'       },
+  { id: 'shipped',    label: 'Đang giao hàng'  },
   { id: 'delivered',  label: 'Hoàn thành'      },
+  { id: 'refunded',   label: 'Hoàn tiền'       },
   { id: 'cancelled',  label: 'Đã hủy'          },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const getStatusLabel = (s: string) =>
-  ({ pending: 'CHỜ XÁC NHẬN', processing: 'ĐANG XỬ LÝ', shipped: 'ĐANG GIAO', delivered: 'HOÀN THÀNH', cancelled: 'ĐÃ HỦY' }[s] ?? s.toUpperCase());
+  ({ 
+    pending: 'CHỜ XÁC NHẬN', 
+    processing: 'ĐANG XỬ LÝ', 
+    shipped: 'ĐANG GIAO HÀNG', 
+    delivered: 'HOÀN THÀNH', 
+    cancelled: 'ĐÃ HỦY',
+    cancellation_requested: 'CHỜ DUYỆT HỦY',
+    refunded: 'ĐÃ HOÀN TIỀN'
+  }[s] ?? s.toUpperCase());
 
 const getStatusColor = (s: string) =>
   ({
@@ -50,9 +59,11 @@ const getStatusColor = (s: string) =>
     shipped:    'text-purple-600 bg-purple-50 border-purple-200',
     delivered:  'text-green-600 bg-green-50 border-green-200',
     cancelled:  'text-red-500 bg-red-50 border-red-200',
+    cancellation_requested: 'text-orange-600 bg-orange-50 border-orange-200',
+    refunded:   'text-teal-600 bg-teal-50 border-teal-200',
   }[s] ?? 'text-gray-600 bg-gray-50 border-gray-200');
 
-const isPaid = (o: any) => o.paymentStatus === 'paid' || o.paymentStatus === 'refunded';
+const isPaid = (o: any) => o.paymentStatus === 'paid' || o.paymentStatus === 'refunded' || o.isPaid;
 
 // ─── Cost calculation (đồng bộ với OrderSuccessPage & OrderDetailPage) ────────
 

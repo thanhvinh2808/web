@@ -34,11 +34,12 @@ export const createNotification = async (type, message, referenceId, referenceMo
   }
 };
 
-// ðŸ”” Get Notifications
+// ✅ Get Notifications
 export const getNotifications = async (req, res) => {
   try {
     const { limit = 20 } = req.query;
     const notifications = await Notification.find()
+      .populate('referenceId', 'name slug orderNumber') // ✅ Populate reference details
       .sort({ createdAt: -1 })
       .limit(parseInt(limit));
       
@@ -88,7 +89,7 @@ export const getDashboardStats = async (req, res) => {
       User.countDocuments(),
       Order.countDocuments(),
       Order.aggregate([
-        { $match: { status: { $ne: 'cancelled' } } },
+        { $match: { status: 'delivered' } },
         { $group: { _id: null, total: { $sum: '$totalAmount' } } }
       ]),
       Order.find()
@@ -280,7 +281,7 @@ export const updateOrderStatus = async (req, res) => {
       });
     }
 
-    const validStatuses = ['pending', 'processing', 'shipped', 'delivered'];
+    const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancellation_requested', 'refunded'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,

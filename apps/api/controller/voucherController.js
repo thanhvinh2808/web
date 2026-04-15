@@ -1,4 +1,6 @@
 import Voucher from '../models/Voucher.js';
+import User from '../models/User.js';
+import Notification from '../models/Notification.js';
 
 // 📋 Lấy danh sách Voucher (Có phân trang & tìm kiếm)
 export const getAllVouchers = async (req, res) => {
@@ -11,8 +13,8 @@ export const getAllVouchers = async (req, res) => {
 
     const vouchers = await Voucher.find(query)
       .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+      .limit(Number(limit))
+      .skip((Number(page) - 1) * Number(limit));
 
     const total = await Voucher.countDocuments(query);
 
@@ -22,7 +24,7 @@ export const getAllVouchers = async (req, res) => {
       pagination: {
         total,
         page: Number(page),
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(total / Number(limit))
       }
     });
   } catch (error) {
@@ -69,37 +71,30 @@ export const createVoucher = async (req, res) => {
       code: code.toUpperCase(),
       description,
       discountType,
-      discountValue,
-      maxDiscount,
-      minOrderValue,
+      discountValue: Number(discountValue),
+      maxDiscount: maxDiscount ? Number(maxDiscount) : undefined,
+      minOrderValue: minOrderValue ? Number(minOrderValue) : 0,
       startDate: startDate || Date.now(),
       endDate,
-      usageLimit,
+      usageLimit: Number(usageLimit || 100),
       usedCount: 0,
       isActive: true
     });
 
-    // 🔔 Create System Notifications for all users
-    try {
-      const User = (await import('../models/User.js')).default;
-      const Notification = (await import('../models/Notification.js')).default;
-      const users = await User.find({ role: 'user' }, '_id');
-      
-      const notifications = users.map(user => ({
-        user_id: user._id,
-        type: 'system',
-        title: 'Voucher mới từ FootMark!',
-        message: `Mã ${newVoucher.code} đã sẵn sàng: ${description || 'Ưu đãi cực khủng dành cho bạn'}. Sử dụng ngay!`,
-        referenceId: newVoucher._id,
-        referenceModel: 'Voucher' // Note: Ensure Voucher is added to enum in Notification.js if needed
-      }));
-
-      if (notifications.length > 0) {
-        await Notification.insertMany(notifications);
+    // 🔔 Create System Notifications for all users (Async - Don't block response)
+    User.find({ role: 'user' }, '_id').then(users => {
+      if (users.length > 0) {
+        const notifications = users.map(user => ({
+          user_id: user._id,
+          type: 'system',
+          title: 'Voucher mới từ FootMark!',
+          message: `Mã ${newVoucher.code} đã sẵn sàng: ${description || 'Ưu đãi cực khủng dành cho bạn'}. Sử dụng ngay!`,
+          referenceId: newVoucher._id,
+          referenceModel: 'Voucher'
+        }));
+        Notification.insertMany(notifications).catch(e => console.error('Lỗi lưu thông báo voucher:', e));
       }
-    } catch (notiError) {
-      console.error('⚠️ Error creating voucher notifications:', notiError);
-    }
+    }).catch(e => console.error('Lỗi tìm user gửi thông báo:', e));
 
     res.status(201).json({
       success: true,

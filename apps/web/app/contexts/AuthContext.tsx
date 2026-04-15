@@ -10,7 +10,7 @@ interface User {
   _id?: string;
   name: string;
   email: string;
-  phone: number;
+  phone: string;
   role: string;
   avatar?: string;
 }
@@ -37,37 +37,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { data: session, status } = useSession();
 
+  // 1. Initial Load from LocalStorage
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
 
-    if (storedToken && storedUser) {
+    if (storedToken) {
       setToken(storedToken);
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        localStorage.removeItem('user');
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {
+          localStorage.removeItem('user');
+        }
       }
+      checkAuth(storedToken);
+    } else {
+      setIsLoading(false);
     }
-    
-    checkAuth(storedToken);
   }, []);
 
+  // 2. ✅ SENIOR FIX: Handle NextAuth Session Sync
+  // When Google Login is successful, we get an accessToken and userId
   useEffect(() => {
     if (isLoggingOut) return;
 
     if (status === 'authenticated' && session) {
       const googleToken = (session as any).accessToken;
-      const googleUser = (session as any).user;
-
       if (googleToken && googleToken !== token) {
         setToken(googleToken);
-        setUser(googleUser);
         localStorage.setItem('token', googleToken);
-        localStorage.setItem('user', JSON.stringify(googleUser));
+        // Trình kích hoạt fetch dữ liệu user chi tiết từ backend
+        checkAuth(googleToken);
       }
     }
   }, [session, status, token, isLoggingOut]);
+
+  const sanitizeUser = (rawUser: any): User | null => {
+    if (!rawUser) return null;
+    return {
+      id: rawUser.id || rawUser._id,
+      _id: rawUser._id || rawUser.id,
+      name: rawUser.name,
+      email: rawUser.email,
+      phone: rawUser.phone || '',
+      role: rawUser.role,
+      avatar: rawUser.avatar // Ở đây avatar đã là URL từ Backend nên rất nhẹ
+    };
+  };
 
   const checkAuth = async (currentToken: string | null) => {
     if (!currentToken) {
@@ -83,14 +100,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.user) {
-          setUser(data.user);
-          localStorage.setItem('user', JSON.stringify(data.user));
+          const cleanUser = sanitizeUser(data.user);
+          setUser(cleanUser);
+          localStorage.setItem('user', JSON.stringify(cleanUser));
         }
       } else {
-        setToken(null);
-        setUser(null);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        // Token expired or invalid
+        if (status !== 'loading') logout();
       }
     } catch (error) {
       console.error('Error verifying token:', error);
@@ -110,10 +126,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Đăng nhập thất bại');
 
+      const cleanUser = sanitizeUser(data.user);
       setToken(data.token);
-      setUser(data.user);
+      setUser(cleanUser);
       localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('user', JSON.stringify(cleanUser));
     } catch (error) {
       throw error;
     }
@@ -131,10 +148,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!res.ok) throw new Error(data.message || 'Đăng ký thất bại');
       
       if (data.token) {
+         const cleanUser = sanitizeUser(data.user);
          setToken(data.token);
-         setUser(data.user);
+         setUser(cleanUser);
          localStorage.setItem('token', data.token);
-         localStorage.setItem('user', JSON.stringify(data.user));
+         localStorage.setItem('user', JSON.stringify(cleanUser));
       }
     } catch (error) {
       throw error;
@@ -151,6 +169,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      
+      // Cleanup cookies
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
       router.push('/login');
     } catch (error) {
       console.error('Logout error:', error);
@@ -160,8 +183,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updateUser = (updatedUser: User) => {
-    setUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
+    const cleanUser = sanitizeUser(updatedUser);
+    setUser(cleanUser);
+    localStorage.setItem('user', JSON.stringify(cleanUser));
   };
 
   const refreshUser = async () => {

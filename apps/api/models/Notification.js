@@ -7,7 +7,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['order', 'user', 'contact', 'system'],
+    enum: ['order', 'user', 'contact', 'system', 'review'], // ✅ Added review type
     required: true
   },
   title: {
@@ -24,7 +24,7 @@ const notificationSchema = new mongoose.Schema({
   },
   referenceModel: {
     type: String,
-    enum: ['Order', 'User', 'Contact', 'TradeIn', 'Voucher']
+    enum: ['Order', 'User', 'Contact', 'TradeIn', 'Voucher', 'Product'] // ✅ Added Product reference
   },
   isRead: {
     type: Boolean,
