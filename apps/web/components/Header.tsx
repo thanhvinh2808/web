@@ -33,7 +33,6 @@ export const Header = ({ cartCount = 0 }: HeaderProps) => {
   const dynamicCartCount = cart.length;
   const wishlistCount = wishlist.length;
 
-  // ✅ Search Suggestions Logic
   useEffect(() => {
     const fetchSuggestions = async () => {
       if (searchQuery.trim().length < 2) {
@@ -142,6 +141,7 @@ export const Header = ({ cartCount = 0 }: HeaderProps) => {
 
           <div className="flex items-center gap-6 h-full">
              <nav className="hidden lg:flex gap-6 font-bold text-sm uppercase tracking-wide">
+                <Link href="/products" className="hover:text-primary transition relative group">Sản phẩm</Link>
                 <Link href="/products?type=new" className="hover:text-primary transition relative group">Hàng Mới</Link>
                 <Link href="/products?type=2hand" className="hover:text-red-600 transition text-red-600 relative group">2Hand Deal</Link>
                 <Link href="/blog" className="hover:text-primary transition">Blog</Link>
@@ -170,7 +170,6 @@ export const Header = ({ cartCount = 0 }: HeaderProps) => {
                             )}
                           </div>
                           <div className="flex flex-col">
-                            
                             <span className="text-xs font-black max-w-[100px] truncate uppercase tracking-tighter leading-none">{user.name}</span>
                           </div>
                        </div>
@@ -214,6 +213,7 @@ export const Header = ({ cartCount = 0 }: HeaderProps) => {
              </form>
 
              <nav className="flex flex-col gap-4 font-bold text-sm uppercase">
+                <Link href="/products" onClick={() => setIsMenuOpen(false)} className="py-2 border-b border-gray-50">Tất cả sản phẩm</Link>
                 <Link href="/products?type=new" onClick={() => setIsMenuOpen(false)} className="py-2 border-b border-gray-50">Hàng Mới</Link>
                 <Link href="/products?type=2hand" onClick={() => setIsMenuOpen(false)} className="py-2 border-b border-gray-50 text-red-600">2Hand Deal</Link>
                 <Link href="/blog" onClick={() => setIsMenuOpen(false)} className="py-2 border-b border-gray-50">Blog</Link>

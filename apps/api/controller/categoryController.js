@@ -5,7 +5,7 @@ import Category from '../models/Category.js';
 // @access  Public
 const getAllCategories = async (req, res) => {
   try {
-    const categories = await Category.find().sort({ name: 1 });
+    const categories = await Category.find().populate('brands').sort({ name: 1 });
     res.json(categories);
   } catch (err) {
     console.error(err.message);
@@ -16,7 +16,7 @@ const getAllCategories = async (req, res) => {
 // @desc    Create category (Admin)
 const createCategory = async (req, res) => {
   try {
-    const { name, description, icon, slug } = req.body;
+    const { name, description, icon, slug, brands } = req.body;
     
     // Kiểm tra trùng lặp
     const existing = await Category.findOne({ $or: [{ name }, { slug }] });
@@ -24,7 +24,7 @@ const createCategory = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Tên danh mục hoặc slug đã tồn tại' });
     }
 
-    const category = await Category.create({ name, description, icon, slug });
+    const category = await Category.create({ name, description, icon, slug, brands });
     res.status(201).json({ success: true, data: category });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -34,10 +34,10 @@ const createCategory = async (req, res) => {
 // @desc    Update category (Admin)
 const updateCategory = async (req, res) => {
   try {
-    const { name, description, icon, slug } = req.body;
+    const { name, description, icon, slug, brands } = req.body;
     const category = await Category.findOneAndUpdate(
       { slug: req.params.slug },
-      { name, description, icon, slug },
+      { name, description, icon, slug, brands },
       { new: true }
     );
 

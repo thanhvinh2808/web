@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Star, Upload, Loader2, CheckCircle } from 'lucide-react';
 import { CLEAN_API_URL } from '@lib/shared/constants';
 
@@ -22,6 +22,21 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, product, onS
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
 
+  const fallbackImage = "https://placehold.co/400x400/f3f4f6/9ca3af?text=FootMark";
+
+  // ✅ Sử dụng useEffect để đóng modal sau khi thành công, tránh lỗi "update while rendering"
+  useEffect(() => {
+    if (isSuccess) {
+      const timer = setTimeout(() => {
+        onClose();
+        setIsSuccess(false);
+        setComment('');
+        setRating(5);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSuccess, onClose]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,7 +46,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, product, onS
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${CLEAN_API_URL}/api/products/${product.id}/reviews`, {
+      const res = await fetch(`${CLEAN_API_URL}/api/products/${product?.id}/reviews`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -39,27 +54,27 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, product, onS
         },
         body: JSON.stringify({ rating, comment, isAnonymous })
       });
-// ... (rest of handleSubmit)
 
       const data = await res.json();
+      
       if (res.ok) {
         setIsSuccess(true);
         if (onSuccess) onSuccess();
-        setTimeout(() => {
-          onClose();
-          setIsSuccess(false);
-          setComment('');
-          setRating(5);
-        }, 2000);
       } else {
-        // Xử lý lỗi từ Server (ví dụ: đã đánh giá rồi)
         setError(data.message || 'Không thể gửi đánh giá. Vui lòng thử lại.');
       }
     } catch (err) {
+      console.error("Review submit error:", err);
       setError('Lỗi kết nối máy chủ. Vui lòng kiểm tra lại mạng.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const getProductImageUrl = () => {
+    if (!product?.image) return fallbackImage;
+    if (product.image.startsWith('http')) return product.image;
+    return `${CLEAN_API_URL}${product.image.startsWith('/') ? '' : '/'}${product.image}`;
   };
 
   return (
@@ -89,14 +104,17 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ isOpen, onClose, product, onS
               <div className="flex gap-4 p-3 bg-gray-50 border border-gray-100">
                 <div className="w-16 h-16 bg-white overflow-hidden border border-gray-200 flex-shrink-0">
                   <img 
-                    src={product.image.startsWith('http') ? product.image : `${CLEAN_API_URL}${product.image}`} 
-                    alt={product.name} 
-                    className="w-full h-full object-cover" 
+                    src={getProductImageUrl()} 
+                    alt={product?.name || 'Sản phẩm'} 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = fallbackImage;
+                    }}
                   />
                 </div>
                 <div className="flex-1">  
                   <h4 className="font-bold text-sm line-clamp-2 uppercase italic tracking-tighter leading-tight">
-                    {product.name}
+                    {product?.name || 'Sản phẩm không xác định'}
                   </h4>
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Sản phẩm đã mua</p>
                 </div>

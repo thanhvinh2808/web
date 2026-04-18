@@ -19,7 +19,11 @@ const categorySchema = new mongoose.Schema({
   icon: {
     type: String,
     default: ''
-  }
+  },
+  brands: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Brand'
+  }]
 }, { 
   timestamps: true 
 });

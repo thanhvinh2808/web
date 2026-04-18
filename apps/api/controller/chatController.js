@@ -6,8 +6,11 @@ export const chatWithAI = async (req, res) => {
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
-      return res.status(500).json({ success: false, message: 'Thiếu API Key.' });
+      console.error('❌ ERROR: GEMINI_API_KEY is missing in process.env');
+      return res.status(500).json({ success: false, message: 'Thiếu API Key (Vui lòng kiểm tra Vercel Env).' });
     }
+
+    console.log('✅ API Key detected:', apiKey.substring(0, 8) + '...');
 
     // 1. Phân tích ý định khách hàng (Intent Analysis)
     const isPhoneNumber = /(0[3|5|7|8|9])([0-9]{8})\b/.test(message.replace(/\s/g, ''));

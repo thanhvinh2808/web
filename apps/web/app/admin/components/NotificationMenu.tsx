@@ -71,16 +71,29 @@ export default function NotificationMenu() {
       setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
 
-      // ✅ Redirect based on notification type
+      // ✅ Redirect based on notification type / model
       setIsOpen(false);
       
-      if (noti.type === 'review' && noti.referenceId?.slug) {
+      const refModel = noti.referenceModel;
+      const type = noti.type;
+
+      if (refModel === 'Order' || type === 'order') {
+        router.push('/admin?tab=orders');
+      } else if (refModel === 'TradeIn') {
+        router.push('/admin?tab=trade-in');
+      } else if (refModel === 'User' || type === 'user') {
+        router.push('/admin?tab=users');
+      } else if (refModel === 'Contact' || type === 'contact') {
+        router.push('/admin?tab=contacts');
+      } else if (refModel === 'Voucher') {
+        router.push('/admin?tab=vouchers');
+      } else if (refModel === 'Product') {
+        router.push('/admin?tab=products');
+      } else if (refModel === 'Blog') {
+        router.push('/admin?tab=blogs');
+      } else if (type === 'review' && noti.referenceId?.slug) {
         // Redirect to Public Product Detail page's review section
         router.push(`/products/${noti.referenceId.slug}#review`);
-      } else if (noti.type === 'order') {
-        router.push('/admin?tab=orders'); 
-      } else if (noti.type === 'contact') {
-        router.push('/admin?tab=contacts');
       }
     } catch (error) {
       console.error('Read error:', error);

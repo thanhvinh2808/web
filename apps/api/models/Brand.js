@@ -9,13 +9,12 @@ const brandSchema = new mongoose.Schema({
   },
   slug: {
     type: String,
-    required: true,
     unique: true,
     lowercase: true
   },
   logo: {
     type: String, // URL
-    required: true
+    default: ''
   },
   description: {
     type: String,

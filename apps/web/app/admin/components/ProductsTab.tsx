@@ -83,42 +83,42 @@ export default function ProductsTab({
   const [itemsPerPage] = useState(12);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ✅ Helper function để lấy URL ảnh
+  // ✅ Helper function để lấy URL ảnh (Cực kỳ an toàn)
   const getImageUrl = (product: Product): string => {
-    const BASE_URL = (API_URL || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}`).replace('/api', '');
-
-    // Ưu tiên images array
-    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
-      const firstImage = product.images[0];
-      if (typeof firstImage === 'string') {
-        if (firstImage.startsWith('http')) return firstImage;
-        return `${BASE_URL}${firstImage.startsWith('/') ? '' : '/'}${firstImage}`;
+    const placeholder = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIzMiIgZmlsbD0iI2QxZDVkYiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPvCfk7c8L3RleHQ+PC9zdmc+';
+    
+    try {
+      const BASE_URL = (API_URL || 'http://localhost:5000').replace('/api', '');
+      
+      // 1. Kiểm tra mảng images
+      if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+        const img = product.images[0];
+        if (typeof img === 'string') return img.startsWith('http') ? img : `${BASE_URL}${img.startsWith('/') ? '' : '/'}${img}`;
+        if (typeof img === 'object' && (img as any).url) {
+           const url = (img as any).url;
+           return url.startsWith('http') ? url : `${BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+        }
       }
-    }
-    // Fallback về image (string)
-    if (product.image && typeof product.image === 'string') {
-      if (product.image.startsWith('http')) return product.image;
-      return `${BASE_URL}${product.image.startsWith('/') ? '' : '/'}${product.image}`;
+      
+      // 2. Kiểm tra trường image đơn lẻ
+      if (product.image && typeof product.image === 'string') {
+        return product.image.startsWith('http') ? product.image : `${BASE_URL}${product.image.startsWith('/') ? '' : '/'}${product.image}`;
+      }
+    } catch (e) {
+      console.warn("Lỗi xử lý ảnh sản phẩm:", e);
     }
 
-    // Default placeholder
-    return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIzMiIgZmlsbD0iI2QxZDVkYiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPvCfk7c8L3RleHQ+PC9zdmc+';
+    return placeholder;
   };
 
-  // ✅ Lọc sản phẩm theo tìm kiếm và danh mục + SẮP XẾP MỚI NHẤT
+  // ✅ Lọc sản phẩm theo tìm kiếm và danh mục (Giữ nguyên thứ tự từ Backend)
   const filteredProducts = useMemo(() => {
-    const filtered = products.filter(product => {
+    return products.filter(product => {
       const matchSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (product.brand || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (product.description || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchCategory = !selectedCategory || product.categorySlug === selectedCategory;
       return matchSearch && matchCategory;
-    });
-
-    return [...filtered].sort((a, b) => {
-      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return dateB - dateA;
     });
   }, [products, searchTerm, selectedCategory]);
 

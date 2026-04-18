@@ -10,7 +10,7 @@ import {
   MessageSquare, 
   Ticket,
   LogOut,
-  Store,
+  Tag,
   X,
   RefreshCw,
   FileText
@@ -31,6 +31,7 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, isOpen, onC
     { id: 'orders', label: 'Đơn hàng', icon: ShoppingCart },
     { id: 'products', label: 'Sản phẩm', icon: Package },
     { id: 'categories', label: 'Danh mục', icon: FolderTree },
+    { id: 'brands', label: 'Thương hiệu', icon: Tag },
     { id: 'vouchers', label: 'Khuyến mãi', icon: Ticket },
     { id: 'blogs', label: 'Tin tức', icon: FileText },
     { id: 'trade-in', label: 'Thu cũ đổi mới', icon: RefreshCw },
@@ -39,7 +40,7 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, isOpen, onC
 
   return (
     <>
-      {/* Mobile Overlay (Lớp nền đen mờ khi mở menu) */}
+      {/* Mobile Overlay */}
       {isOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm transition-opacity"
@@ -62,7 +63,6 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, isOpen, onC
             </h1>
             <span className="text-[9px] font-bold tracking-[0.2em] text-gray-500 uppercase">Dashboard</span>
           </div>
-          {/* Nút đóng chỉ hiện trên mobile */}
           <button onClick={onClose} className="md:hidden text-gray-400 hover:text-red-500">
             <X size={24} />
           </button>
@@ -80,7 +80,7 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, isOpen, onC
                 key={item.id}
                 onClick={() => {
                   setActiveTab(item.id);
-                  onClose(); // Tự động đóng menu khi chọn trên mobile
+                  onClose();
                 }}
                 className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl transition-all duration-200 group font-medium text-sm ${
                   isActive

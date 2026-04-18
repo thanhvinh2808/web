@@ -289,15 +289,35 @@ export const updateOrderStatus = async (req, res) => {
       });
     }
 
-    const order = await Order.findByIdAndUpdate(
-      orderId,
-      { status },
-      { new: true }
-    );
+    // ✅ FOOTMARK: Tìm đơn hàng và cập nhật bằng .save() để kích hoạt Pre-save Hooks
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
+    }
+
+    order.status = status;
+    
+    // Nếu giao hàng thành công, tự động đánh dấu đã thanh toán (đề phòng hook không chạy)
+    if (status === 'delivered') {
+      order.paymentStatus = 'paid';
+      order.isPaid = true;
+      order.paidAt = order.paidAt || new Date();
+    }
+
+    await order.save();
+
+    // Realtime Socket emit thông báo cho User
+    if (global.io) {
+      global.io.to(`user:${order.userId}`).emit('orderStatusUpdated', {
+        orderId: order._id,
+        status: order.status,
+        paymentStatus: order.paymentStatus
+      });
+    }
 
     res.json({
       success: true,
-      message: 'Cáº­p nháº­t tráº¡ng thÃ¡i Ä‘Æ¡n hÃ ng thÃ nh cÃ´ng',
+      message: 'Cập nhật trạng thái đơn hàng thành công',
       data: order
     });
   } catch (error) {

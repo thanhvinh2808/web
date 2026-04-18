@@ -1,18 +1,20 @@
-app.get('/api/categories', (req, res) => {
-  try {
-    const categories = readJSON('categories.json');
-    res.json(categories);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to load categories' });
-  }
-});
+import express from 'express';
+const router = express.Router();
+import { 
+  getAllCategories, 
+  createCategory, 
+  updateCategory, 
+  deleteCategory 
+} from '../controller/categoryController.js';
+import { authenticateToken } from '../middleware/auth.js';
+import { isAdmin } from '../middleware/isAdmin.js';
 
-app.get('/api/products/categories/:slug', (req, res) => {
-  try {
-    const products = readJSON('products.json');
-    const filtered = products.filter(p => p.category === req.params.slug);
-    res.json(filtered);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to load products' });
-  }
-});
+// Public routes
+router.get('/', getAllCategories);
+
+// Admin routes
+router.post('/admin', authenticateToken, isAdmin, createCategory);
+router.put('/admin/:slug', authenticateToken, isAdmin, updateCategory);
+router.delete('/admin/:slug', authenticateToken, isAdmin, deleteCategory);
+
+export default router;
