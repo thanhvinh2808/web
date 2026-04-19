@@ -209,34 +209,33 @@ export const deleteUser = async (req, res) => {
   }
 };
 
-// ðŸ“¦ Get All Orders
+// 📦 Get All Orders
 export const getAllOrders = async (req, res) => {
   try {
-    const { page = 1, limit = 10, status = '' } = req.query;
+    const { status = '' } = req.query;
     
     const query = status ? { status } : {};
 
+    // ✅ TESTER AUDIT: Gỡ bỏ limit và skip để hiển thị TẤT CẢ đơn hàng theo yêu cầu
     const orders = await Order.find(query)
       .populate('userId', 'name email')
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+      .sort({ createdAt: -1 });
 
-    const total = await Order.countDocuments(query);
+    const total = orders.length;
 
     res.json({
       success: true,
       data: orders,
       pagination: {
         total,
-        page: Number(page),
-        pages: Math.ceil(total / limit)
+        page: 1,
+        pages: 1
       }
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Lá»—i láº¥y danh sÃ¡ch orders: ' + error.message
+      message: 'Lỗi lấy danh sách đơn hàng: ' + error.message
     });
   }
 };

@@ -7,11 +7,11 @@ import { CLEAN_API_URL } from '@lib/shared/constants';
 
 const API_URL = CLEAN_API_URL;
 
-const BRANDS = ['Nike', 'Jordan', 'Adidas', 'New Balance', 'Yeezy', 'MLB'];
 const SIZES = ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
 
 export default function SecondHandZone() {
   const [products, setProducts] = useState<any[]>([]);
+  const [brands, setBrands] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   // Filter States
@@ -20,26 +20,32 @@ export default function SecondHandZone() {
   const [selectedSize, setSelectedSize] = useState('');
 
   useEffect(() => {
-    const fetch2Hand = async () => {
+    const fetchData = async () => {
       setIsLoading(true);
       try {
-        // Lấy danh sách sản phẩm mới nhất, sau đó lọc 2hand ở client để đảm bảo không sót sản phẩm chưa gắn tag
-        const res = await fetch(`${API_URL}/api/products?sort=newest&limit=50`);
-        const data = await res.json();
-        const allProds = Array.isArray(data) ? data : data.data || [];
+        // Fetch Products
+        const prodRes = await fetch(`${API_URL}/api/products?sort=newest&limit=50`);
+        const prodData = await prodRes.json();
+        const allProds = Array.isArray(prodData) ? prodData : prodData.data || [];
         
-        // Lọc lấy hàng 2Hand (dựa trên flag isNew hoặc tag 2hand)
         const secondhand = allProds.filter((p: any) => 
            p.isNew === false || p.tags?.includes('2hand')
         );
         setProducts(secondhand);
+
+        // Fetch Brands
+        const brandRes = await fetch(`${API_URL}/api/brands`);
+        const brandData = await brandRes.json();
+        if (brandData.success) {
+          setBrands(brandData.brands || []);
+        }
       } catch (error) {
-        console.error('Error fetching 2hand products:', error);
+        console.error('Error fetching data:', error);
       } finally {
         setIsLoading(false);
       }
     };
-    fetch2Hand();
+    fetchData();
   }, []);
 
   // Filter Logic
@@ -102,7 +108,11 @@ export default function SecondHandZone() {
                  className="w-full px-6 py-4 bg-gray-50 lg:bg-white border-none rounded-none focus:ring-2 focus:ring-primary outline-none font-black uppercase text-[10px] tracking-widest appearance-none cursor-pointer"
               >
                  <option value="">Tất cả thương hiệu</option>
-                 {BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
+                 {brands.map(b => (
+                    <option key={b._id} value={b.name}>
+                       {b.name}
+                    </option>
+                 ))}
               </select>
               <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
            </div>
@@ -131,7 +141,7 @@ export default function SecondHandZone() {
 
         {/* Product Grid */}
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-8">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="aspect-square bg-white border border-gray-200 animate-pulse rounded-none"></div>
             ))}
@@ -139,7 +149,7 @@ export default function SecondHandZone() {
         ) : (
           <div>
             {filteredProducts.length > 0 ? (
-               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-8">
                   {filteredProducts.map((product) => (
                     <ProductCard key={product._id || product.id} product={product} />
                   ))}

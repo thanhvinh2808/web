@@ -50,6 +50,18 @@ router.post('/', uploadMultiple, async (req, res) => {
 
     await newTradeIn.save();
 
+    // ✅ TESTER REAL-TIME AUDIT: Bắn socket cho Admin
+    if (global.io) {
+      global.io.to('admin').emit('newTradeIn', {
+        id: newTradeIn._id,
+        name,
+        productName,
+        brand,
+        expectedPrice: Number(expectedPrice) || 0,
+        createdAt: newTradeIn.createdAt
+      });
+    }
+
     // ✅ Tạo thông báo cho Admin
     await createAdminNotification({
       type: 'contact', 
@@ -104,6 +116,17 @@ router.put('/:id/reply', authenticateToken, isAdmin, async (req, res) => {
         if (adminNote) tradeIn.adminNote = adminNote;
 
         await tradeIn.save();
+
+        // ✅ TESTER REAL-TIME AUDIT: Thông báo ngay cho khách hàng qua Socket
+        if (global.io && tradeIn.userId) {
+          global.io.to(`user:${tradeIn.userId._id || tradeIn.userId}`).emit('tradeInStatusUpdated', {
+            id: tradeIn._id,
+            status: tradeIn.status,
+            finalPrice: tradeIn.finalPrice,
+            adminNote: adminNote || tradeIn.adminNote,
+            message: `Yêu cầu Trade-in của bạn đã được cập nhật: ${tradeIn.status.toUpperCase()}`
+          });
+        }
 
         // Gửi email thông báo
         try {

@@ -83,40 +83,40 @@ export default function HeroCarousel() {
                />
             </div>
             
-            <div className={`absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-black/80 via-black/40 to-transparent`}></div>
+            <div className={`absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-black/90 via-black/50 md:via-black/40 to-transparent`}></div>
 
             <div className="absolute inset-0 container mx-auto px-6 md:px-12 flex flex-col justify-center h-full relative z-10">
               <div className={`max-w-3xl animate-fade-in-up ${
-                slide.align === 'center' ? 'mx-auto text-center items-center' : 
-                slide.align === 'right' ? 'ml-auto text-right items-end' : 'text-left items-start'
+                slide.align === 'center' ? 'lg:mx-auto lg:text-center lg:items-center items-start text-left' : 
+                slide.align === 'right' ? 'lg:ml-auto lg:text-right lg:items-end items-start text-left' : 'text-left items-start'
               } flex flex-col`}>
                 
                 {slide.highlight && (
-                   <div className="flex items-center gap-2 bg-red-600 text-white px-4 py-1.5 mb-6 font-black text-xs uppercase tracking-widest animate-pulse rounded-none">
+                   <div className="flex items-center gap-2 bg-red-600 text-white px-3 md:px-4 py-1 md:py-1.5 mb-4 md:mb-6 font-black text-[10px] md:text-xs uppercase tracking-widest animate-pulse rounded-none">
                       <Star size={12} fill="currentColor" /> Hàng Hiếm / Limited Stock
                    </div>
                 )}
 
                 {!slide.highlight && (
-                   <span className="inline-block px-3 py-1 mb-4 text-xs font-bold uppercase tracking-[0.3em] text-white/80 border border-white/30 rounded-none">
+                   <span className="inline-block px-2 md:px-3 py-1 mb-3 md:mb-4 text-[10px] md:text-xs font-bold uppercase tracking-[0.3em] text-white/80 border border-white/30 rounded-none">
                      {slide.subtitle}
                    </span>
                 )}
 
-                <h2 className="text-6xl md:text-8xl lg:text-9xl font-black italic tracking-tighter mb-6 leading-[0.85] text-white drop-shadow-2xl">
+                <h2 className="text-4xl md:text-8xl lg:text-9xl font-black italic tracking-tighter mb-4 md:mb-6 leading-[0.9] md:leading-[0.85] text-white drop-shadow-2xl uppercase">
                   {slide.title}
                 </h2>
 
-                <p className="text-lg md:text-2xl font-medium mb-10 max-w-xl text-gray-200 leading-relaxed drop-shadow-md">
+                <p className="text-sm md:text-2xl font-medium mb-8 md:mb-10 max-w-sm md:max-w-xl text-gray-200 leading-relaxed drop-shadow-md italic">
                   {slide.description}
                 </p>
 
                 <div className="flex gap-4">
                    <Link 
                      href={slide.link}
-                     className="bg-primary text-white px-10 py-5 font-black uppercase tracking-wider flex items-center gap-3 transition-all transform hover:scale-105 hover:bg-primary-dark shadow-lg shadow-primary/30 rounded-none"
+                     className="bg-primary text-white px-8 md:px-10 py-4 md:py-5 font-black uppercase tracking-wider flex items-center gap-2 md:gap-3 transition-all transform hover:scale-105 hover:bg-primary-dark shadow-lg shadow-primary/30 rounded-none text-xs md:text-base"
                    >
-                     {slide.buttonText} <ArrowRight size={24}/>
+                     {slide.buttonText} <ArrowRight size={20} className="md:w-6 md:h-6"/>
                    </Link>
                   
                 </div>

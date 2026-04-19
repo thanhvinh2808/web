@@ -187,12 +187,12 @@ export const VoucherSelector = ({ totalAmount, onVoucherApply, selectedVoucher }
                         className={`relative flex items-stretch min-h-[90px] border rounded-xl overflow-hidden transition-all ${
                           validation.valid
                             ? 'border-blue-200 bg-white hover:shadow-md cursor-pointer hover:border-blue-400'
-                            : 'border-gray-100 bg-gray-50/50 cursor-not-allowed'
+                            : 'border-gray-100 bg-gray-50/50 cursor-not-allowed opacity-50 grayscale-[0.6]'
                         }`}
                       >
                         {/* Left part (Type/Icon) - Xanh dương */}
                         <div className={`w-24 flex flex-col items-center justify-center border-r-2 border-dashed relative px-2 ${
-                          validation.valid ? 'bg-blue-600 text-white border-blue-200' : 'bg-gray-200 text-gray-400 border-gray-100'
+                          validation.valid ? 'bg-blue-600 text-white border-blue-200' : 'bg-gray-300 text-gray-500 border-gray-200'
                         }`}>
                           {/* Cut-out circles */}
                           <div className="absolute -top-2 -right-[9px] w-4 h-4 bg-white border border-gray-100 rounded-full z-10"></div>

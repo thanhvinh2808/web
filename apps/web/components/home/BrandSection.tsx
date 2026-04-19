@@ -34,10 +34,10 @@ export default function BrandSection() {
   if (brands.length === 0) return null;
 
   return (
-    <section className="border-b bg-white">
-      <div className="container mx-auto px-4 py-8">
-        <p className="text-center text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 mb-8">Thương hiệu nổi bật</p>
-        <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-50 hover:opacity-100 transition-opacity duration-500">
+    <section className="border-b bg-white overflow-hidden">
+      <div className="container mx-auto px-4 py-6 md:py-8">
+        <p className="text-center text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 mb-6 md:mb-8 italic">Thương hiệu nổi bật</p>
+        <div className="flex flex-wrap justify-center items-center gap-6 md:gap-16 opacity-60 md:opacity-50 hover:opacity-100 transition-opacity duration-500">
           {brands.map((b) => (
             <Link 
               key={b._id} 

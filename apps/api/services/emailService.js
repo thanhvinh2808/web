@@ -66,11 +66,11 @@ export const sendNewOrderEmail = async (order) => {
         </table>
 
         <div style="text-align: right; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
-          <p style="margin: 5px 0;"><strong>Tạm tính:</strong> ${subtotal.toLocaleString('vi-VN')}đ</p>
-          <p style="margin: 5px 0;"><strong>VAT (10%):</strong> +${(subtotal * 0.1).toLocaleString('vi-VN')}đ</p>
-          ${(order.shippingFee || 0) > 0 ? `<p style="margin: 5px 0;"><strong>Phí vận chuyển:</strong> +${order.shippingFee.toLocaleString('vi-VN')}đ</p>` : ''}
-          ${(order.discountAmount || 0) > 0 ? `<p style="margin: 5px 0; color: #dc3545;"><strong>Giảm giá:</strong> -${order.discountAmount.toLocaleString('vi-VN')}đ</p>` : ''}
-          <p style="font-size: 18px; margin-top: 10px; color: #333;"><strong>Tổng cộng:</strong> <span style="color: #0070f3; font-size: 24px; font-weight: bold;">${(order.totalAmount || 0).toLocaleString('vi-VN')}đ</span></p>
+          <p style="margin: 5px 0;"><strong>Tạm tính:</strong> ${Math.round(subtotal).toLocaleString('vi-VN')}đ</p>
+          <p style="margin: 5px 0;"><strong>VAT (10%):</strong> +${Math.round(subtotal * 0.1).toLocaleString('vi-VN')}đ</p>
+          ${(order.shippingFee || 0) > 0 ? `<p style="margin: 5px 0;"><strong>Phí vận chuyển:</strong> +${Math.round(order.shippingFee).toLocaleString('vi-VN')}đ</p>` : ''}
+          ${(order.discountAmount || 0) > 0 ? `<p style="margin: 5px 0; color: #dc3545;"><strong>Giảm giá:</strong> -${Math.round(order.discountAmount).toLocaleString('vi-VN')}đ</p>` : ''}
+          <p style="font-size: 18px; margin-top: 10px; color: #333;"><strong>Tổng cộng:</strong> <span style="color: #0070f3; font-size: 24px; font-weight: bold;">${Math.round(order.totalAmount + (subtotal * 0.1) || 0).toLocaleString('vi-VN')}đ</span></p>
         </div>
 
         <div style="margin-top: 30px; padding: 15px; background-color: #f8f9fa; border-radius: 5px; font-size: 13px; color: #666;">

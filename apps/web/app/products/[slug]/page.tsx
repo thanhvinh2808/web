@@ -475,6 +475,25 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
 
       {showSizeGuide && <SizeGuideModal brandName={product.brand} isOpen={showSizeGuide} onClose={() => setShowSizeGuide(false)} />}
       {isReviewModalOpen && <ReviewModal isOpen={isReviewModalOpen} onClose={() => setIsReviewModalOpen(false)} product={{ id: productId, name: product.name, image: getImageUrl(product.image || product.images?.[0]) }} onSuccess={() => setFetchReviewsTrigger(prev => prev + 1)} />}
+
+      {/* STICKY BOTTOM BAR (MOBILE ONLY) */}
+      <div className="lg:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-100 p-4 z-[90] shadow-[0_-10px_20px_rgba(0,0,0,0.05)] animate-in slide-in-from-bottom duration-300">
+         <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col">
+               <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Tổng cộng</span>
+               <span className="text-xl font-black text-black italic tracking-tighter leading-none">{formatCurrency(displayPrice * quantity)}</span>
+            </div>
+            <div className="flex-1 flex gap-2">
+               <button 
+                  onClick={handleAddToCart} 
+                  disabled={isOutOfStock || isActionLoading}
+                  className="flex-1 bg-black text-white py-4 font-black uppercase text-[10px] tracking-widest disabled:opacity-30 shadow-lg shadow-black/10 active:scale-95 transition-transform"
+               >
+                  {isOutOfStock ? 'Hết hàng' : 'Thêm vào giỏ'}
+               </button>
+            </div>
+         </div>
+      </div>
     </div>
   );
 }

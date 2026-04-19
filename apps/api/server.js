@@ -247,10 +247,23 @@ app.post('/api/contacts', async (req, res) => {
     const { name, email, message } = req.body;
     const newContact = new Contact({ fullname: name, email: email.toLowerCase().trim(), message: message.trim() });
     await newContact.save();
+    
+    // ✅ TESTER REAL-TIME AUDIT: Thông báo ngay cho Admin qua Socket
     await createNotification('contact', `Liên hệ mới từ ${newContact.fullname}`, newContact._id, 'Contact');
-    res.json({ success: true, message: "Thank you!" });
+    
+    if (global.io) {
+      global.io.to('admin').emit('newContact', {
+        id: newContact._id,
+        fullname: newContact.fullname,
+        email: newContact.email,
+        message: newContact.message,
+        createdAt: newContact.createdAt
+      });
+    }
+
+    res.json({ success: true, message: "Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi sớm nhất." });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: 'Lỗi server khi gửi liên hệ' });
   }
 });
 

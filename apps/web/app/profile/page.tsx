@@ -155,51 +155,83 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <div className="flex flex-col-reverse md:flex-row gap-12">
-        <div className="flex-1 pr-0 md:pr-12 border-r-0 md:border-r border-gray-100">
+      <div className="flex flex-col md:flex-row gap-8 md:gap-12">
+        {/* Avatar Section - Mobile Top */}
+        <div className="w-full md:w-64 flex flex-col items-center pt-4 md:order-2">
+          <div className="relative group">
+            <div className="w-24 h-24 md:w-32 md:h-32 rounded-none border-2 border-gray-200 overflow-hidden mb-4 md:mb-5 shadow-sm">
+              {formData.avatar ? (
+                  <img src={formData.avatar} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
+                      <User size={32} />
+                  </div>
+              )}
+            </div>
+          </div>
+          
+          <label className="cursor-pointer">
+            <span className="px-4 py-2 md:px-6 md:py-2 border border-gray-300 text-gray-600 text-[10px] md:text-xs font-bold uppercase tracking-wider rounded-none hover:bg-black hover:text-white hover:border-black transition shadow-sm inline-block">
+              Chọn Ảnh
+            </span>
+            <input 
+              type="file" 
+              className="hidden" 
+              accept=".jpg,.jpeg,.png"
+              onChange={handleAvatarChange} 
+            />
+          </label>
+
+          <div className="mt-4 text-[9px] md:text-[10px] text-gray-400 text-center space-y-1 font-medium uppercase tracking-wide">
+            <p>Dụng lượng tối đa 1 MB</p>
+            <p>Định dạng: .JPEG, .PNG</p>
+          </div>
+        </div>
+
+        <div className="flex-1 pr-0 md:pr-12 border-r-0 md:border-r border-gray-100 md:order-1">
           <form onSubmit={handleSubmit} className="space-y-6">
             
-            <div className="flex items-center">
-              <label className="w-32 text-right text-sm text-gray-500 mr-6 font-bold uppercase tracking-wider text-[10px]">Tên đăng nhập</label>
-              <div className="text-gray-800 font-bold">{user?.name}</div>
+            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-0">
+              <label className="w-full md:w-32 md:text-right text-xs md:text-sm text-gray-500 md:mr-6 font-bold uppercase tracking-wider text-[10px]">Tên đăng nhập</label>
+              <div className="text-gray-800 font-bold text-sm md:text-base">{user?.name}</div>
             </div>
 
-            <div className="flex items-center">
-              <label className="w-32 text-right text-sm text-gray-500 mr-6 font-bold uppercase tracking-wider text-[10px]">Tên</label>
+            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-0">
+              <label className="w-full md:w-32 md:text-right text-xs md:text-sm text-gray-500 md:mr-6 font-bold uppercase tracking-wider text-[10px]">Tên</label>
               <input 
                 type="text" 
                 name="name" 
                 value={formData.name} 
                 onChange={handleChange}
-                className="flex-1 border border-gray-300 rounded-none px-3 py-2 focus:outline-none focus:border-primary shadow-sm transition text-sm font-medium"
+                className="w-full md:flex-1 border border-gray-300 rounded-none px-3 py-2.5 md:py-2 focus:outline-none focus:border-primary shadow-sm transition text-sm font-medium"
               />
             </div>
 
-            <div className="flex items-center">
-              <label className="w-32 text-right text-sm text-gray-500 mr-6 font-bold uppercase tracking-wider text-[10px]">Email</label>
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-0">
+              <label className="w-full md:w-32 md:text-right text-xs md:text-sm text-gray-500 md:mr-6 font-bold uppercase tracking-wider text-[10px]">Email</label>
+              <div className="flex items-center gap-3">
                 <span className="text-gray-800 text-sm font-medium">{maskEmail(formData.email)}</span>
-                <span className="text-primary text-xs underline cursor-pointer hover:text-primary-dark font-bold uppercase">Thay đổi</span>
+                <span className="text-primary text-[10px] md:text-xs underline cursor-pointer hover:text-primary-dark font-black uppercase italic">Thay đổi</span>
               </div>
             </div>
 
-            <div className="flex items-center">
-              <label className="w-32 text-right text-sm text-gray-500 mr-6 font-bold uppercase tracking-wider text-[10px]">Số điện thoại</label>
-              <div className="flex-1 flex items-center gap-2">
+            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-0">
+              <label className="w-full md:w-32 md:text-right text-xs md:text-sm text-gray-500 md:mr-6 font-bold uppercase tracking-wider text-[10px]">Số điện thoại</label>
+              <div className="w-full md:flex-1 flex items-center gap-2">
                  <input 
                   type="text" 
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
                   placeholder="Thêm số điện thoại"
-                  className="flex-1 border border-gray-300 rounded-none px-3 py-2 focus:outline-none focus:border-primary shadow-sm transition text-sm font-medium"
+                  className="w-full md:flex-1 border border-gray-300 rounded-none px-3 py-2.5 md:py-2 focus:outline-none focus:border-primary shadow-sm transition text-sm font-medium"
                 />
               </div>
             </div>
 
-            <div className="flex items-center">
-              <label className="w-32 text-right text-sm text-gray-500 mr-6 font-bold uppercase tracking-wider text-[10px]">Giới tính</label>
-              <div className="flex gap-4">
+            <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-0">
+              <label className="w-full md:w-32 md:text-right text-xs md:text-sm text-gray-500 md:mr-6 font-bold uppercase tracking-wider text-[10px]">Giới tính</label>
+              <div className="flex gap-6">
                 {['male', 'female', 'other'].map((g) => (
                   <label key={g} className="flex items-center gap-2 cursor-pointer group">
                     <div className="relative flex items-center">
@@ -211,7 +243,7 @@ export default function ProfilePage() {
                         className="peer h-4 w-4 cursor-pointer appearance-none rounded-none border border-gray-300 checked:border-primary transition-all checked:bg-primary"
                       />
                     </div>
-                    <span className="text-sm text-gray-700 capitalize group-hover:text-primary font-medium">
+                    <span className="text-xs md:text-sm text-gray-700 capitalize group-hover:text-primary font-bold">
                       {g === 'male' ? 'Nam' : g === 'female' ? 'Nữ' : 'Khác'}
                     </span>
                   </label>
@@ -219,23 +251,23 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="flex items-center">
-              <label className="w-32 text-right text-sm text-gray-500 mr-6 font-bold uppercase tracking-wider text-[10px]">Ngày sinh</label>
+            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-0">
+              <label className="w-full md:w-32 md:text-right text-xs md:text-sm text-gray-500 md:mr-6 font-bold uppercase tracking-wider text-[10px]">Ngày sinh</label>
               <input 
                 type="date"
                 name="dateOfBirth"
                 value={formData.dateOfBirth}
                 onChange={handleChange}
-                className="border border-gray-300 rounded-none px-3 py-2 focus:outline-none focus:border-primary shadow-sm transition text-sm font-medium"
+                className="w-full md:w-auto border border-gray-300 rounded-none px-3 py-2.5 md:py-2 focus:outline-none focus:border-primary shadow-sm transition text-sm font-medium"
               />
             </div>
 
-            <div className="flex items-center pt-4">
-              <div className="w-32 mr-6"></div>
+            <div className="flex items-center pt-6 md:pt-4">
+              <div className="hidden md:block w-32 mr-6"></div>
               <button 
                 type="submit" 
                 disabled={isLoading}
-                className="px-8 py-3 bg-primary text-white rounded-none hover:bg-primary-dark transition shadow-sm disabled:opacity-70 flex items-center gap-2 font-bold uppercase tracking-wider text-xs"
+                className="w-full md:w-auto px-10 py-4 md:py-3 bg-primary text-white rounded-none hover:bg-primary-dark transition shadow-lg shadow-primary/20 disabled:opacity-70 flex items-center justify-center gap-2 font-black uppercase tracking-wider text-[10px] md:text-xs"
               >
                 {isLoading && <Loader2 size={16} className="animate-spin" />}
                 Lưu Thay Đổi
@@ -243,38 +275,6 @@ export default function ProfilePage() {
             </div>
           </form>
         </div>
-
-        <div className="w-full md:w-64 flex flex-col items-center pt-4">
-          <div className="relative group">
-            <div className="w-32 h-32 rounded-none border-2 border-gray-200 overflow-hidden mb-5 shadow-sm">
-              {formData.avatar ? (
-                  <img src={formData.avatar} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
-                      <User size={48} />
-                  </div>
-              )}
-            </div>
-          </div>
-          
-          <label className="cursor-pointer">
-            <span className="px-6 py-2 border border-gray-300 text-gray-600 text-xs font-bold uppercase tracking-wider rounded-none hover:bg-black hover:text-white hover:border-black transition shadow-sm inline-block">
-              Chọn Ảnh
-            </span>
-            <input 
-              type="file" 
-              className="hidden" 
-              accept=".jpg,.jpeg,.png"
-              onChange={handleAvatarChange} 
-            />
-          </label>
-
-          <div className="mt-4 text-[10px] text-gray-400 text-center space-y-1 font-medium uppercase tracking-wide">
-            <p>Dụng lượng file tối đa 1 MB</p>
-            <p>Định dạng: .JPEG, .PNG</p>
-          </div>
-        </div>
-
       </div>
     </div>
   );

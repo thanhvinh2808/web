@@ -359,6 +359,21 @@ export default function CheckoutPage() {
         if (!customerInfo.fullName || !customerInfo.phone || !customerInfo.address) return;
      }
 
+     // ✅ KIỂM TRA TỒN KHO CUỐI CÙNG TRƯỚC KHI GỌI API (TESTER STYLE)
+     for (const item of selectedItems) {
+        const maxStock = item.selectedVariant ? item.selectedVariant.stock : (item.product.stock || 0);
+        if (maxStock <= 0) {
+           setStatusError(`Sản phẩm "${item.product.name}" đã hết hàng. Vui lòng quay lại giỏ hàng để cập nhật.`);
+           setIsProcessing(false);
+           return;
+        }
+        if (item.quantity > maxStock) {
+           setStatusError(`Sản phẩm "${item.product.name}" chỉ còn ${maxStock} món. Vui lòng quay lại giỏ hàng để cập nhật.`);
+           setIsProcessing(false);
+           return;
+        }
+     }
+
      setIsProcessing(true);
      setStatusError(null);
      try {

@@ -115,14 +115,14 @@ export default function NewArrivals() {
 
         {/* Product Grid */}
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-8">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="aspect-square bg-gray-100 animate-pulse rounded-none"></div>
             ))}
           </div>
         ) : (
           <div className="min-h-[400px]">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-8">
               {currentProducts.map((product) => (
                 <ProductCard 
                   key={product._id || product.id} 

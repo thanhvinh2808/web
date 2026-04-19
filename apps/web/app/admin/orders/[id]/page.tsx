@@ -317,7 +317,7 @@ export default function OrderDetailPage() {
           <div className="flex items-center gap-3">
             <div className="text-right mr-4 border-r border-gray-200 pr-4 hidden sm:block">
               <p className="text-[10px] font-bold text-gray-400 uppercase">Tổng thanh toán</p>
-              <p className="text-xl font-bold text-blue-600">{formatPrice(orderDetails.finalTotal)}</p>
+              <p className="text-xl font-bold text-blue-600">{formatPrice(orderDetails.finalTotal+orderDetails.vatAmount)}</p>
             </div>
             {/* Action Buttons Logic (simplified) */}
             <div className="flex gap-2">
@@ -417,7 +417,7 @@ export default function OrderDetailPage() {
                 )}
                 <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
                   <span className="font-bold text-gray-900">Tổng cộng</span>
-                  <span className="text-2xl font-bold text-blue-600">{formatPrice(orderDetails.finalTotal)}</span>
+                  <span className="text-2xl font-bold text-blue-600">{formatPrice(orderDetails.finalTotal+orderDetails.vatAmount)}</span>
                 </div>
               </div>
             </div>

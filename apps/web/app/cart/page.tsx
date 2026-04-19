@@ -102,26 +102,37 @@ export default function CartPage() {
                   const colorKey = item.selectedColor || null;
                   const itemKey = `${productId}-${variantKey || 'base'}-${colorKey || 'base'}`;
                   
+                  const maxStock = item.selectedVariant ? item.selectedVariant.stock : (item.product.stock || 0);
+                  const isOutOfStock = maxStock <= 0;
+                  const isExceedingStock = item.quantity > maxStock && maxStock > 0;
+
                   return (
-                    <div key={`${itemKey}-${index}`} className="bg-white p-4 sm:p-6 flex gap-4 sm:gap-6 shadow-sm border border-gray-100 items-center">
+                    <div key={`${itemKey}-${index}`} className={`bg-white p-4 sm:p-6 flex gap-4 sm:gap-6 shadow-sm border border-gray-100 items-center transition-all ${isOutOfStock ? 'opacity-60 grayscale-[0.5]' : ''}`}>
                       
                       {/* Individual Checkbox */}
                       <button 
-                        onClick={() => toggleSelectItem(productId, variantKey, colorKey)}
+                        onClick={() => !isOutOfStock && toggleSelectItem(productId, variantKey, colorKey)}
+                        disabled={isOutOfStock}
                         className={`w-5 h-5 border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                          item.selected ? 'bg-black border-black text-white' : 'border-gray-300 hover:border-black'
+                          item.selected && !isOutOfStock ? 'bg-black border-black text-white' : 
+                          isOutOfStock ? 'border-gray-100 bg-gray-50 cursor-not-allowed' : 'border-gray-300 hover:border-black'
                         }`}
                       >
-                        {item.selected && <Check size={14} strokeWidth={4} />}
+                        {item.selected && !isOutOfStock && <Check size={14} strokeWidth={4} />}
                       </button>
 
                       {/* Image */}
-                      <div className="w-20 h-20 sm:w-28 sm:h-28 bg-gray-50 overflow-hidden flex-shrink-0 border border-gray-100">
+                      <div className="w-20 h-20 sm:w-28 sm:h-28 bg-gray-50 overflow-hidden flex-shrink-0 border border-gray-100 relative">
                         <img
                           src={getImageUrl(item)}
                           alt={item.product.name}
                           className="w-full h-full object-cover"
                         />
+                        {isOutOfStock && (
+                           <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                              <span className="text-[10px] font-black text-white uppercase tracking-widest border border-white px-2 py-1 italic">Hết hàng</span>
+                           </div>
+                        )}
                       </div>
 
                       {/* Info */}
@@ -150,26 +161,28 @@ export default function CartPage() {
                              {item.selectedColor && (
                                 <span className="text-[9px] font-black uppercase bg-gray-100 px-2 py-1 text-gray-600">Màu: {item.selectedColor}</span>
                              )}
+                             {isExceedingStock && (
+                                <span className="text-[9px] font-black uppercase bg-red-100 px-2 py-1 text-red-600 italic">Chỉ còn {maxStock} sản phẩm</span>
+                             )}
                           </div>
                         </div>
 
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                            <div className="relative">
-                              <div className="flex items-center border-2 border-gray-100 w-fit">
+                              <div className={`flex items-center border-2 w-fit ${isOutOfStock ? 'border-gray-50 opacity-50' : 'border-gray-100'}`}>
                                  <button 
                                     onClick={() => {
                                        updateQuantity(productId, variantKey, colorKey, item.quantity - 1);
                                        setStockErrors(prev => ({ ...prev, [itemKey]: false }));
                                     }}
                                     className="w-8 h-8 hover:bg-gray-50 flex items-center justify-center text-gray-600 disabled:opacity-30"
-                                    disabled={item.quantity <= 1}
+                                    disabled={item.quantity <= 1 || isOutOfStock}
                                  >
                                     <Minus size={12} strokeWidth={3}/>
                                  </button>
                                  <span className="w-8 text-center font-black text-xs">{item.quantity}</span>
                                  <button 
                                     onClick={() => {
-                                       const maxStock = item.selectedVariant ? item.selectedVariant.stock : (item.product.stock || 0);
                                        if (item.quantity < maxStock) {
                                           updateQuantity(productId, variantKey, colorKey, item.quantity + 1);
                                           setStockErrors(prev => ({ ...prev, [itemKey]: false }));
@@ -182,6 +195,7 @@ export default function CartPage() {
                                        }
                                     }}
                                     className="w-8 h-8 hover:bg-gray-50 flex items-center justify-center text-gray-600 border-l-2 border-gray-100"
+                                    disabled={isOutOfStock}
                                  >
                                     <Plus size={12} strokeWidth={3}/>
                                  </button>
@@ -189,7 +203,7 @@ export default function CartPage() {
                               {stockErrors[itemKey] && (
                                  <div className="absolute top-full left-0 mt-1 whitespace-nowrap z-10">
                                     <span className="text-[9px] font-black uppercase text-red-500 bg-white">
-                                       Hết hàng trong kho!
+                                       Tối đa {maxStock} sản phẩm!
                                     </span>
                                  </div>
                               )}

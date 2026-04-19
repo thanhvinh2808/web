@@ -194,55 +194,55 @@ export default function ProductCard({ product, showSoldCount = false }: ProductC
         {/* WISHLIST BUTTON */}
         <button 
           onClick={handleToggleWishlist}
-          className="absolute top-3 right-3 z-30 p-2 bg-white/80 backdrop-blur-md rounded-none shadow-sm hover:bg-white transition-all group/heart"
+          className="absolute top-2 right-2 md:top-3 md:right-3 z-30 p-1.5 md:p-2 bg-white/80 backdrop-blur-md rounded-none shadow-sm hover:bg-white transition-all group/heart"
         >
           <Heart 
-            size={18} 
-            className={`transition-all duration-300 ${isFavorite ? 'fill-red-500 text-red-500 scale-110' : 'text-gray-400 group-hover/heart:text-red-400'}`} 
+            size={16} 
+            className={`transition-all duration-300 md:w-[18px] md:h-[18px] ${isFavorite ? 'fill-red-500 text-red-500 scale-110' : 'text-gray-400 group-hover/heart:text-red-400'}`} 
           />
         </button>
 
         {!showOptions && !isOutOfStock && (
-           <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 flex gap-2 z-10">
+           <div className="absolute inset-x-0 bottom-0 p-2 md:p-4 translate-y-0 md:translate-y-full md:group-hover:translate-y-0 transition-transform duration-300 flex gap-2 z-10">
               <button 
                  onClick={handleAddToCartClick}
-                 className="flex-1 bg-primary text-white py-3 rounded-none font-bold text-xs uppercase tracking-wide hover:bg-primary-dark shadow-lg shadow-primary/30 flex items-center justify-center gap-2"
+                 className="flex-1 bg-primary text-white py-2 md:py-3 rounded-none font-bold text-[10px] md:text-xs uppercase tracking-wide hover:bg-primary-dark shadow-lg shadow-primary/30 flex items-center justify-center gap-2"
               >
-                 {isAdding ? <Check size={16}/> : <ShoppingCart size={16}/>} 
-                 {isAdding ? 'Đã thêm' : 'Thêm vào giỏ'}
+                 {isAdding ? <Check size={14}/> : <ShoppingCart size={14}/>} 
+                 <span className="hidden xs:inline">{isAdding ? 'Đã thêm' : 'Thêm vào giỏ'}</span>
               </button>
            </div>
         )}
       </Link>
 
-      <div className="p-4">
+      <div className="p-2 md:p-4">
         <div className="flex justify-between items-start mb-1">
-           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{product.brand || 'No Brand'}</span>
+           <span className="text-[8px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest">{product.brand || 'No Brand'}</span>
            {showSoldCount && Number(product.soldCount) > 0 ? (
-              <div className="flex items-center gap-1 text-[10px] font-black text-primary uppercase tracking-widest bg-blue-50 px-2 py-0.5">
-                 <TrendingUp size={10}/> Đã bán {product.soldCount}
+              <div className="flex items-center gap-1 text-[8px] md:text-[10px] font-black text-primary uppercase tracking-widest bg-blue-50 px-1 md:px-2 py-0.5">
+                 <TrendingUp size={10}/> <span className="hidden xs:inline">Đã bán</span> {product.soldCount}
               </div>
            ) : null}
         </div>
 
         <Link href={`/products/${productSlug}`}>
-          <h3 className="font-bold text-gray-900 mb-2 line-clamp-1 hover:text-primary transition uppercase tracking-tighter italic">
+          <h3 className="font-bold text-gray-900 mb-1 md:mb-2 line-clamp-1 hover:text-primary transition uppercase tracking-tighter italic text-xs md:text-base">
             {product.name}
           </h3>
         </Link>
 
         {/* PHẦN HIỂN THỊ GIÁ THEO YÊU CẦU */}
-        <div className="flex items-end justify-between border-t border-dashed border-gray-100 pt-3 mt-3">
+        <div className="flex items-end justify-between border-t border-dashed border-gray-100 pt-2 md:pt-3 mt-2 md:mt-3">
            <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 md:gap-2">
                 {/* Giá bán hiện tại (Tự động cập nhật khi chọn Size ở Overlay) */}
-                <span className="text-lg font-black text-black italic">
+                <span className="text-sm md:text-lg font-black text-black italic">
                   {formatCurrency(displayPrice)}
                 </span>
                 
                 {/* Giá gốc (Original Price) - Luôn hiển thị nếu có để làm mốc giảm giá */}
                 {product.originalPrice && product.originalPrice > displayPrice && (
-                  <span className="text-xs text-gray-400 line-through decoration-gray-400">
+                  <span className="text-[10px] md:text-xs text-gray-400 line-through decoration-gray-400">
                     {formatCurrency(product.originalPrice)}
                   </span>
                 )}

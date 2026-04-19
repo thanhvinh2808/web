@@ -90,16 +90,16 @@ export const Header = ({ cartCount = 0 }: HeaderProps) => {
 
   return (
     <>
-      <div className={`${isScrolled ? 'h-16' : 'h-20'} transition-all duration-300`}></div>
+      <div className={`${isScrolled ? 'h-16' : 'h-16 md:h-20'} transition-all duration-300`}></div>
 
-      <header className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 border-b border-gray-100 ${isScrolled ? "bg-white shadow-md h-16" : "bg-white h-20 shadow-none"}`}>
+      <header className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 border-b border-gray-100 ${isScrolled ? "bg-white shadow-md h-16" : "bg-white h-16 md:h-20 shadow-none"}`}>
         <div className="container mx-auto px-4 h-full flex items-center justify-between">
           
           <Link href="/" className="flex flex-col group">
-            <h1 className={`font-black tracking-tighter text-black leading-none group-hover:opacity-80 transition-all duration-300 ${isScrolled ? 'text-2xl' : 'text-3xl'}`}>
+            <h1 className={`font-black tracking-tighter text-black leading-none group-hover:opacity-80 transition-all duration-300 ${isScrolled ? 'text-xl md:text-2xl' : 'text-2xl md:text-3xl'}`}>
               FOOT<span className="text-primary">MARK</span>.
             </h1>
-            <span className={`font-bold tracking-[0.2em] text-gray-500 uppercase transition-all duration-300 ${isScrolled ? 'text-[0px] opacity-0 h-0' : 'text-[8px] md:text-[10px] opacity-100'}`}>Authentic Sneakers</span>
+            <span className={`font-bold tracking-[0.2em] text-gray-500 uppercase transition-all duration-300 ${isScrolled ? 'text-[0px] opacity-0 h-0' : 'text-[8px] md:text-[10px] hidden md:block opacity-100'}`}>Authentic Sneakers</span>
           </Link>
 
           <form onSubmit={handleSearch} className="hidden md:flex flex-1 mx-8 lg:mx-12 max-w-lg relative group transition-all duration-300">

@@ -165,22 +165,21 @@ export const createOrder = async (req, res) => {
 
       // 4. CẬP NHẬT LƯỢT DÙNG VOUCHER (NẾU CÓ)
       if (voucherCode) {
+        // ✅ TESTER AUDIT: Thêm kiểm tra startDate và chặn Atomic usedCount ngay trong Query
         const updatedVoucher = await Voucher.findOneAndUpdate(
           { 
             code: voucherCode.toUpperCase(),
             isActive: true,
-            endDate: { $gte: new Date() }
+            startDate: { $lte: new Date() },
+            endDate: { $gte: new Date() },
+            $expr: { $lt: ["$usedCount", "$usageLimit"] }
           },
           { $inc: { usedCount: 1 } },
           { session, new: true }
         );
 
         if (!updatedVoucher) {
-          throw new Error('Mã giảm giá không hợp lệ hoặc đã hết hạn.');
-        }
-
-        if (updatedVoucher.usedCount > updatedVoucher.usageLimit) {
-          throw new Error('Mã giảm giá đã hết lượt sử dụng.');
+          throw new Error('Mã giảm giá không hợp lệ, đã hết hạn hoặc đã hết lượt sử dụng.');
         }
       }
 
