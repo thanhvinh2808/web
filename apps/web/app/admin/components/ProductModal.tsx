@@ -281,10 +281,22 @@ export default function ProductModal({
                   <label className="block text-[10px] font-bold text-blue-600 uppercase mb-1.5">Độ mới (Condition)</label>
                   <select 
                     value={formData.specs?.condition || 'New'} 
-                    onChange={(e) => setFormData({
-                      ...formData, 
-                      specs: { ...formData.specs, condition: e.target.value }
-                    })}
+                    onChange={(e) => {
+                      const newCondition = e.target.value;
+                      const isActuallyNew = ['New', '100%'].includes(newCondition);
+                      const tagToAdd = isActuallyNew ? 'new' : '2hand';
+                      const tagToRemove = isActuallyNew ? '2hand' : 'new';
+                      
+                      let currentTags = [...(formData.tags || [])];
+                      currentTags = currentTags.filter(t => t !== tagToRemove);
+                      if (!currentTags.includes(tagToAdd)) currentTags.push(tagToAdd);
+
+                      setFormData({
+                        ...formData, 
+                        tags: currentTags,
+                        specs: { ...formData.specs, condition: newCondition }
+                      });
+                    }}
                     className="w-full px-3 py-2 bg-white border border-blue-200 rounded-lg text-sm font-bold text-blue-700 outline-none focus:border-blue-500 transition cursor-pointer"
                   >
                     <option value="New">New (100%)</option>

@@ -2,9 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { Users, ShoppingBag, DollarSign, TrendingUp, Package, ArrowUpRight, ArrowDownRight, Clock, Calendar } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { API_URL } from '../config/constants';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+const API_URL = CLEAN_API_URL;
 
-export default function DashboardTab({ stats, setActiveTab, refreshTrigger = 0 }: { stats: any, setActiveTab: (tab: string) => void, refreshTrigger?: number }) {
+export default function DashboardTab({ stats, setActiveTab, token, refreshTrigger = 0 }: { stats: any, setActiveTab: (tab: string) => void, token?: string, refreshTrigger?: number }) {
   const [revenueStats, setRevenueStats] = useState({
     totalAllTime: 0,
     totalInRange: 0,
@@ -19,13 +20,15 @@ export default function DashboardTab({ stats, setActiveTab, refreshTrigger = 0 }
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    fetchRevenue();
-  }, [dateRange, refreshTrigger]);
+    if (token) {
+      fetchRevenue();
+    }
+  }, [dateRange, refreshTrigger, token]);
 
   const fetchRevenue = async () => {
+    if (!token) return;
     try {
       setIsLoading(true);
-      const token = localStorage.getItem('adminToken');
       const res = await fetch(`${API_URL}/api/admin/revenue?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -67,6 +70,39 @@ export default function DashboardTab({ stats, setActiveTab, refreshTrigger = 0 }
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+  };
+
+  // ✅ ĐỒNG BỘ CÔNG THỨC TÍNH TIỀN CHUẨN (VAT + SHIP - DISCOUNT)
+  const calculateOrderDetails = (order: any) => {
+    // Tạm tính
+    const subtotal = order.items?.reduce((total: number, item: any) => {
+      return total + (item.price * item.quantity);
+    }, 0) || 0;
+
+    // VAT 10%
+    const vatAmount = Math.round(subtotal * 0.1);
+
+    // Phí vận chuyển
+    const calculateShippingFee = () => {
+      if (subtotal >= 1000000) return 0;
+      if (subtotal >= 500000) return 30000;
+      return 50000;
+    };
+    const shippingFee = calculateShippingFee();
+
+    // Giảm giá
+    const discountAmount = order.discountAmount || 0;
+
+    // Tổng cuối cùng
+    const finalTotal = subtotal + shippingFee + vatAmount - discountAmount;
+
+    return {
+      subtotal,
+      vatAmount,
+      shippingFee,
+      discountAmount,
+      finalTotal
+    };
   };
 
   return (
@@ -218,7 +254,7 @@ export default function DashboardTab({ stats, setActiveTab, refreshTrigger = 0 }
                   <p className="text-[10px] font-bold text-gray-400 uppercase">{new Date(order.createdAt).toLocaleDateString('vi-VN')}</p>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-black text-black">{formatCurrency(order.totalAmount)}</div>
+                  <div className="text-sm font-black text-black">{formatCurrency(calculateOrderDetails(order).finalTotal)}</div>
                   <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${
                     order.status === 'delivered' ? 'text-green-600 bg-green-50' :
                     order.status === 'cancelled' ? 'text-red-600 bg-red-50' :

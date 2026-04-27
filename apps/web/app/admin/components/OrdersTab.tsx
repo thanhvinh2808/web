@@ -50,7 +50,8 @@ const statusLabels: { [key: string]: string } = {
   pending: 'Chờ xác nhận',
   processing: 'Đang xử lý',
   shipped: 'Đang giao hàng',
-  delivered: 'Hoàn thành',
+  delivered: 'Đã giao hàng',
+  completed: 'Hoàn thành',
   cancelled: 'Đã hủy',
   cancellation_requested: 'Chờ duyệt hủy',
   refunded: 'Đã hoàn tiền'
@@ -59,8 +60,9 @@ const statusLabels: { [key: string]: string } = {
 const statusColors: { [key: string]: string } = {
   pending: 'bg-yellow-100 text-yellow-800',
   processing: 'bg-blue-100 text-blue-800',
-  shipped: 'bg-purple-100 text-purple-800',
-  delivered: 'bg-green-100 text-green-800',
+  shipped: 'bg-indigo-100 text-indigo-800',
+  delivered: 'bg-purple-100 text-purple-800',
+  completed: 'bg-green-100 text-green-800',
   cancelled: 'bg-red-100 text-red-800',
   cancellation_requested: 'bg-orange-100 text-orange-800',
   refunded: 'bg-teal-100 text-teal-800'
@@ -220,13 +222,13 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
     
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     
-      const matchesPaymentStatus = 
+    const isActuallyPaid = order.paymentStatus === 'paid' || order.status === 'completed';
+    const matchesPaymentStatus = 
       sortPaystatus === '' || 
-    (sortPaystatus === 'paid' && (order.paymentStatus === 'paid' || order.status === 'delivered')) ||
-    (sortPaystatus === 'unpaid' && order.paymentStatus !== 'paid' && order.status !== 'delivered');
+      (sortPaystatus === 'paid' && isActuallyPaid) ||
+      (sortPaystatus === 'unpaid' && !isActuallyPaid);
   
-  return matchesSearch && matchesStatus && matchesPaymentStatus;
-    
+    return matchesSearch && matchesStatus && matchesPaymentStatus;
   });
 
   // Sort orders
@@ -236,7 +238,6 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
       const dateB = new Date(b.createdAt).getTime();
       return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
     } else {
-      // ✅ SẮP XẾP THEO TỔNG TIỀN THỰC TẾ
       const totalA = calculateOrderDetails(a).finalTotal;
       const totalB = calculateOrderDetails(b).finalTotal;
       return sortOrder === 'asc' ? totalA - totalB : totalB - totalA;
@@ -249,17 +250,23 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
   const endIndex = startIndex + itemsPerPage;
   const currentOrders = sortedOrders.slice(startIndex, endIndex);
 
-  // ✅ STATISTICS TÍNH ĐÚNG
+  // ✅ STATISTICS TÍNH ĐÚNG (Tính cả delivered và completed cho đơn thành công)
   const stats = {
     total: orders.length,
     pending: orders.filter(o => o.status === 'pending').length,
     processing: orders.filter(o => o.status === 'processing').length,
     shipped: orders.filter(o => o.status === 'shipped').length,
     delivered: orders.filter(o => o.status === 'delivered').length,
+    completed: orders.filter(o => o.status === 'completed').length,
     cancelled: orders.filter(o => o.status === 'cancelled').length,
+    
+    // Đơn được coi là "Done" bao gồm cả đã giao hàng (cũ) và hoàn thành (mới)
+    doneCount: orders.filter(o => ['delivered', 'completed'].includes(o.status)).length,
+    
+    // Doanh thu tính trên tất cả đơn thành công
     totalRevenue: orders
-      .filter(o => o.status === 'delivered')
-      .reduce((sum, o) => sum + calculateOrderDetails(o).finalTotal, 0)
+      .filter(o => ['delivered', 'completed'].includes(o.status))
+      .reduce((sum, o) => sum + (o.totalAmount || 0), 0)
   };
 
   return (
@@ -295,7 +302,7 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
           <p className="text-4xl font-black text-black tracking-tight mb-1">{stats.pending}</p>
           <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Đang chờ xử lý</p>
         </div>
-
+        
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all group">
           <div className="flex justify-between items-start mb-4">
             <div className="p-3 bg-green-50 text-green-600 rounded-xl group-hover:bg-green-600 group-hover:text-white transition-colors">
@@ -303,8 +310,8 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
             </div>
             <span className="flex items-center gap-1 text-[10px] font-black uppercase text-green-600 bg-green-50 px-2 py-1 rounded-lg">Done</span>
           </div>
-          <p className="text-4xl font-black text-black tracking-tight mb-1">{stats.delivered}</p>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Đã hoàn thành</p>
+          <p className="text-4xl font-black text-black tracking-tight mb-1">{stats.doneCount}</p>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Đã giao & Hoàn thành</p>
         </div>
 
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all group">
@@ -342,7 +349,8 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
             <option value="pending"> Chờ xác nhận</option>
             <option value="processing"> Đang xử lý</option>
             <option value="shipped"> Đang giao hàng</option>
-            <option value="delivered"> Hoàn thành</option>
+            <option value="delivered"> Đã giao hàng</option>
+            <option value="completed"> Hoàn thành</option>
             <option value="cancelled"> Đã hủy</option>
           </select>
 
@@ -497,12 +505,32 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
                             <div className="relative inline-block w-full max-w-[140px]">
                               <select
                                 value={order.status}
-                                onChange={(e) => handleUpdateStatus(order._id, e.target.value)}
-                                disabled={['delivered', 'cancelled', 'refunded'].includes(order.status)}
+                                onChange={(e) => {
+                                  const newStatus = e.target.value;
+                                  const isPrepaid = ['vnpay', 'banking', 'momo', 'card'].includes(order.paymentMethod || '');
+                                  const isPaid = order.paymentStatus === 'paid';
+
+                                  if (newStatus === 'completed') {
+                                    if (confirm('Xác nhận khách đã thanh toán và hoàn tất đơn hàng?')) {
+                                      handleUpdateStatus(order._id, 'completed');
+                                    }
+                                  } else if (newStatus === 'delivered') {
+                                    if (isPrepaid || isPaid) {
+                                      // Đơn online: Thông báo tự động hoàn thành
+                                      handleUpdateStatus(order._id, 'delivered');
+                                    } else {
+                                      // Đơn COD: Chuyển sang đã giao và chờ xác nhận tiền sau
+                                      handleUpdateStatus(order._id, 'delivered');
+                                    }
+                                  } else {
+                                    handleUpdateStatus(order._id, newStatus);
+                                  }
+                                }}
+                                disabled={['completed', 'cancelled', 'refunded'].includes(order.status)}
                                 className={`w-full appearance-none pl-3 pr-8 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border-none outline-none ring-1 ring-inset ${
                                   statusColors[order.status]
                                 } ${
-                                  ['delivered', 'cancelled', 'refunded'].includes(order.status)
+                                  ['completed', 'cancelled', 'refunded'].includes(order.status)
                                     ? 'opacity-60 cursor-not-allowed shadow-none'
                                     : 'cursor-pointer hover:brightness-95 ring-black/5 shadow-sm active:scale-95'
                                 }`}
@@ -510,9 +538,10 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
                                 <option value={order.status} disabled>{statusLabels[order.status]}</option>
                                 {order.status === 'pending' && <option value="processing">Đang xử lý</option>}
                                 {order.status === 'processing' && <option value="shipped">Đang giao hàng</option>}
-                                {order.status === 'shipped' && <option value="delivered">Hoàn thành</option>}
+                                {order.status === 'shipped' && <option value="delivered">{(['vnpay', 'banking', 'momo', 'card'].includes(order.paymentMethod || '') || order.paymentStatus === 'paid') ? 'Hoàn thành' : 'Đã giao hàng'}</option>}
+                                {order.status === 'delivered' && <option value="completed">Xác nhận thanh toán</option>}
                               </select>
-                              {!['delivered', 'cancelled', 'refunded'].includes(order.status) && (
+                              {!['completed', 'cancelled', 'refunded'].includes(order.status) && (
                                 <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
                                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />

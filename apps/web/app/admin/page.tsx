@@ -161,19 +161,33 @@ function AdminDashboardContent() {
             <h1 className="text-2xl font-bold text-gray-800 uppercase tracking-tight italic">{activeTab}</h1>
           </div>
           <div className="flex items-center gap-6">
-            <NotificationMenu />
+            <NotificationMenu token={token} />
             <div className="flex items-center gap-3 pl-6 border-l border-gray-100">
                <div className="text-right hidden md:block">
                   <div className="text-sm font-bold text-gray-700">{currentUser?.name}</div>
                   <div className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Admin</div>
                </div>
-               <div className="w-10 h-10 rounded-full bg-black text-white flex items-center justify-center font-black">A</div>
+               <div className="w-10 h-10 rounded-full bg-black text-white flex items-center justify-center font-black overflow-hidden border border-gray-100">
+                  {currentUser && (currentUser as any).avatar ? (
+                    <img 
+                      src={`${API_URL}${ (currentUser as any).avatar.startsWith('/') ? '' : '/' }${(currentUser as any).avatar}`} 
+                      alt="Avatar"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/placeholder.png';
+                        (e.target as HTMLImageElement).onerror = null;
+                      }}
+                    />
+                  ) : (
+                    "A"
+                  )}
+               </div>
             </div>
           </div>
         </header>
         <div className="p-8 flex-1">
           {message && <div className="mb-6 p-4 bg-blue-50 text-blue-700 rounded-xl border border-blue-100 font-bold">{message}</div>}
-          {activeTab === 'dashboard' && stats && <DashboardTab stats={stats} setActiveTab={handleTabChange} refreshTrigger={dashboardRefresh} />}
+          {activeTab === 'dashboard' && stats && <DashboardTab stats={stats} setActiveTab={handleTabChange} token={token} refreshTrigger={dashboardRefresh} />}
           {activeTab === 'users' && <UsersTab users={users} token={token} onRefresh={fetchUsers} showMessage={showMessage} />}
           {activeTab === 'orders' && <OrdersTab orders={orders} token={token} onRefresh={fetchOrders} showMessage={showMessage} />}
           {activeTab === 'products' && <ProductsTab products={products} categories={categories} token={token} onRefresh={fetchProducts} showMessage={showMessage} />}

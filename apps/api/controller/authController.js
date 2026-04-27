@@ -80,6 +80,10 @@ export const login = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Thông tin đăng nhập không chính xác hoặc tài khoản chưa có mật khẩu' });
     }
 
+    if (user.isLocked) {
+      return res.status(403).json({ success: false, message: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.' });
+    }
+
     const isPasswordValid = await bcrypt.compare(password.trim(), user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ success: false, message: 'Thông tin đăng nhập không chính xác' });

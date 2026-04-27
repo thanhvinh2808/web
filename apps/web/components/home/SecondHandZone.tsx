@@ -28,9 +28,13 @@ export default function SecondHandZone() {
         const prodData = await prodRes.json();
         const allProds = Array.isArray(prodData) ? prodData : prodData.data || [];
         
-        const secondhand = allProds.filter((p: any) => 
-           p.isNew === false || p.tags?.includes('2hand')
-        );
+        const secondhand = allProds
+          .filter((p: any) => p.tags?.includes('2hand'))
+          .sort((a: any, b: any) => {
+            const idA = a._id || '';
+            const idB = b._id || '';
+            return idB.localeCompare(idA);
+          });
         setProducts(secondhand);
 
         // Fetch Brands

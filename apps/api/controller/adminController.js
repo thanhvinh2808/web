@@ -76,20 +76,20 @@ export const markAllNotificationsRead = async (req, res) => {
   }
 };
 
-// ðŸ“Š Dashboard Statistics
+// 📊 Dashboard Statistics
 export const getDashboardStats = async (req, res) => {
   try {
     const [
       totalUsers,
       totalOrders,
-      totalRevenue,
+      revenueResult,
       recentOrders,
       newUsersThisMonth
     ] = await Promise.all([
       User.countDocuments(),
       Order.countDocuments(),
       Order.aggregate([
-        { $match: { status: 'delivered' } },
+        { $match: { status: { $in: ['delivered', 'completed'] }, paymentStatus: 'paid' } },
         { $group: { _id: null, total: { $sum: '$totalAmount' } } }
       ]),
       Order.find()
@@ -108,7 +108,7 @@ export const getDashboardStats = async (req, res) => {
       data: {
         totalUsers,
         totalOrders,
-        totalRevenue: totalRevenue[0]?.total || 0,
+        totalRevenue: revenueResult[0]?.total || 0,
         newUsersThisMonth,
         recentOrders
       }
@@ -116,7 +116,7 @@ export const getDashboardStats = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Lá»—i láº¥y thá»‘ng kÃª: ' + error.message
+      message: 'Lỗi lấy thống kê: ' + error.message
     });
   }
 };
@@ -280,7 +280,7 @@ export const updateOrderStatus = async (req, res) => {
       });
     }
 
-    const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancellation_requested', 'refunded'];
+    const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'completed', 'cancellation_requested', 'refunded'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
@@ -296,8 +296,25 @@ export const updateOrderStatus = async (req, res) => {
 
     order.status = status;
     
-    // Nếu giao hàng thành công, tự động đánh dấu đã thanh toán (đề phòng hook không chạy)
+    // ✅ QUY TRÌNH THÔNG MINH (Smart Flow):
+    // 1. Đối với đơn hàng đã thanh toán (Online/Banking/VNPAY)
+    const isPrepaid = ['vnpay', 'banking', 'momo', 'card'].includes(order.paymentMethod);
+    const isPaid = order.paymentStatus === 'paid' || order.isPaid;
+
     if (status === 'delivered') {
+      if (isPrepaid || isPaid) {
+        // Đã trả tiền rồi thì Giao xong = Hoàn thành luôn
+        order.status = 'completed';
+        order.paymentStatus = 'paid';
+        order.isPaid = true;
+        order.paidAt = order.paidAt || new Date();
+      } else {
+        // Đơn COD: Giữ ở trạng thái delivered để Admin xác nhận đã thu tiền
+      }
+    }
+
+    // 2. Khi Admin chủ động chọn Hoàn thành (Dành cho COD đã thu tiền)
+    if (status === 'completed') {
       order.paymentStatus = 'paid';
       order.isPaid = true;
       order.paidAt = order.paidAt || new Date();
@@ -452,25 +469,26 @@ export const getRevenueStats = async (req, res) => {
     const end = new Date(endDate);
     end.setHours(23, 59, 59, 999);
 
-    // 1. Calculate All-time Revenue
+    // 1. Calculate All-time Revenue (delivered OR completed)
     const totalRevenueResult = await Order.aggregate([
-      { $match: { status: { $in: ['delivered', 'completed'] } } },
+      { $match: { status: { $in: ['delivered', 'completed'] }, paymentStatus: 'paid' } },
       { $group: { _id: null, total: { $sum: '$totalAmount' } } }
     ]);
     const totalAllTime = totalRevenueResult[0]?.total || 0;
 
-    // 2. Calculate Revenue in Range (Group by Date with Vietnam Timezone)
+    // 2. Calculate Revenue in Range
     const revenueByDate = await Order.aggregate([
       { 
         $match: { 
-          status: { $in: ['delivered', 'completed'] },
+          status: { $in: ['delivered', 'completed'] }, 
+          paymentStatus: 'paid',
           createdAt: { $gte: start, $lte: end }
         } 
       },
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: "+07:00" } },
-          total: { $sum: '$totalAmount' },
+          total: { $sum: "$totalAmount" },
           count: { $sum: 1 }
         }
       },
@@ -523,12 +541,38 @@ export const getRevenueStats = async (req, res) => {
         range: { startDate, endDate }
       }
     });
-
   } catch (error) {
     console.error('Revenue stats error:', error);
     res.status(500).json({
       success: false,
-      message: 'Lá»—i thá»‘ng kÃª doanh thu: ' + error.message
+      message: 'Lỗi thống kê doanh thu: ' + error.message
     });
+  }
+};
+
+// 🔒 Toggle User Lock Status
+export const toggleUserLock = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id);
+    
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Người dùng không tồn tại' });
+    }
+
+    if (user.role === 'admin') {
+      return res.status(403).json({ success: false, message: 'Không thể khóa tài khoản Admin' });
+    }
+
+    user.isLocked = !user.isLocked;
+    await user.save();
+
+    res.json({ 
+      success: true, 
+      message: user.isLocked ? 'Đã khóa tài khoản' : 'Đã mở khóa tài khoản',
+      isLocked: user.isLocked 
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

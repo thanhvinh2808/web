@@ -126,7 +126,13 @@ function ProductsContent() {
       case 'price-asc': sorted.sort((a, b) => a.price - b.price); break;
       case 'price-desc': sorted.sort((a, b) => b.price - a.price); break;
       case 'name-asc': sorted.sort((a, b) => a.name.localeCompare(b.name)); break;
-      case 'newest': sorted.sort((a, b) => (new Date(b.createdAt || 0).getTime()) - (new Date(a.createdAt || 0).getTime())); break;
+      case 'newest': 
+        sorted.sort((a, b) => {
+          const idA = a._id || '';
+          const idB = b._id || '';
+          return idB.localeCompare(idA);
+        }); 
+        break;
     }
     return sorted;
   }, [filteredProducts, sortBy]);
@@ -146,6 +152,16 @@ function ProductsContent() {
     </div>
   );
 
+  const getPageTitle = () => {
+    switch (productType) {
+      case 'new': return { main: 'NEW', sub: 'ARRIVALS' };
+      case '2hand': return { main: 'SECOND', sub: 'HAND' };
+      default: return { main: 'ALL', sub: 'SNEAKERS' };
+    }
+  };
+
+  const pageTitle = getPageTitle();
+
   if (isLoading) return (
     <div className="min-h-screen bg-white flex justify-center items-center">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -157,10 +173,12 @@ function ProductsContent() {
       <div className="bg-gray-50 py-16 border-b border-gray-200">
         <div className="container mx-auto px-4 text-center lg:text-left">
           <h1 className="text-5xl md:text-7xl font-black italic tracking-tighter mb-4 uppercase italic">
-            ALL <span className="text-primary">SNEAKERS</span>
+            {pageTitle.main} <span className="text-primary">{pageTitle.sub}</span>
           </h1>
           <p className="text-gray-500 max-w-2xl font-bold uppercase tracking-widest text-[10px] mx-auto lg:mx-0">
-            Khám phá bộ sưu tập giày chính hãng và 2hand tuyển chọn. Fullbox, check legit trọn đời.
+            {productType === '2hand' 
+              ? 'Săn giày hiệu giá hời. Hàng tuyển chọn, đã được vệ sinh và kiểm định chất lượng.'
+              : 'Khám phá bộ sưu tập giày chính hãng và tuyển chọn. Fullbox, check legit trọn đời.'}
           </p>
         </div>
       </div>

@@ -6,7 +6,7 @@ import ProductCard from '../ProductCard';
 
 import { CLEAN_API_URL } from '@lib/shared/constants';
 const API_URL = CLEAN_API_URL;
-const ITEMS_PER_PAGE = 4; // Số sản phẩm mỗi trang
+const ITEMS_PER_PAGE = 4; 
 
 export default function NewArrivals() {
   const [activeTab, setActiveTab] = useState<'new' | 'best'>('new');
@@ -18,8 +18,7 @@ export default function NewArrivals() {
     const fetchProducts = async () => {
       setIsLoading(true);
       try {
-        // ✅ Thêm tham số sort và limit để chắc chắn lấy sản phẩm mới nhất từ server
-        const res = await fetch(`${API_URL}/api/products?sort=newest&limit=20`);
+        const res = await fetch(`${API_URL}/api/products?sort=newest&limit=50`);
         const data = await res.json();
         const allProducts = Array.isArray(data) ? data : data.data || [];
         setProducts(allProducts);
@@ -43,16 +42,13 @@ export default function NewArrivals() {
 
     if (activeTab === 'new') {
       filtered = filtered.sort((a, b) => {
-        // Ưu tiên ngày tạo mới nhất lên đầu
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        
-        if (dateB !== dateA) return dateB - dateA;
-        
-        // Dự phòng bằng _id
-        return (b._id || '').localeCompare(a._id || '');
+        // Ưu tiên _id giảm dần để chắc chắn hàng mới nhất lên đầu
+        const idA = a._id || '';
+        const idB = b._id || '';
+        return idB.localeCompare(idA);
       });
     } else {
+      // sắp xếp theo lượt đã bán (soldCount) giảm dần
       filtered = filtered.sort((a, b) => {
         const soldA = a.soldCount || 0;
         const soldB = b.soldCount || 0;
@@ -98,7 +94,7 @@ export default function NewArrivals() {
             <button 
               onClick={() => setActiveTab('best')}
               className={`pb-4 text-2xl md:text-4xl font-black italic uppercase tracking-tighter transition-all relative ${
-                activeTab === 'best' 
+                activeTab === 'best'  
                   ? 'text-black' 
                   : 'text-gray-300 hover:text-gray-500'
               }`}

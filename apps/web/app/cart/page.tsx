@@ -203,7 +203,7 @@ export default function CartPage() {
                               {stockErrors[itemKey] && (
                                  <div className="absolute top-full left-0 mt-1 whitespace-nowrap z-10">
                                     <span className="text-[9px] font-black uppercase text-red-500 bg-white">
-                                       Tối đa {maxStock} sản phẩm!
+                                       Chỉ còn {maxStock} sản phẩm!
                                     </span>
                                  </div>
                               )}

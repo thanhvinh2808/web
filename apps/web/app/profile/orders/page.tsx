@@ -11,12 +11,9 @@ import {
   ShoppingBag,
   ChevronLeft,
   ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   CreditCard,
   CheckCircle2,
   AlertCircle,
-  LayoutList,
   Truck,
   Receipt,
   Star,
@@ -30,12 +27,11 @@ const ORDERS_PER_PAGE = 5;
 
 const ORDER_TABS = [
   { id: 'all',        label: 'Tất cả'          },
-  { id: 'unpaid',     label: 'Chưa thanh toán' },
   { id: 'pending',    label: 'Chờ xác nhận'    },
   { id: 'processing', label: 'Đang xử lý'      },
-  { id: 'shipped',    label: 'Đang giao hàng'  },
-  { id: 'delivered',  label: 'Hoàn thành'      },
-  { id: 'refunded',   label: 'Hoàn tiền'       },
+  { id: 'shipped',    label: 'Đang giao'       },
+  { id: 'delivered',  label: 'Đã giao hàng'    },
+  { id: 'completed',  label: 'Hoàn thành'      },
   { id: 'cancelled',  label: 'Đã hủy'          },
 ];
 
@@ -45,8 +41,9 @@ const getStatusLabel = (s: string) =>
   ({ 
     pending: 'CHỜ XÁC NHẬN', 
     processing: 'ĐANG XỬ LÝ', 
-    shipped: 'ĐANG GIAO HÀNG', 
-    delivered: 'HOÀN THÀNH', 
+    shipped: 'ĐANG GIAO', 
+    delivered: 'ĐÃ GIAO HÀNG', 
+    completed: 'HOÀN THÀNH',
     cancelled: 'ĐÃ HỦY',
     cancellation_requested: 'CHỜ DUYỆT HỦY',
     refunded: 'ĐÃ HOÀN TIỀN'
@@ -56,16 +53,15 @@ const getStatusColor = (s: string) =>
   ({
     pending:    'text-yellow-600 bg-yellow-50 border-yellow-200',
     processing: 'text-blue-600 bg-blue-50 border-blue-200',
-    shipped:    'text-purple-600 bg-purple-50 border-purple-200',
-    delivered:  'text-green-600 bg-green-50 border-green-200',
+    shipped:    'text-indigo-600 bg-indigo-50 border-indigo-200',
+    delivered:  'text-purple-600 bg-purple-50 border-purple-200',
+    completed:  'text-green-600 bg-green-50 border-green-200',
     cancelled:  'text-red-500 bg-red-50 border-red-200',
     cancellation_requested: 'text-orange-600 bg-orange-50 border-orange-200',
     refunded:   'text-teal-600 bg-teal-50 border-teal-200',
   }[s] ?? 'text-gray-600 bg-gray-50 border-gray-200');
 
 const isPaid = (o: any) => o.paymentStatus === 'paid' || o.paymentStatus === 'refunded' || o.isPaid;
-
-// ─── Cost calculation ────────
 
 function calcSummary(order: any) {
   const items = order.items || [];
@@ -82,8 +78,6 @@ function calcSummary(order: any) {
   return { subtotal, vatAmount, shippingFee, discountAmount, finalTotal };
 }
 
-// ─── Payment badge ────────────────────────────────────────────────────────────
-
 function PaymentBadge({ order }: { order: any }) {
   if (isPaid(order)) {
     return (
@@ -99,8 +93,6 @@ function PaymentBadge({ order }: { order: any }) {
     </span>
   );
 }
-
-// ─── Unpaid banner ────────────────────────────────────────────────────────────
 
 function UnpaidBanner({ orders, onFilter }: { orders: any[]; onFilter: () => void }) {
   const unpaid = orders.filter(o => !isPaid(o) && o.status !== 'cancelled');
@@ -124,8 +116,6 @@ function UnpaidBanner({ orders, onFilter }: { orders: any[]; onFilter: () => voi
     </div>
   );
 }
-
-// ─── Payment filter pills ─────────────────────────────────────────────────────
 
 type PayFilter = 'all' | 'paid' | 'unpaid';
 
@@ -158,24 +148,18 @@ function PaymentFilterBar({ value, onChange, counts }: {
   );
 }
 
-// ─── Order Card ───────────────────────────────────────────────────────────────
-
 function OrderCard({ order, reorderingId, onReorder, onReview }: {
   order: any; reorderingId: string | null; onReorder: (o: any) => void; onReview: (p: any) => void;
 }) {
   const [showBreakdown, setShowBreakdown] = useState(false);
-
   const isReordering = reorderingId === order._id;
-  const canReorder   = order.status === 'delivered' || order.status === 'cancelled';
-  const canReview    = ['delivered'].includes(order.status);
-  const unpaid       = !isPaid(order) && order.status !== 'cancelled';
-
+  const canReorder   = ['delivered', 'completed', 'cancelled', 'refunded'].includes(order.status);
+  const canReview    = ['delivered', 'completed'].includes(order.status);
+  const unpaid       = !isPaid(order) && order.status !== 'cancelled' && order.status !== 'refunded';
   const { subtotal, vatAmount, shippingFee, discountAmount, finalTotal } = calcSummary(order);
 
   return (
     <div className={`bg-white border shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md md:hover:-translate-y-px ${unpaid ? 'border-orange-200' : 'border-gray-100'}`}>
-
-      {/* ── Header ── */}
       <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center px-3 py-2.5 md:px-4 md:py-3 border-b gap-2 ${unpaid ? 'border-orange-100 bg-orange-50/40' : 'border-gray-100 bg-gray-50/60'}`}>
         <div className="flex items-center gap-2 md:gap-3 min-w-0 w-full sm:w-auto justify-between sm:justify-start">
           <span className="font-mono text-[10px] md:text-xs font-bold text-gray-500 flex-shrink-0">#{order._id.slice(-8).toUpperCase()}</span>
@@ -197,7 +181,6 @@ function OrderCard({ order, reorderingId, onReorder, onReview }: {
         </div>
       </div>
 
-      {/* ── Items ── */}
       <div className="px-3 py-2 md:px-4 md:py-3 space-y-3">
         {order.items.map((item: any, idx: number) => (
           <div key={idx} className="flex gap-3">
@@ -213,11 +196,7 @@ function OrderCard({ order, reorderingId, onReorder, onReview }: {
                 </Link>
                 {canReview && (
                   <button
-                    onClick={() => onReview({
-                      id: item.productId,
-                      name: item.productName,
-                      image: item.productImage || '/placeholder.jpg'
-                    })}
+                    onClick={() => onReview({ id: item.productId, name: item.productName, image: item.productImage || '/placeholder.jpg' })}
                     className="flex-shrink-0 flex items-center gap-1 text-[9px] md:text-[10px] font-black text-primary border border-primary px-2 py-1 md:px-3 md:py-1.5 hover:bg-primary hover:text-white active:scale-95 transition-all duration-150 uppercase tracking-widest"
                   >
                     <Star size={10} className="md:w-3 md:h-3" /> <span className="hidden xs:inline">Đánh giá</span>
@@ -238,42 +217,29 @@ function OrderCard({ order, reorderingId, onReorder, onReview }: {
         ))}
       </div>
 
-      {/* ── Cost breakdown ── */}
       <div className={`border-t ${unpaid ? 'border-orange-100' : 'border-gray-100'}`}>
         <button
           onClick={() => setShowBreakdown(v => !v)}
           className="w-full flex items-center justify-between px-3 py-2 md:px-4 md:py-2 hover:bg-gray-50 active:bg-gray-100 transition-all duration-150 group"
         >
           <span className="flex items-center gap-1.5 text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">
-            <Receipt size={11} />
-            Chi tiết thanh toán
+            <Receipt size={11} /> Chi tiết thanh toán
           </span>
           <span className={`text-[10px] text-gray-400 transition-transform duration-200 ${showBreakdown ? 'rotate-180' : ''}`}>▾</span>
         </button>
-
         {showBreakdown && (
           <div className={`px-3 pb-3 md:px-4 space-y-2 border-t ${unpaid ? 'border-orange-100 bg-orange-50/20' : 'border-gray-50 bg-gray-50/40'}`}>
             <div className="flex justify-between items-center pt-2">
               <span className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">Tạm tính</span>
               <span className="text-[10px] md:text-[11px] font-bold text-gray-700">{subtotal.toLocaleString('vi-VN')}₫</span>
             </div>
-            {/* VAT */}
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">Thuế VAT</span>
-                <span className="text-[8px] md:text-[9px] font-black bg-blue-50 text-blue-500 border border-blue-100 px-1 md:px-1.5 py-0.5">10%</span>
-              </div>
-              <span className="text-[10px] md:text-[11px] font-bold text-blue-600">+{vatAmount.toLocaleString('vi-VN')}₫</span>
+            <div className="flex justify-between items-center text-[10px] md:text-[11px]">
+              <span className="font-bold text-gray-500 uppercase tracking-widest">Thuế VAT (10%)</span>
+              <span className="font-bold text-blue-600">+{vatAmount.toLocaleString('vi-VN')}₫</span>
             </div>
-            {/* Ship */}
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-1.5">
-                <Truck size={10} className={shippingFee === 0 ? 'text-green-500' : 'text-gray-400'} />
-                <span className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">Vận chuyển</span>
-              </div>
-              <span className={`text-[10px] md:text-[11px] font-bold ${shippingFee === 0 ? 'text-green-600' : 'text-gray-700'}`}>
-                {shippingFee === 0 ? 'Miễn phí' : `+${shippingFee.toLocaleString('vi-VN')}₫`}
-              </span>
+            <div className="flex justify-between items-center text-[10px] md:text-[11px]">
+              <span className="font-bold text-gray-500 uppercase tracking-widest">Vận chuyển</span>
+              <span className={`font-bold ${shippingFee === 0 ? 'text-green-600' : 'text-gray-700'}`}>{shippingFee === 0 ? 'Miễn phí' : `+${shippingFee.toLocaleString('vi-VN')}₫`}</span>
             </div>
             <div className="flex justify-between items-end pt-2 border-t border-dashed border-gray-200">
               <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-500">Tổng cộng</span>
@@ -283,14 +249,12 @@ function OrderCard({ order, reorderingId, onReorder, onReview }: {
         )}
       </div>
 
-      {/* ── Footer ── */}
       <div className={`px-3 py-3 md:px-4 md:py-3 border-t flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${unpaid ? 'border-orange-100 bg-orange-50/20' : 'border-gray-100 bg-gray-50/30'}`}>
         <div className="flex flex-row sm:flex-col justify-between items-center sm:items-start w-full sm:w-auto">
           <div className="sm:block text-left">
             <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Tổng thanh toán</p>
             <p className="text-base md:text-lg font-black text-primary italic tracking-tight leading-none">{finalTotal.toLocaleString('vi-VN')}₫</p>
           </div>
-          <p className="hidden xs:block text-[8px] md:text-[9px] text-gray-400 font-medium mt-1">Gồm VAT 10% • Ship {shippingFee === 0 ? 'miễn phí' : shippingFee.toLocaleString('vi-VN') + '₫'}</p>
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -302,14 +266,12 @@ function OrderCard({ order, reorderingId, onReorder, onReview }: {
               <CreditCard size={12} /> <span className="whitespace-nowrap">Thanh toán</span>
             </Link>
           )}
-
           <Link
             href={`/profile/orders/${order._id}`}
             className="flex-1 sm:flex-none justify-center px-3 py-2.5 md:px-4 md:py-2 border border-gray-200 bg-white text-[10px] md:text-xs font-bold uppercase tracking-wider text-gray-600 hover:border-gray-400 transition-all text-center"
           >
             Chi tiết
           </Link>
-
           {canReorder && (
             <button
               onClick={() => onReorder(order)}
@@ -326,65 +288,41 @@ function OrderCard({ order, reorderingId, onReorder, onReview }: {
   );
 }
 
-// ─── Pagination ───
-
 function Pagination({ currentPage, totalPages, totalItems, perPage, onChange }: {
   currentPage: number; totalPages: number; totalItems: number; perPage: number; onChange: (p: number) => void;
 }) {
   if (totalPages <= 1) return null;
-
-  const getPageNumbers = (): (number | '...')[] => {
-    if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
-    const pages = new Set<number>();
-    [1].forEach(p => p <= totalPages && pages.add(p));
-    [totalPages].forEach(p => p > 0 && pages.add(p));
-    [currentPage - 1, currentPage, currentPage + 1].forEach(p => p > 0 && p <= totalPages && pages.add(p));
-    const sorted = Array.from(pages).sort((a, b) => a - b);
-    const result: (number | '...')[] = [];
-    for (let i = 0; i < sorted.length; i++) {
-      if (i > 0 && sorted[i] - sorted[i - 1] > 1) result.push('...');
-      result.push(sorted[i]);
-    }
-    return result;
-  };
-
   const base = 'w-7 h-7 md:w-8 md:h-8 flex items-center justify-center border text-[10px] md:text-xs font-black transition-all select-none';
   const idle = 'bg-white border-gray-200 text-gray-500 hover:border-primary hover:text-primary active:scale-90 disabled:opacity-30';
   const on   = 'bg-primary border-primary text-white shadow-sm';
 
   return (
     <div className="mt-8 flex flex-col sm:flex-row items-center justify-between border-t border-gray-100 pt-6 gap-4">
-      <p className="text-[10px] md:text-[11px] font-bold text-gray-400 uppercase tracking-widest italic">
-        {Math.min(currentPage * perPage, totalItems)} / {totalItems} đơn hàng
-      </p>
+      <p className="text-[10px] md:text-[11px] font-bold text-gray-400 uppercase tracking-widest italic">{Math.min(currentPage * perPage, totalItems)} / {totalItems} đơn hàng</p>
       <div className="flex items-center gap-1">
-        <button onClick={() => onChange(currentPage - 1)} disabled={currentPage === 1} className={`${base} ${idle}`}><ChevronLeft size={13}/></button>
-        {getPageNumbers().map((page, i) =>
-          page === '...'
-            ? <span key={`e${i}`} className="w-6 md:w-8 h-8 flex items-center justify-center text-xs font-bold text-gray-300">···</span>
-            : <button key={page} onClick={() => onChange(page)} className={`${base} ${currentPage === page ? on : idle}`}>{page}</button>
-        )}
-        <button onClick={() => onChange(currentPage + 1)} disabled={currentPage === totalPages} className={`${base} ${idle}`}><ChevronRight size={13}/></button>
+        <button onClick={() => onChange(currentPage - 1)} disabled={currentPage === 1} className={`${base} ${idle}`}>‹</button>
+        {[...Array(totalPages)].map((_, i) => (
+          <button key={i} onClick={() => onChange(i + 1)} className={`${base} ${currentPage === i + 1 ? on : idle}`}>{i + 1}</button>
+        ))}
+        <button onClick={() => onChange(currentPage + 1)} disabled={currentPage === totalPages} className={`${base} ${idle}`}>›</button>
       </div>
     </div>
   );
 }
 
-// ─── Main ───
-
 export default function OrdersPage() {
-  const router        = useRouter();
-  const { user }      = useAuth();
+  const router = useRouter();
+  const { user } = useAuth();
   const { addToCart } = useCart();
 
-  const [activeTab,      setActiveTab]      = useState('all');
-  const [paymentFilter,  setPaymentFilter]  = useState<PayFilter>('all');
-  const [orders,         setOrders]         = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState('all');
+  const [paymentFilter, setPaymentFilter] = useState<PayFilter>('all');
+  const [orders, setOrders] = useState<any[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<any[]>([]);
-  const [isLoading,      setIsLoading]      = useState(true);
-  const [searchTerm,     setSearchTerm]     = useState('');
-  const [reorderingId,   setReorderingId]   = useState<string | null>(null);
-  const [currentPage,    setCurrentPage]    = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [reorderingId, setReorderingId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
   useEffect(() => {
@@ -393,137 +331,71 @@ export default function OrdersPage() {
       setIsLoading(true);
       try {
         const token = localStorage.getItem('token');
-        if (!token) return;
-        const res = await fetch(`${API_URL}/api/user/orders`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await fetch(`${API_URL}/api/orders/my-orders`, { headers: { Authorization: `Bearer ${token}` } });
         if (res.ok) {
           const data = await res.json();
-          const sorted = (data.data || []).sort((a: any, b: any) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
-          setOrders(sorted);
+          setOrders((data.data || []).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
         }
-      } catch (err) {
-        console.error('Error fetching orders:', err);
-      } finally {
-        setIsLoading(false);
-      }
+      } catch (err) { console.error(err); } finally { setIsLoading(false); }
     };
     fetchOrders();
   }, [user]);
 
   useEffect(() => {
     let result = orders;
-    if (activeTab === 'unpaid') {
-      result = result.filter(o => !isPaid(o) && o.status !== 'cancelled');
-    } else if (activeTab !== 'all') {
+    if (activeTab !== 'all') {
       result = result.filter(o => o.status === activeTab);
     }
-    if (paymentFilter === 'paid')   result = result.filter(o => isPaid(o));
-    if (paymentFilter === 'unpaid') result = result.filter(o => !isPaid(o) && o.status !== 'cancelled');
+
+    if (paymentFilter === 'paid') result = result.filter(o => isPaid(o));
+    if (paymentFilter === 'unpaid') result = result.filter(o => !isPaid(o) && o.status !== 'cancelled' && o.status !== 'refunded');
     if (searchTerm) {
       const t = searchTerm.toLowerCase();
-      result = result.filter(o =>
-        o._id?.toLowerCase().includes(t) ||
-        o.items.some((item: any) => item.productName.toLowerCase().includes(t))
-      );
+      result = result.filter(o => o._id?.toLowerCase().includes(t) || o.items.some((i: any) => i.productName.toLowerCase().includes(t)));
     }
     setFilteredOrders(result);
     setCurrentPage(1);
   }, [orders, activeTab, paymentFilter, searchTerm]);
 
-  const payCounts: Record<PayFilter, number> = {
-    all:    orders.length,
-    paid:   orders.filter(o => isPaid(o)).length,
-    unpaid: orders.filter(o => !isPaid(o) && o.status !== 'cancelled').length,
-  };
-
-  const totalPages      = Math.ceil(filteredOrders.length / ORDERS_PER_PAGE);
-  const paginatedOrders = filteredOrders.slice(
-    (currentPage - 1) * ORDERS_PER_PAGE,
-    currentPage * ORDERS_PER_PAGE
-  );
-
   const handleReorder = async (order: any) => {
-    if (!order) return;
     setReorderingId(order._id);
     try {
-      await Promise.all(order.items.map(async (item: any) => {
-        const pId = item.productId;
-        if (!pId) return;
-        try {
-          const res = await fetch(`${API_URL}/api/products/${pId}`);
-          if (!res.ok) throw new Error('Sản phẩm không còn tồn tại');
-          const freshProduct = await res.json();
-          const savedVariantName = item.variant?.name;
-          let currentVariant = null;
-          if (savedVariantName && freshProduct.variants) {
-            for (const v of freshProduct.variants) {
-              const opt = v.options?.find((o: any) => o.name === savedVariantName);
-              if (opt) { currentVariant = opt; break; }
-            }
-          }
-          addToCart({ ...freshProduct, _id: freshProduct._id || freshProduct.id } as any, item.quantity, currentVariant || undefined, item.color);
-        } catch (err) {
-          console.error(`Không thể lấy thông tin sản phẩm ${pId}:`, err);
-          addToCart({ _id: pId, id: pId, name: item.productName || 'Sản phẩm đã ẩn', brand: item.productBrand || 'N/A', price: Number(item.price) || 0, image: item.productImage, slug: pId, stock: 99 } as any, Number(item.quantity) || 1, item.variant, item.color);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/orders/${order._id}/reorder`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const { data: items } = await res.json();
+        for (const item of items) {
+          if (item.isAvailable) addToCart({ _id: item.productId, name: item.name, price: item.basePrice, image: item.image, stock: item.variant?.stock || 99 } as any, item.quantity, item.variant);
         }
-      }));
-      setTimeout(() => { router.push('/cart'); setReorderingId(null); }, 300);
-    } catch (error) { console.error('Reorder failed:', error); setReorderingId(null); }
+        router.push('/cart');
+      }
+    } catch (err) { console.error(err); } finally { setReorderingId(null); }
   };
-
-  const clearFilters = () => { setActiveTab('all'); setPaymentFilter('all'); setSearchTerm(''); };
-  const hasFilter = activeTab !== 'all' || paymentFilter !== 'all' || !!searchTerm;
 
   if (isLoading) return <div className="flex justify-center items-center py-20"><Loader2 className="animate-spin text-gray-400" size={32} /></div>;
 
   return (
     <div className="pb-10">
       <h1 className="text-xl font-black italic uppercase tracking-wider mb-6 border-b-2 border-primary w-fit pb-1">Đơn Hàng</h1>
-
       <UnpaidBanner orders={orders} onFilter={() => setPaymentFilter('unpaid')} />
-
-      <PaymentFilterBar value={paymentFilter} onChange={setPaymentFilter} counts={payCounts} />
-
-      {/* Tabs - Scrollable */}
+      <PaymentFilterBar value={paymentFilter} onChange={setPaymentFilter} counts={{ all: orders.length, paid: orders.filter(o => isPaid(o)).length, unpaid: orders.filter(o => !isPaid(o) && o.status !== 'cancelled').length }} />
       <div className="flex overflow-x-auto border-b border-gray-100 mb-5 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
         <div className="flex min-w-max sm:w-full">
           {ORDER_TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`py-3 px-4 text-[10px] md:text-xs font-black whitespace-nowrap uppercase tracking-wider border-b-2 transition-all ${
-                activeTab === tab.id ? 'border-primary text-primary bg-primary/5' : 'border-transparent text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              {tab.label}
-            </button>
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`py-3 px-4 text-[10px] md:text-xs font-black uppercase tracking-wider border-b-2 transition-all ${activeTab === tab.id ? 'border-primary text-primary bg-primary/5' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>{tab.label}</button>
           ))}
         </div>
       </div>
-
       <div className="relative mb-4">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
-        <input type="text" placeholder="Tìm đơn hàng..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-gray-50 border-none rounded-none text-xs md:text-sm font-bold uppercase tracking-widest focus:ring-1 focus:ring-primary outline-none" />
+        <input type="text" placeholder="Tìm đơn hàng..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-gray-50 border-none text-xs md:text-sm font-bold uppercase tracking-widest focus:ring-1 focus:ring-primary outline-none" />
       </div>
-
       <div className="space-y-4">
-        {paginatedOrders.length === 0 ? (
-          <div className="text-center py-16 bg-gray-50 border border-dashed border-gray-200">
-            <ShoppingBag size={44} className="mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-500 font-bold text-xs uppercase tracking-wide">Không tìm thấy đơn hàng</p>
-          </div>
-        ) : (
-          paginatedOrders.map(order => (
-            <OrderCard key={order._id} order={order} reorderingId={reorderingId} onReorder={handleReorder} onReview={setSelectedProduct} />
-          ))
-        )}
+        {filteredOrders.slice((currentPage - 1) * ORDERS_PER_PAGE, currentPage * ORDERS_PER_PAGE).map(order => (
+          <OrderCard key={order._id} order={order} reorderingId={reorderingId} onReorder={handleReorder} onReview={setSelectedProduct} />
+        ))}
       </div>
-
-      <Pagination currentPage={currentPage} totalPages={totalPages} totalItems={filteredOrders.length} perPage={ORDERS_PER_PAGE} onChange={setCurrentPage} />
-
+      <Pagination currentPage={currentPage} totalPages={Math.ceil(filteredOrders.length / ORDERS_PER_PAGE)} totalItems={filteredOrders.length} perPage={ORDERS_PER_PAGE} onChange={setCurrentPage} />
       {selectedProduct && <ReviewModal isOpen={!!selectedProduct} onClose={() => setSelectedProduct(null)} product={selectedProduct} />}
     </div>
   );

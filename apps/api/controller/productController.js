@@ -92,8 +92,16 @@ export const getProducts = async (req, res) => {
     } = req.query;
 
     const query = {};
-    if (status !== 'all' && !req.originalUrl.includes('/api/admin/')) {
-       query.status = 'active';
+    
+    // Logic lọc trạng thái hiển thị
+    if (!req.originalUrl.includes('/api/admin/')) {
+      // Ở trang User: Hiển thị sản phẩm đang bán hoặc hết hàng (không hiển thị inactive)
+      query.status = { $in: ['active', 'out_of_stock'] };
+    } else {
+      // Ở trang Admin: Cho phép lọc theo status truyền lên, mặc định lấy hết nếu status === 'all'
+      if (status && status !== 'all') {
+        query.status = status;
+      }
     }
 
     if (search) {
@@ -104,12 +112,14 @@ export const getProducts = async (req, res) => {
       ];
     }
 
-    if (category) query.categorySlug = category;
-    if (brand) query.brand = brand;
+    if (category && category !== 'all') query.categorySlug = category;
+    if (brand && brand !== 'all') query.brand = brand;
     if (exclude) query.slug = { $ne: exclude };
 
     const filterTag = tag || type;
-    if (filterTag) query.tags = filterTag.toLowerCase();
+    if (filterTag && filterTag !== 'all') {
+      query.tags = filterTag.toLowerCase();
+    }
 
     if (minPrice || maxPrice) {
       query.price = {};
@@ -117,11 +127,13 @@ export const getProducts = async (req, res) => {
       if (maxPrice) query.price.$lte = Number(maxPrice);
     }
 
-    let sortOptions = { createdAt: -1, _id: -1 };
+    let sortOptions = { createdAt: -1, _id: -1 }; // Mặc định: Mới nhất lên đầu (Dùng cả ngày tạo và ID)
     if (sort === 'price_asc') sortOptions = { price: 1 };
     else if (sort === 'price_desc') sortOptions = { price: -1 };
     else if (sort === 'popular') sortOptions = { soldCount: -1 };
     else if (sort === 'rating') sortOptions = { rating: -1 };
+    else if (sort === 'newest') sortOptions = { createdAt: -1, _id: -1 };
+    else if (sort === 'oldest') sortOptions = { createdAt: 1, _id: 1 };
 
     const finalLimit = limit === 'all' ? 1000 : Number(limit);
     const skip = limit === 'all' ? 0 : (Number(page) - 1) * finalLimit;

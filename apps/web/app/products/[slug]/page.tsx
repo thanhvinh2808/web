@@ -404,7 +404,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
 
                 {isLowStock && (
                   <p className="text-red-600 text-xs font-bold italic flex items-center gap-1 animate-pulse">
-                    <AlertTriangle size={14} /> 🔥 Kho chỉ còn lại 1 sản phẩm cuối cùng!
+                    Kho chỉ còn lại 1 sản phẩm cuối cùng!
                   </p>
                 )}
               </div>

@@ -265,9 +265,16 @@ export const updateOrderStatus = async (req, res) => {
 
     // Tự động cập nhật paymentStatus khi giao hàng thành công (COD)
     if (status === 'delivered' && order.paymentStatus === 'unpaid') {
+      // ✅ Tester Audit: delivered chỉ là shipper đã giao, chưa chắc đã nhận được tiền. 
+      // Giữ nguyên unpaid để Admin xác nhận thủ công sau.
+    }
+
+    // ✅ FOOTMARK: Khi đơn chuyển sang trạng thái Hoàn thành (completed), 
+    // chắc chắn tiền đã về túi chủ shop (với COD) hoặc đã nhận hàng thành công.
+    if (status === 'completed') {
       order.paymentStatus = 'paid';
       order.isPaid = true;
-      order.paidAt = new Date();
+      order.paidAt = order.paidAt || new Date();
     }
 
     if (paymentStatus) {
@@ -635,6 +642,132 @@ export const markOrderAsPaid = async (req, res) => {
     }
 
     return res.json({ success: true, message: 'Thanh toán thành công', order });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Lỗi server: ' + error.message });
+  }
+};
+/**
+ * XÁC NHẬN ĐÃ NHẬN HÀNG (COMPLETE ORDER - USER)
+ */
+export const completeOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await Order.findOne({ _id: id, userId: req.user.id });
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
+    }
+
+    // Chỉ cho phép hoàn thành khi đang giao hàng hoặc đã giao (shipped, delivered)
+    const allowedStatuses = ['shipped', 'delivered'];
+    if (!allowedStatuses.includes(order.status)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Đơn hàng chưa ở trạng thái có thể xác nhận hoàn thành.' 
+      });
+    }
+
+    order.status = 'completed';
+    order.paymentStatus = 'paid';
+    order.isPaid = true;
+    order.paidAt = order.paidAt || new Date();
+
+    await order.save();
+
+    // Thông báo cho Admin
+    if (global.io) {
+      global.io.to('admin').emit('orderStatusUpdated', {
+        orderId: order._id,
+        status: 'completed',
+        message: `Đơn hàng #${order.orderNumber} đã được khách hàng xác nhận hoàn thành.`
+      });
+    }
+
+    return res.json({ 
+      success: true, 
+      message: 'Xác nhận đơn hàng hoàn thành thành công. Cảm ơn bạn đã mua sắm tại FootMark!', 
+      order 
+    });
+
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * MUA LẠI ĐƠN HÀNG (RE-ORDER)
+ * Logic: Lấy thông tin sản phẩm từ đơn hàng cũ để Frontend xử lý đưa vào giỏ hàng
+ */
+export const reorder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await Order.findOne({ _id: id, userId: req.user.id });
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng cũ' });
+    }
+
+    // Kiểm tra trạng thái tồn kho thực tế của các sản phẩm trong đơn cũ
+    const productIds = order.items.map(item => item.productId);
+    const products = await Product.find({ _id: { $in: productIds } });
+
+    const reorderItems = order.items.map(orderItem => {
+      const product = products.find(p => p._id.toString() === orderItem.productId.toString());
+      
+      // Kiểm tra xem sản phẩm còn tồn tại và còn hàng không
+      let isAvailable = !!product;
+      let currentPrice = orderItem.price;
+
+      if (product) {
+        // Tìm thông tin đầy đủ của option được chọn
+        const selectedVariantName = orderItem.variant?.name;
+        let variantDetail = null;
+        
+        if (selectedVariantName) {
+          product.variants.forEach(v => {
+            const opt = v.options.find(o => o.name === selectedVariantName);
+            if (opt) {
+              variantDetail = {
+                name: opt.name,
+                price: opt.price || 0,
+                stock: opt.stock || 0,
+                sku: opt.sku || '',
+                image: opt.image || ''
+              };
+            }
+          });
+        }
+        
+        currentPrice = product.price; // Lấy giá gốc sản phẩm
+        isAvailable = product.isInStock(selectedVariantName ? { [orderItem.variantGroupName || 'Size']: selectedVariantName } : {});
+        
+        return {
+          productId: orderItem.productId,
+          name: orderItem.productName,
+          image: orderItem.productImage,
+          basePrice: product.price,
+          variant: variantDetail,
+          quantity: orderItem.quantity,
+          isAvailable
+        };
+      }
+
+      return {
+        productId: orderItem.productId,
+        name: orderItem.productName,
+        image: orderItem.productImage,
+        basePrice: orderItem.price,
+        variant: orderItem.variant,
+        quantity: orderItem.quantity,
+        isAvailable: false
+      };
+    });
+
+    return res.json({
+      success: true,
+      data: reorderItems,
+      message: 'Đã lấy danh sách sản phẩm từ đơn hàng cũ'
+    });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Lỗi server: ' + error.message });
   }

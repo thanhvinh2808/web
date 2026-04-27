@@ -78,7 +78,7 @@ const OrderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'cancellation_requested', 'refunded'],
+      enum: ['pending', 'processing', 'shipped', 'delivered', 'completed', 'cancelled', 'cancellation_requested', 'refunded'],
       default: 'pending',
     },
     paymentStatus: {
@@ -167,11 +167,8 @@ OrderSchema.pre('save', function (next) {
     if (!this.cancelledBy) this.cancelledBy = 'system';
   }
 
-  if (this.status === 'delivered' && this.paymentStatus === 'unpaid') {
-    this.paymentStatus = 'paid';
-    this.isPaid = true;
-    this.paidAt = this.paidAt || new Date();
-  }
+  // ✅ TESTER AUDIT: Đã gỡ bỏ logic tự động gán paymentStatus = paid tại đây 
+  // để chuyển quyền xử lý cho AdminController (Quy trình nghiệp vụ thực tế)
 
   if (!this.orderNumber) {
     const date = new Date();

@@ -26,6 +26,10 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'admin'],
     default: 'user'
   },
+  isLocked: {
+    type: Boolean,
+    default: false
+  },
   
   // ✅ THÊM CÁC FIELD MỚI CHO PROFILE
   phone: {

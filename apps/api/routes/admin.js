@@ -17,7 +17,8 @@ import {
   getRevenueStats,
   getNotifications,
   markNotificationRead,
-  markAllNotificationsRead
+  markAllNotificationsRead,
+  toggleUserLock
 } from '../controller/adminController.js';
 
 import {
@@ -54,13 +55,12 @@ import {
 
 const router = express.Router();
 
-// 🔒 Yêu cầu admin
-router.use(authenticateToken);
-router.use(isAdmin);
+// 🔒 Gỡ bỏ router.use(authenticateToken) và isAdmin ở đây 
+// vì server.js đã quản lý tập trung cho prefix /api/admin
 
 router.use('/blogs', adminBlogRoutes); 
 
-// Verify
+// Verify (Dùng để kiểm tra nhanh trong console)
 router.get('/verify', (req, res) => {
   res.json({ success: true, user: req.user });
 });
@@ -75,6 +75,7 @@ router.get('/users', getAllUsers);
 router.put('/users/:userId/role', updateUserRole);
 router.delete('/users/:userId', deleteUser);
 router.put('/users/:userId/password', resetUserPassword);
+router.put('/users/:id/toggle-lock', toggleUserLock);
 
 // Orders Management
 router.get('/orders', getAllOrders);

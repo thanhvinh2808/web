@@ -6,7 +6,10 @@ export const ORDER_STATUS = {
   PROCESSING: 'processing',
   SHIPPED: 'shipped',
   DELIVERED: 'delivered',
-  CANCELLED: 'cancelled'
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled',
+  CANCELLATION_REQUESTED: 'cancellation_requested',
+  REFUNDED: 'refunded'
 } as const;
 
 export const PAYMENT_STATUS = {

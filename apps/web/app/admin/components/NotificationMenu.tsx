@@ -2,10 +2,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Package, User, Mail, Check, Clock, RefreshCw, Star } from 'lucide-react';
 import { useSocket } from '../../contexts/SocketContext';
-import { API_URL } from '../config/constants';
+import { CLEAN_API_URL } from '@lib/shared/constants';
+const API_URL = CLEAN_API_URL;
 import { useRouter } from 'next/navigation';
 
-export default function NotificationMenu() {
+export default function NotificationMenu({ token }: { token?: string }) {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -14,7 +15,9 @@ export default function NotificationMenu() {
   const router = useRouter();
 
   useEffect(() => {
-    fetchNotifications();
+    if (token) {
+      fetchNotifications();
+    }
 
     if (socket) {
       socket.on('newNotification', (newNoti) => {
@@ -30,7 +33,7 @@ export default function NotificationMenu() {
     return () => {
       if (socket) socket.off('newNotification');
     };
-  }, [socket]);
+  }, [socket, token]);
 
   // Click outside to close
   useEffect(() => {
@@ -44,8 +47,8 @@ export default function NotificationMenu() {
   }, []);
 
   const fetchNotifications = async () => {
+    if (!token) return;
     try {
-      const token = localStorage.getItem('adminToken');
       const res = await fetch(`${API_URL}/api/admin/notifications?limit=10`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -60,9 +63,9 @@ export default function NotificationMenu() {
   };
 
   const handleMarkAsRead = async (noti: any) => {
+    if (!token) return;
     try {
       const id = noti._id;
-      const token = localStorage.getItem('adminToken');
       await fetch(`${API_URL}/api/admin/notifications/${id}/read`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }

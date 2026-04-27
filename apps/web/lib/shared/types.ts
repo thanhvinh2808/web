@@ -109,7 +109,7 @@ export interface CustomerInfo {
   notes?: string;
 }
 
-export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'completed' | 'cancelled' | 'cancellation_requested' | 'refunded';
 export type PaymentStatus = 'unpaid' | 'paid' | 'refunded';
 export type PaymentMethod = 'cod' | 'banking' | 'momo';
 

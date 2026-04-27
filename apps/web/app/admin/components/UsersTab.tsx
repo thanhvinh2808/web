@@ -141,6 +141,26 @@ export default function UsersTab({ token, showMessage }: UsersTabProps) {
     setResetModalOpen(true);
   };
 
+  const handleToggleLock = async (userId: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/users/${userId}/toggle-lock`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        showMessage(data.message);
+        fetchUsers();
+      } else {
+        showMessage(data.message || 'Lỗi xử lý');
+      }
+    } catch (error) {
+      showMessage('Lỗi kết nối');
+    }
+  };
+
   return (
     <div className="animate-fade-in space-y-6">
       {/* Header */}
@@ -172,15 +192,16 @@ export default function UsersTab({ token, showMessage }: UsersTabProps) {
               <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Người Dùng</th>
               <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Email</th>
               <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Vai Trò</th>
+              <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Trạng thái</th>
               <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Ngày Tham Gia</th>
               <th className="px-6 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Hành Động</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
             {loading ? (
-              <tr><td colSpan={5} className="text-center py-12 text-gray-400 font-bold uppercase tracking-widest">Đang tải dữ liệu...</td></tr>
+              <tr><td colSpan={6} className="text-center py-12 text-gray-400 font-bold uppercase tracking-widest">Đang tải dữ liệu...</td></tr>
             ) : users.length === 0 ? (
-              <tr><td colSpan={5} className="text-center py-12 text-gray-400 font-bold uppercase tracking-widest">Không tìm thấy user nào.</td></tr>
+              <tr><td colSpan={6} className="text-center py-12 text-gray-400 font-bold uppercase tracking-widest">Không tìm thấy user nào.</td></tr>
             ) : (
               users.map(user => (
                 <tr key={user._id} className="hover:bg-gray-50/80 transition-all">
@@ -224,12 +245,33 @@ export default function UsersTab({ token, showMessage }: UsersTabProps) {
                     </div>
                   </td>
                   <td className="px-6 py-5">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                      user.isLocked 
+                        ? 'bg-red-100 text-red-700' 
+                        : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {user.isLocked ? 'Đã Khóa' : 'Hoạt Động'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-5">
                     <div className="font-bold text-xs text-gray-500">
                        {new Date(user.createdAt).toLocaleDateString('vi-VN')}
                     </div>
                   </td>
                   <td className="px-6 py-5 text-right">
                     <div className="flex justify-end gap-2">
+                       <button
+                           onClick={() => handleToggleLock(user._id)}
+                           title={user.isLocked ? "Mở khóa tài khoản" : "Khóa tài khoản"}
+                           disabled={user.role === 'admin'}
+                           className={`p-2 rounded-lg transition shadow-sm ${
+                             user.isLocked 
+                               ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white' 
+                               : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'
+                           } disabled:opacity-30 disabled:cursor-not-allowed`}
+                        >
+                           {user.isLocked ? <UserCheck size={16} strokeWidth={2.5} /> : <Lock size={16} strokeWidth={2.5} />}
+                        </button>
                        <button
                            onClick={() => openResetModal(user)}
                            title="Đổi mật khẩu"

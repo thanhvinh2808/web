@@ -56,7 +56,8 @@ const statusLabels: { [key: string]: string } = {
   pending: 'Chờ xác nhận',
   processing: 'Đang xử lý',
   shipped: 'Đang giao hàng',
-  delivered: 'Hoàn thành',
+  delivered: 'Đã giao hàng',
+  completed: 'Hoàn thành',
   cancelled: 'Đã hủy',
   cancellation_requested: 'Chờ duyệt hủy',
   refunded: 'Đã hoàn tiền'
@@ -319,9 +320,9 @@ export default function OrderDetailPage() {
               <p className="text-[10px] font-bold text-gray-400 uppercase">Tổng thanh toán</p>
               <p className="text-xl font-bold text-blue-600">{formatPrice(orderDetails.finalTotal+orderDetails.vatAmount)}</p>
             </div>
-            {/* Action Buttons Logic (simplified) */}
+            {/* Action Buttons Logic */}
             <div className="flex gap-2">
-               {order.status !== 'delivered' && order.status !== 'cancelled' && (
+               {order.status !== 'completed' && order.status !== 'cancelled' && order.status !== 'refunded' && (
                   <>
                     {order.status === 'pending' && (
                       <button
@@ -345,9 +346,22 @@ export default function OrderDetailPage() {
                       <button
                         onClick={() => updateOrderStatus('delivered')}
                         disabled={updating}
-                        className="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-green-700 transition-all disabled:opacity-50"
+                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-indigo-700 transition-all disabled:opacity-50"
                       >
-                        {updating ? '...' : 'Hoàn thành'}
+                        {updating ? '...' : 'Đã giao hàng'}
+                      </button>
+                    )}
+                    {order.status === 'delivered' && (
+                      <button
+                        onClick={() => {
+                          if (confirm('Xác nhận khách đã thanh toán và hoàn tất đơn hàng?')) {
+                            updateOrderStatus('completed');
+                          }
+                        }}
+                        disabled={updating}
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-green-700 transition-all shadow-sm shadow-green-200 flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        {updating ? '...' : <><CheckCircle size={14} /> Xác nhận thanh toán & Hoàn thành</>}
                       </button>
                     )}
                   </>

@@ -111,14 +111,21 @@ export default function ProductsTab({
     return placeholder;
   };
 
-  // ✅ Lọc sản phẩm theo tìm kiếm và danh mục (Giữ nguyên thứ tự từ Backend)
+  // ✅ Lọc sản phẩm theo tìm kiếm và danh mục (Sắp xếp mới nhất lên đầu)
   const filteredProducts = useMemo(() => {
-    return products.filter(product => {
+    const filtered = products.filter(product => {
       const matchSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (product.brand || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (product.description || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchCategory = !selectedCategory || product.categorySlug === selectedCategory;
       return matchSearch && matchCategory;
+    });
+
+    // Sắp xếp: Ưu tiên _id giảm dần (hàng mới tạo sẽ lên đầu)
+    return filtered.sort((a, b) => {
+      const idA = a._id || '';
+      const idB = b._id || '';
+      return idB.localeCompare(idA);
     });
   }, [products, searchTerm, selectedCategory]);
 
