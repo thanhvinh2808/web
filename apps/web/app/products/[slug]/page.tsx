@@ -283,7 +283,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
 
   return (
     <div className="min-h-screen bg-white pb-20">
-      <div className="container mx-auto px-4 py-10">
+      <div className="container py-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           
           {/* HÌNH ẢNH */}

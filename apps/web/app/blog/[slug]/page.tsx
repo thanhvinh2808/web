@@ -156,7 +156,7 @@ export default function BlogDetailPage() {
       ></div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-12 max-w-7xl">
+      <div className="container py-12 max-w-7xl">
         {/* Breadcrumb & Back */}
         <nav className="flex items-center gap-2 text-sm text-gray-400 mb-8 overflow-x-auto whitespace-nowrap pb-2">
           <span className="hover:text-primary cursor-pointer transition-colors" onClick={() => router.push('/')}>Trang chủ</span>

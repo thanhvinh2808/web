@@ -176,7 +176,7 @@ export default function OrderDetailPage() {
   return (
     <div className="bg-[#f8fafc] min-h-screen pb-20">
       <div className="bg-white border-b border-gray-100 sticky top-0 z-30 shadow-sm">
-        <div className="container mx-auto px-4 max-w-5xl h-16 flex items-center justify-between">
+        <div className="container max-w-5xl h-16 flex items-center justify-between">
           <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-500 hover:text-primary font-bold transition-all text-xs uppercase tracking-widest group">
             <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
               <ArrowLeft size={16} />

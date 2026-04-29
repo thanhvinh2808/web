@@ -33,7 +33,7 @@ export default function ProfileLayout({
 
   return (
     <div className="bg-gray-50 min-h-screen py-4 md:py-8">
-      <div className="container mx-auto px-4">
+      <div className="container">
         {/* Mobile Sidebar (Horizontal Scroll) */}
         <div className="md:hidden mb-4 overflow-x-auto no-scrollbar -mx-4 px-4 py-2 bg-white shadow-sm sticky top-[64px] z-40 border-b border-gray-100">
            <ProfileSidebar isMobile={true} />

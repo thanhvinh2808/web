@@ -85,7 +85,7 @@ export default function HeroCarousel() {
             
             <div className={`absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-black/90 via-black/50 md:via-black/40 to-transparent`}></div>
 
-            <div className="absolute inset-0 container mx-auto px-6 md:px-12 flex flex-col justify-center h-full relative z-10">
+            <div className="absolute inset-0 container flex flex-col justify-center h-full relative z-10">
               <div className={`max-w-3xl animate-fade-in-up ${
                 slide.align === 'center' ? 'lg:mx-auto lg:text-center lg:items-center items-start text-left' : 
                 slide.align === 'right' ? 'lg:ml-auto lg:text-right lg:items-end items-start text-left' : 'text-left items-start'

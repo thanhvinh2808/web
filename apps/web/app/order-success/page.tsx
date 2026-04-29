@@ -108,7 +108,7 @@ function OrderSuccessContent() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 font-sans">
-      <div className="container mx-auto px-4 max-w-3xl">
+      <div className="container max-w-3xl">
 
         {/* ── Success card ──────────────────────────────── */}
         <div className="bg-white shadow-lg overflow-hidden text-center p-10 mb-6 border border-gray-100">

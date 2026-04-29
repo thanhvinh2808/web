@@ -3,7 +3,7 @@ import Product from '../models/Product.js';
 import Voucher from '../models/Voucher.js';
 import { createNotification } from './adminController.js';
 import { createAdminNotification } from '../utils/helpers.js';
-import { sendNewOrderEmail } from '../services/emailService.js';
+import { sendNewOrderEmail, sendUserOrderConfirmation } from '../services/emailService.js';
 import mongoose from 'mongoose';
 import { ProductCode, VnpLocale } from 'vnpay';
 import { getVnpay } from '../config/vnpay.js';
@@ -199,6 +199,7 @@ export const createOrder = async (req, res) => {
         }).catch(() => {});
 
         sendNewOrderEmail(savedOrder).catch(() => {});
+        sendUserOrderConfirmation(savedOrder).catch(() => {});
         if (global.io) global.io.to('admin').emit('newOrder', savedOrder);
       }
 
@@ -492,7 +493,8 @@ export const approveCancelOrder = async (req, res) => {
           update = {
             $inc: {
               'variants.$[var].options.$[opt].stock': item.quantity,
-              'variants.$[].options.$[opt].soldCount': -item.quantity
+              'variants.$[var].options.$[opt].soldCount': -item.quantity,
+              'soldCount': -item.quantity // Hoàn lại lượt bán tổng của sản phẩm
             }
           };
           arrayFilters = [
@@ -623,6 +625,7 @@ export const markOrderAsPaid = async (req, res) => {
         }).catch(() => {});
     
         sendNewOrderEmail(order).catch(err => console.error('Lỗi gửi email:', err));
+        sendUserOrderConfirmation(order).catch(err => console.error('Lỗi gửi email khách:', err));
         
         if (global.io) {
             global.io.to('admin').emit('newOrder', order);

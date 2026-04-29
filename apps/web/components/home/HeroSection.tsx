@@ -13,7 +13,7 @@ export default function HeroSection() {
       </div>
       <div className="absolute inset-0 bg-gradient-to-r from-black via-black/50 to-transparent"></div>
       
-      <div className="container mx-auto px-4 h-full flex items-center relative z-10">
+      <div className="container h-full flex items-center relative z-10">
         <div className="max-w-2xl text-white">
             <div className="flex gap-2 mb-6">
                 <span className="bg-blue-600 px-3 py-1 text-xs font-bold uppercase rounded-sm">New Arrival</span>

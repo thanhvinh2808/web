@@ -61,7 +61,7 @@ export default function CartPage() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container py-8">
         {cart.length === 0 ? (
           <div className="text-center py-20 bg-white border border-dashed border-gray-300">
             <ShoppingBag size={64} className="mx-auto text-gray-200 mb-4" />

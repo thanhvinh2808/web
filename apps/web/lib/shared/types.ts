@@ -67,6 +67,8 @@ export interface Product {
   featured: boolean;
   isNew: boolean;
   hasPromotion: boolean;
+  isNewArrival?: boolean;
+  isSecondHand?: boolean;
   status: 'active' | 'inactive' | 'out_of_stock';
   createdAt: Date;
   updatedAt: Date;

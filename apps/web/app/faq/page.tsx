@@ -50,8 +50,7 @@ export default function FAQPage() {
   // Loading skeleton (Không đổi)
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-3xl mx-auto">
+<div className="container py-8">        <div className="max-w-3xl mx-auto">
           <h1 className="text-4xl font-bold text-center mb-4">Câu hỏi thường gặp</h1>
           <p className="text-gray-600 text-center mb-12">Đang tải câu trả lời...</p>
           <div className="space-y-4">
@@ -66,8 +65,7 @@ export default function FAQPage() {
 
   // Nội dung trang (Không đổi)
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-3xl mx-auto">
+<div className="container py-8">      <div className="max-w-3xl mx-auto">
         <h1 className="text-4xl font-bold text-center mb-4">Câu hỏi thường gặp</h1>
         <p className="text-gray-600 text-center mb-12">Tìm câu trả lời cho các thắc mắc của bạn</p>
 

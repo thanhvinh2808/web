@@ -6,7 +6,7 @@ import { ArrowUpRight } from 'lucide-react';
 export default function PromoBanner() {
   return (
     <section className="py-12 bg-white">
-       <div className="container mx-auto px-4">
+       <div className="container">
           <div className="relative rounded-none overflow-hidden bg-blue-900 h-[300px] md:h-[400px] flex items-center">
              
              {/* Background Image Overlay */}

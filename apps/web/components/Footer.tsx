@@ -16,7 +16,7 @@ import {
 export const Footer = () => {
   return (
     <footer className="bg-[#0a0a0a] text-stone-400 pt-12 md:pt-20 pb-10 font-sans border-t border-stone-800">
-      <div className="container mx-auto px-4">
+      <div className="container">
         
         {/* Top Section: Brand & Newsletter */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12 mb-10 md:mb-20">

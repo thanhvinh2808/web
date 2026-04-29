@@ -2,6 +2,10 @@ import User from '../models/User.js';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import Notification from '../models/Notification.js';
+import Address from '../models/Address.js';
+import Review from '../models/Review.js';
+import Wishlist from '../models/Wishlist.js';
+import TradeIn from '../models/TradeIn.js';
 import bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
 
@@ -190,21 +194,65 @@ export const updateUserRole = async (req, res) => {
   }
 };
 
-// ðŸ—‘ï¸ Delete User
+// 🗑️ Delete User (Hard Delete all interactions)
 export const deleteUser = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  
   try {
     const { userId } = req.params;
 
-    await User.findByIdAndDelete(userId);
+    // 1. Kiểm tra User tồn tại
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Người dùng không tồn tại' });
+    }
+
+    if (user.role === 'admin') {
+      return res.status(403).json({ success: false, message: 'Không thể xóa tài khoản Admin hệ thống' });
+    }
+
+    console.log(`🧹 Starting Hard Delete for User: ${userId} (${user.email})`);
+
+    // 2. Thực hiện xóa các tương tác cá nhân song song để tối ưu performance
+    await Promise.all([
+      Address.deleteMany({ userId }, { session }),
+      Wishlist.deleteMany({ userId }, { session }),
+      Notification.deleteMany({ user_id: userId }, { session }), // Notification model dùng user_id
+      TradeIn.deleteMany({ userId }, { session }),
+      Review.deleteMany({ userId }, { session })
+    ]);
+
+    // 3. Anonymize Orders (Ẩn danh hóa đơn hàng)
+    // KHÔNG xóa Order vì liên quan đến kế toán, nhưng gỡ link userId
+    await Order.updateMany(
+      { userId },
+      { $set: { userId: null } },
+      { session }
+    );
+
+    // 4. Xóa User cuối cùng
+    await User.findByIdAndDelete(userId, { session });
+
+    // Commit transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    console.log(`✅ User ${userId} and all related interactions deleted successfully.`);
 
     res.json({
       success: true,
-      message: 'XÃ³a user thÃ nh cÃ´ng'
+      message: 'Đã xóa vĩnh viễn tài khoản và tất cả dữ liệu liên quan thành công.'
     });
   } catch (error) {
+    // Abort transaction nếu có lỗi
+    await session.abortTransaction();
+    session.endSession();
+
+    console.error('❌ Error during Hard Delete User:', error);
     res.status(500).json({
       success: false,
-      message: 'Lá»—i xÃ³a user: ' + error.message
+      message: 'Lỗi quy trình xóa dữ liệu: ' + error.message
     });
   }
 };

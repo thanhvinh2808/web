@@ -101,7 +101,9 @@ const productSchema = new mongoose.Schema({
     type:    String,
     enum:    ['active', 'inactive', 'out_of_stock'],
     default: 'active'
-  }
+  },
+  createdAt: { type: Date },
+  updatedAt: { type: Date }
 }, {
   timestamps: true,
   toJSON:  { virtuals: true },
@@ -115,6 +117,22 @@ productSchema.index({ name: 'text', description: 'text' });
 productSchema.index({ "variants.options.sku": 1 }, { sparse: true }); // Tối ưu tìm kiếm theo SKU
 
 // ===== VIRTUALS =====
+
+// Sản phẩm mới ( 14 ngày)
+productSchema.virtual('isNewArrival').get(function () {
+  const date = this.createdAt || this._id.getTimestamp();
+  if (!date) return false;
+  const fourteenDaysAgo = new Date();
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+  return date >= fourteenDaysAgo;
+});
+
+// Kiểm tra xem có phải hàng Secondhand không
+productSchema.virtual('isSecondHand').get(function () {
+  if (!this.specs?.condition) return false;
+  const condition = this.specs.condition.trim().toLowerCase();
+  return !['100%', 'new', 'brand new'].includes(condition);
+});
 
 // Tổng stock thực tế - gộp từ tất cả variants hoặc lấy stock gốc
 productSchema.virtual('totalStock').get(function () {

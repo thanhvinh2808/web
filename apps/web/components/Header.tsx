@@ -93,7 +93,7 @@ export const Header = ({ cartCount = 0 }: HeaderProps) => {
       <div className={`${isScrolled ? 'h-16' : 'h-16 md:h-20'} transition-all duration-300`}></div>
 
       <header className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 border-b border-gray-100 ${isScrolled ? "bg-white shadow-md h-16" : "bg-white h-16 md:h-20 shadow-none"}`}>
-        <div className="container mx-auto px-4 h-full flex items-center justify-between">
+        <div className="container h-full flex items-center justify-between">
           
           <Link href="/" className="flex flex-col group">
             <h1 className={`font-black tracking-tighter text-black leading-none group-hover:opacity-80 transition-all duration-300 ${isScrolled ? 'text-xl md:text-2xl' : 'text-2xl md:text-3xl'}`}>

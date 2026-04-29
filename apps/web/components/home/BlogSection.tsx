@@ -42,7 +42,7 @@ export default function BlogSection() {
 
   return (
     <section className="py-16 bg-white">
-      <div className="container mx-auto px-4">
+      <div className="container">
         <h3 className="text-3xl font-black text-gray-900 italic uppercase mb-10 text-center">Kiến Thức Sneaker</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {blogs.map(blog => (

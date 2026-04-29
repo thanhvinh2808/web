@@ -75,7 +75,7 @@ export default function CategoryPage() {
   if (error) return <div className="container mx-auto px-4 py-20 text-center"><div className="bg-red-50 text-red-600 p-8 rounded-2xl inline-block">Danh mục không tồn tại hoặc đã bị xóa.</div></div>;
 
   return (
-    <div className="container mx-auto px-4 py-12 min-h-screen">
+    <div className="container py-12 min-h-screen">
       {category && (
         <div className="mb-12 border-b border-gray-100 pb-8">
           <h1 className="text-4xl font-black italic uppercase tracking-tighter text-black mb-2">{category.name}</h1>

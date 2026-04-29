@@ -12,7 +12,7 @@ export default function FeaturedProduct() {
          <div className="absolute bottom-10 right-10 w-96 h-96 bg-purple-600 rounded-none blur-[150px]"></div>
       </div>
 
-      <div className="container mx-auto px-4 relative z-10">
+      <div className="container relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           
           {/* Text Content */}

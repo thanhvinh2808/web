@@ -197,7 +197,7 @@ export default function TradeInPage() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 -mt-10 relative z-20">
+      <div className="container -mt-10 relative z-20">
         {/* Steps */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
           {[

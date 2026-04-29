@@ -74,7 +74,7 @@ export default function NewArrivals() {
 
   return (
     <section id="new-arrivals" className="py-20 bg-white">
-      <div className="container mx-auto px-4">
+      <div className="container">
         
         {/* Header & Tabs */}
         <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">

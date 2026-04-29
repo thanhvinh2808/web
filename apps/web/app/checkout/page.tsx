@@ -501,8 +501,7 @@ export default function CheckoutPage() {
          </div>
        </div>
 
-       <div className="container mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+       <div className="container py-8">          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
              
              <div className="lg:col-span-7 space-y-8">
                 <section>

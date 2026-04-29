@@ -94,8 +94,16 @@ function ProductsContent() {
       }
 
       if (productType !== 'all') {
-        const matchLegacy = productType === 'new' ? product.isNew : !product.isNew;
-        if (!product.tags?.includes(productType) && !matchLegacy) return false;
+        if (productType === 'new') {
+          // Nếu là 'new', hiển thị hàng Brand New (Không phải Secondhand)
+          if (product.isSecondHand) return false;
+        } else if (productType === '2hand') {
+          // Nếu là '2hand', hiển thị hàng đã qua sử dụng
+          if (!product.isSecondHand) return false;
+        } else {
+          // Các tag khác (nếu có)
+          if (!product.tags?.includes(productType)) return false;
+        }
       }
 
       if (selectedCategory !== 'all' && product.categorySlug !== selectedCategory) return false;
@@ -171,7 +179,7 @@ function ProductsContent() {
   return (
     <div className="bg-white min-h-screen font-sans text-gray-900">
       <div className="bg-gray-50 py-16 border-b border-gray-200">
-        <div className="container mx-auto px-4 text-center lg:text-left">
+        <div className="container text-center lg:text-left">
           <h1 className="text-5xl md:text-7xl font-black italic tracking-tighter mb-4 uppercase italic">
             {pageTitle.main} <span className="text-primary">{pageTitle.sub}</span>
           </h1>
@@ -183,7 +191,7 @@ function ProductsContent() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-12">
+      <div className="container py-12">
         <div className="flex gap-12">
           {/* Mobile Filter Drawer */}
           {showMobileFilter && (

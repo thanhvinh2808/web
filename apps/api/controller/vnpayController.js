@@ -11,7 +11,7 @@ import {
 import { getVnpay } from '../config/vnpay.js';
 import Order from '../models/Order.js';
 import { createNotification } from './adminController.js';
-import { sendNewOrderEmail } from '../services/emailService.js';
+import { sendNewOrderEmail, sendUserOrderConfirmation } from '../services/emailService.js';
 
 /**
  * POST /api/vnpay/create-payment
@@ -159,6 +159,7 @@ export const handleIpn = async (req, res) => {
     }
 
     sendNewOrderEmail(order).catch(err => console.error('Lỗi gửi email:', err));
+    sendUserOrderConfirmation(order).catch(err => console.error('Lỗi gửi email khách:', err));
 
     if (global.io) {
       const updateData = {
@@ -227,6 +228,7 @@ export const handleReturn = async (req, res) => {
         ).catch(err => console.error('Lỗi thông báo:', err));
       }
       sendNewOrderEmail(order).catch(err => console.error('Lỗi gửi email:', err));
+    sendUserOrderConfirmation(order).catch(err => console.error('Lỗi gửi email khách:', err));
       if (global.io) {
         const updateData = { orderId: order._id, status: order.status, paymentStatus: 'paid', isPaid: true };
         global.io.to(`user:${order.userId}`).emit('orderStatusUpdated', updateData);

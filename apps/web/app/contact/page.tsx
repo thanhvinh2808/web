@@ -76,7 +76,7 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-12 md:py-20 bg-gray-50">
+    <div className="container py-12 md:py-20 bg-gray-50">
       <div className="max-w-5xl mx-auto">
         {/* Header Section */}
         <div className="text-center mb-16">

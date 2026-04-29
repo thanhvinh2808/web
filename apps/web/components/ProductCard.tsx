@@ -184,7 +184,22 @@ export default function ProductCard({ product, showSoldCount = false }: ProductC
         
         {/* TAGS */}
         <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
-          {product.tags?.map((tag, idx) => (
+          {/* Badge NEW ARRIVAL (Tự động theo ngày tạo) */}
+          {product.isNewArrival && (
+            <span className="bg-blue-600 text-white text-[10px] font-black px-2 py-1 uppercase tracking-wider animate-pulse shadow-lg shadow-blue-500/50">
+              New Arrival
+            </span>
+          )}
+
+          {/* Badge 2HAND (Nếu là hàng cũ) */}
+          {product.isSecondHand && (
+            <span className="bg-orange-500 text-white text-[10px] font-black px-2 py-1 uppercase tracking-wider">
+              2nd Hand
+            </span>
+          )}
+
+          {/* Các tags khác từ DB */}
+          {product.tags?.filter(tag => !['new', '2hand'].includes(tag.toLowerCase())).map((tag, idx) => (
             <span key={idx} className="bg-black text-white text-[10px] font-bold px-2 py-1 uppercase tracking-wider">
               {tag}
             </span>

@@ -19,9 +19,16 @@ export const sendNewOrderEmail = async (order) => {
   try {
     const transporter = getTransporter();
     const subtotal = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const shippingFee = order.shippingFee || 0;
+    const discountAmount = order.discountAmount || 0;
+    
+    // Ở Việt Nam, giá bán lẻ thường ĐÃ BAO GỒM VAT 10%. 
+    // Chúng ta hiển thị VAT để minh bạch nhưng KHÔNG cộng thêm vào tổng tiền.
+    const vatAmount = Math.round(subtotal * 0.1); 
+
     const itemsList = order.items
       .map(item => {
-        const variantText = item.variant?.name ? `<br/><small style="color: #666;">Phân loại: ${item.variant.name}</small>` : '';
+        const variantText = (item.variant?.name || item.variantName) ? `<br/><small style="color: #666;">Phân loại: ${item.variant?.name || item.variantOption || item.variantName}</small>` : '';
         return `
           <tr>
             <td style="padding: 10px; border: 1px solid #ddd;">
@@ -38,7 +45,7 @@ export const sendNewOrderEmail = async (order) => {
     const emailContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
         <h2 style="color: #0070f3; border-bottom: 2px solid #0070f3; padding-bottom: 10px; text-align: center;">
-          🛒 XÁC NHẬN ĐƠN HÀNG MỚI
+          🛒 XÁC NHẬN ĐƠN HÀNG MỚI (ADMIN)
         </h2>
         
         <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
@@ -66,18 +73,17 @@ export const sendNewOrderEmail = async (order) => {
         </table>
 
         <div style="text-align: right; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
-          <p style="margin: 5px 0;"><strong>Tạm tính:</strong> ${Math.round(subtotal).toLocaleString('vi-VN')}đ</p>
-          <p style="margin: 5px 0;"><strong>VAT (10%):</strong> +${Math.round(subtotal * 0.1).toLocaleString('vi-VN')}đ</p>
-          ${(order.shippingFee || 0) > 0 ? `<p style="margin: 5px 0;"><strong>Phí vận chuyển:</strong> +${Math.round(order.shippingFee).toLocaleString('vi-VN')}đ</p>` : ''}
-          ${(order.discountAmount || 0) > 0 ? `<p style="margin: 5px 0; color: #dc3545;"><strong>Giảm giá:</strong> -${Math.round(order.discountAmount).toLocaleString('vi-VN')}đ</p>` : ''}
-          <p style="font-size: 18px; margin-top: 10px; color: #333;"><strong>Tổng cộng:</strong> <span style="color: #0070f3; font-size: 24px; font-weight: bold;">${Math.round(order.totalAmount + (subtotal * 0.1) || 0).toLocaleString('vi-VN')}đ</span></p>
+          <p style="margin: 5px 0;"><strong>Tạm tính:</strong> ${subtotal.toLocaleString('vi-VN')}đ</p>
+          <p style="margin: 5px 0; font-size: 11px; color: #999;">(Trong đó VAT 10% ước tính: ${vatAmount.toLocaleString('vi-VN')}đ)</p>
+          <p style="margin: 5px 0;"><strong>Phí vận chuyển:</strong> +${shippingFee.toLocaleString('vi-VN')}đ</p>
+          ${discountAmount > 0 ? `<p style="margin: 5px 0; color: #dc3545;"><strong>Giảm giá:</strong> -${discountAmount.toLocaleString('vi-VN')}đ</p>` : ''}
+          <p style="font-size: 18px; margin-top: 10px; color: #333;"><strong>TỔNG CỘNG:</strong> <span style="color: #0070f3; font-size: 24px; font-weight: bold;">${order.totalAmount.toLocaleString('vi-VN')}đ</span></p>
         </div>
 
         <div style="margin-top: 30px; padding: 15px; background-color: #f8f9fa; border-radius: 5px; font-size: 13px; color: #666;">
-          <p style="margin: 5px 0;"><strong>Mã đơn hàng:</strong> ${order._id}</p>
+          <p style="margin: 5px 0;"><strong>Mã đơn hàng:</strong> ${order.orderNumber || order._id}</p>
           <p style="margin: 5px 0;"><strong>Phương thức thanh toán:</strong> ${order.paymentMethod.toUpperCase()}</p>
           <p style="margin: 5px 0;"><strong>Thời gian đặt:</strong> ${new Date(order.createdAt).toLocaleString('vi-VN')}</p>
-          <p style="margin: 5px 0;"><strong>Trạng thái:</strong> <span style="color: #ffc107; font-weight: bold;">Chờ xác nhận</span></p>
         </div>
         
         <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
@@ -89,7 +95,7 @@ export const sendNewOrderEmail = async (order) => {
     await transporter.sendMail({
       from: `"FootMark" <${process.env.ADMIN_EMAIL}>`,
       to: process.env.ADMIN_EMAIL,
-      subject: `🛒 Đơn hàng mới #${order._id.toString().slice(-6).toUpperCase()} - ${order.customerInfo.fullName}`,
+      subject: `🛒 Đơn hàng mới #${(order.orderNumber || order._id.toString()).slice(-6).toUpperCase()} - ${order.customerInfo.fullName}`,
       html: emailContent,
     });
 
@@ -97,6 +103,140 @@ export const sendNewOrderEmail = async (order) => {
     return { success: true };
   } catch (error) {
     console.error('❌ Lỗi khi gửi email đơn hàng:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// ✅ Gửi email xác nhận đơn hàng cho KHÁCH HÀNG
+export const sendUserOrderConfirmation = async (order) => {
+  try {
+    const transporter = getTransporter();
+    const subtotal = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const shippingFee = order.shippingFee || 0;
+    const discountAmount = order.discountAmount || 0;
+
+    const itemsList = order.items
+      .map(item => {
+        const variantText = (item.variantName || item.variant?.name) ? `<br/><small style="color: #666;">Size/Màu: ${item.variantOption || item.variant?.options?.[0]?.name || item.variantName || item.variant?.name}</small>` : '';
+        return `
+          <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #eee;">
+              <div style="font-weight: bold; color: #333;">${item.productName}</div>
+              ${variantText}
+            </td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">${item.price.toLocaleString('vi-VN')}đ</td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    const emailContent = `
+      <div style="font-family: 'Segoe UI', Roboto, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #fff; border: 1px solid #eee; border-radius: 15px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.05);">
+        <div style="background-color: #000; padding: 40px 20px; text-align: center;">
+          <h1 style="color: #fff; margin: 0; letter-spacing: 8px; font-style: italic; font-weight: 900; font-size: 28px;">FOOTMARK.</h1>
+          <p style="color: #00e5ff; margin: 10px 0 0 0; text-transform: uppercase; font-size: 10px; letter-spacing: 3px; font-weight: bold;">Cảm ơn bạn đã đặt hàng!</p>
+        </div>
+        
+        <div style="padding: 30px;">
+          <h2 style="color: #333; font-size: 20px; margin-top: 0;">Xin chào ${order.customerInfo.fullName},</h2>
+          <p style="color: #666; line-height: 1.6;">Đơn hàng của bạn đã được tiếp nhận và đang trong quá trình xử lý. Chúng tôi sẽ thông báo cho bạn ngay khi đơn hàng được gửi đi.</p>
+          
+          <div style="background-color: #f8f9fa; border-radius: 10px; padding: 20px; margin: 25px 0;">
+            <table style="width: 100%; font-size: 14px; color: #444;">
+              <tr>
+                <td style="padding-bottom: 10px;"><strong>Mã đơn hàng:</strong></td>
+                <td style="padding-bottom: 10px; text-align: right; color: #0070f3; font-weight: bold;">#${(order.orderNumber || order._id.toString()).slice(-6).toUpperCase()}</td>
+              </tr>
+              <tr>
+                <td style="padding-bottom: 10px;"><strong>Ngày đặt:</strong></td>
+                <td style="padding-bottom: 10px; text-align: right;">${new Date(order.createdAt).toLocaleString('vi-VN')}</td>
+              </tr>
+              <tr>
+                <td><strong>Trạng thái:</strong></td>
+                <td style="text-align: right;"><span style="background-color: #fff3cd; color: #856404; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: bold;">Chờ xác nhận</span></td>
+              </tr>
+            </table>
+          </div>
+
+          <h3 style="color: #333; font-size: 16px; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">Chi tiết sản phẩm</h3>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
+            <thead>
+              <tr style="color: #999; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">
+                <th style="padding: 10px; text-align: left; font-weight: normal;">Sản phẩm</th>
+                <th style="padding: 10px; text-align: center; font-weight: normal;">SL</th>
+                <th style="padding: 10px; text-align: right; font-weight: normal;">Giá</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsList}
+            </tbody>
+          </table>
+
+          <div style="background-color: #fcfcfc; padding: 20px; border-radius: 10px;">
+            <table style="width: 100%; color: #666; font-size: 14px;">
+              <tr>
+                <td style="padding-bottom: 8px;">Tạm tính</td>
+                <td style="text-align: right; padding-bottom: 8px;">${subtotal.toLocaleString('vi-VN')}đ</td>
+              </tr>
+              ${discountAmount > 0 ? `
+              <tr>
+                <td style="padding-bottom: 8px; color: #dc3545;">Giảm giá</td>
+                <td style="text-align: right; padding-bottom: 8px; color: #dc3545;">-${discountAmount.toLocaleString('vi-VN')}đ</td>
+              </tr>
+              ` : ''}
+              <tr>
+                <td style="padding-bottom: 8px;">Phí vận chuyển</td>
+                <td style="text-align: right; padding-bottom: 8px;">${shippingFee > 0 ? shippingFee.toLocaleString('vi-VN') + 'đ' : 'Miễn phí'}</td>
+              </tr>
+              <tr style="font-size: 18px; color: #000; font-weight: bold;">
+                <td style="padding-top: 15px; border-top: 1px solid #eee;">Tổng thanh toán</td>
+                <td style="text-align: right; padding-top: 15px; border-top: 1px solid #eee; color: #0070f3;">${order.totalAmount.toLocaleString('vi-VN')}đ</td>
+              </tr>
+            </table>
+            <p style="margin: 10px 0 0 0; font-size: 11px; color: #999; text-align: right;">(Giá đã bao gồm thuế VAT)</p>
+          </div>
+
+          <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 25px;">
+            <div style="display: flex; justify-content: space-between; gap: 20px;">
+              <div style="flex: 1;">
+                <h4 style="margin: 0 0 10px 0; font-size: 13px; color: #999; text-transform: uppercase;">Địa chỉ giao hàng</h4>
+                <p style="margin: 0; font-size: 14px; color: #333; line-height: 1.5;">
+                  <strong>${order.customerInfo.fullName}</strong><br/>
+                  ${order.customerInfo.phone}<br/>
+                  ${order.customerInfo.address}
+                </p>
+              </div>
+              <div style="flex: 1; text-align: right;">
+                <h4 style="margin: 0 0 10px 0; font-size: 13px; color: #999; text-transform: uppercase;">Thanh toán</h4>
+                <p style="margin: 0; font-size: 14px; color: #333;">${order.paymentMethod.toUpperCase()}</p>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top: 40px; text-align: center;">
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/profile" style="display: inline-block; background-color: #000; color: #fff; padding: 15px 35px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 14px; letter-spacing: 1px;">THEO DÕI ĐƠN HÀNG</a>
+          </div>
+        </div>
+
+        <div style="background-color: #fafafa; padding: 30px; text-align: center; color: #999; font-size: 12px;">
+          <p style="margin: 0 0 10px 0;">Nếu bạn có bất kỳ thắc mắc nào, vui lòng liên hệ hotline hoặc trả lời email này.</p>
+          <p style="margin: 0;">© ${new Date().getFullYear()} FootMark. Authentic Sneakers & Streetwear.</p>
+        </div>
+      </div>
+    `;
+
+    await transporter.sendMail({
+      from: `"FootMark" <${process.env.ADMIN_EMAIL}>`,
+      to: order.customerInfo.email,
+      subject: `👟 Xác nhận đơn hàng #${(order.orderNumber || order._id.toString()).slice(-6).toUpperCase()} tại FootMark`,
+      html: emailContent,
+    });
+
+    console.log(`✅ Email xác nhận đã được gửi tới khách hàng: ${order.customerInfo.email}`);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Lỗi khi gửi email xác nhận cho khách hàng:', error);
     return { success: false, error: error.message };
   }
 };
@@ -312,6 +452,7 @@ export const sendOTPEmail = async (email, otp) => {
 
 export default { 
   sendNewOrderEmail, 
+  sendUserOrderConfirmation,
   sendNewContactEmail, 
   sendReplyEmail,
   sendTradeInUpdateEmail,

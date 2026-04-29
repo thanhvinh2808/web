@@ -74,7 +74,7 @@ export default function SecondHandZone() {
         2HAND
       </div>
 
-      <div className="container mx-auto px-4 relative z-10">
+      <div className="container relative z-10">
         
         {/* Header */}
         <div className="mb-12">

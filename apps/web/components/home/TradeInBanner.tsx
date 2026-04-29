@@ -5,7 +5,7 @@ import Link from 'next/link';
 export default function TradeInBanner() {
   return (
     <section className="py-16">
-      <div className="container mx-auto px-4">
+      <div className="container">
         <div className="bg-black overflow-hidden relative flex flex-col md:flex-row items-center">
           <div className="p-12 md:w-1/2 text-white z-10">
             <h3 className="text-3xl md:text-5xl font-black italic mb-4">THU CŨ ĐỔI MỚI</h3>

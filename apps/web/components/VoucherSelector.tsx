@@ -187,12 +187,21 @@ export const VoucherSelector = ({ totalAmount, onVoucherApply, selectedVoucher }
                         className={`relative flex items-stretch min-h-[90px] border rounded-xl overflow-hidden transition-all ${
                           validation.valid
                             ? 'border-blue-200 bg-white hover:shadow-md cursor-pointer hover:border-blue-400'
-                            : 'border-gray-100 bg-gray-50/50 cursor-not-allowed opacity-50 grayscale-[0.6]'
+                            : 'border-gray-100 bg-gray-50/50 cursor-not-allowed opacity-60 grayscale blur-[0.3px]'
                         }`}
                       >
+                        {/* Overlay Badge for invalid state */}
+                        {!validation.valid && (
+                          <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
+                            <div className="bg-black/70 text-white px-3 py-1 text-[9px] font-black uppercase tracking-tighter rotate-12 border border-white/50 shadow-xl">
+                              {validation.reason?.includes('Mua thêm') ? 'CHƯA ĐỦ ĐIỀU KIỆN' : validation.reason?.toUpperCase()}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Left part (Type/Icon) - Xanh dương */}
                         <div className={`w-24 flex flex-col items-center justify-center border-r-2 border-dashed relative px-2 ${
-                          validation.valid ? 'bg-blue-600 text-white border-blue-200' : 'bg-gray-300 text-gray-500 border-gray-200'
+                          validation.valid ? 'bg-blue-600 text-white border-blue-200' : 'bg-gray-400 text-gray-200 border-gray-300'
                         }`}>
                           {/* Cut-out circles */}
                           <div className="absolute -top-2 -right-[9px] w-4 h-4 bg-white border border-gray-100 rounded-full z-10"></div>
