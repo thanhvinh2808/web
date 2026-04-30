@@ -183,23 +183,32 @@ export default function ProductCard({ product, showSoldCount = false }: ProductC
         </div>
         
         {/* TAGS */}
-        <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
-          {/* Badge NEW ARRIVAL (Tự động theo ngày tạo) */}
+        <div className="absolute top-2 left-2 flex flex-col gap-1.5 z-10">
+          {/* 1. Nhãn NEW ARRIVAL - Chỉ hiện nếu sản phẩm vừa đăng bán (Hàng mới về) */}
           {product.isNewArrival && (
-            <span className="bg-blue-600 text-white text-[10px] font-black px-2 py-1 uppercase tracking-wider animate-pulse shadow-lg shadow-blue-500/50">
-              New Arrival
+            <div className="flex flex-col">
+              <span className="bg-gradient-to-r from-blue-700 to-cyan-500 text-white text-[9px] md:text-[11px] font-black italic px-2 md:px-3 py-1 uppercase tracking-tighter shadow-lg shadow-blue-500/40 border-l-4 border-white">
+                New Arrival
+              </span>
+              <div className="w-0 h-0 border-t-[4px] border-t-blue-800 border-r-[4px] border-r-transparent"></div>
+            </div>
+          )}
+
+          {/* 2. Nhãn TÌNH TRẠNG - Phân biệt hàng Mới 100% và hàng 2Hand */}
+          {!product.isSecondHand ? (
+            /* Nhãn NEW (Mới 100%) - Dùng màu xanh lá Emerald để tạo sự tin cậy */
+            <span className="bg-blue-600 text-white text-[9px] md:text-[10px] font-black px-2 py-1 uppercase tracking-widest shadow-md border-l-4 border-white">
+              NEW
+            </span>
+          ) : (
+            /* Nhãn 2HAND - Dùng màu đen/xám chuyên nghiệp */
+            <span className="bg-black/80 backdrop-blur-sm text-white text-[9px] md:text-[10px] font-black px-2 py-1 uppercase tracking-widest border border-white/20">
+              2Hand
             </span>
           )}
 
-          {/* Badge 2HAND (Nếu là hàng cũ) */}
-          {product.isSecondHand && (
-            <span className="bg-orange-500 text-white text-[10px] font-black px-2 py-1 uppercase tracking-wider">
-              2nd Hand
-            </span>
-          )}
-
-          {/* Các tags khác từ DB */}
-          {product.tags?.filter(tag => !['new', '2hand'].includes(tag.toLowerCase())).map((tag, idx) => (
+          {/* Các tags khác từ DB (Lọc bỏ các tag hệ thống đã dùng) */}
+          {product.tags?.filter(tag => !['new', '2hand', 'restock'].includes(tag.toLowerCase())).map((tag, idx) => (
             <span key={idx} className="bg-black text-white text-[10px] font-bold px-2 py-1 uppercase tracking-wider">
               {tag}
             </span>

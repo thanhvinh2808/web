@@ -99,7 +99,7 @@ const productSchema = new mongoose.Schema({
   hasPromotion: { type: Boolean, default: false },
   status: {
     type:    String,
-    enum:    ['active', 'inactive', 'out_of_stock'],
+    enum:    ['active', 'inactive'],
     default: 'active'
   },
   createdAt: { type: Date },
@@ -235,9 +235,6 @@ productSchema.pre('save', async function (next) {
     this.stock = this.variants.reduce((total, v) => 
       total + v.options.reduce((sum, opt) => sum + (Number(opt.stock) || 0), 0), 0);
   }
-
-  // 6. Cập nhật trạng thái dựa trên stock
-  this.status = this.stock === 0 ? 'out_of_stock' : (this.status === 'out_of_stock' ? 'active' : this.status);
 
   next();
 });

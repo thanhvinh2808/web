@@ -52,6 +52,7 @@ interface Product {
   soldCount?: number;
   isNew?: boolean;
   hasPromotion?: boolean;
+  status?: 'active' | 'inactive';
   variants?: Variant[];
 }
 
@@ -128,8 +129,13 @@ export default function ProductModal({
 
   useEffect(() => {
     if (product) {
+      // 🛡️ SENIOR FIX: Nếu sản phẩm cũ có status 'out_of_stock', tự chuyển về 'active'
+      const legacyStatus = (product as any).status;
+      const safeStatus = legacyStatus === 'out_of_stock' ? 'active' : (product.status || 'active');
+
       setFormData({
         ...product,
+        status: safeStatus as any,
         brandId: (product as any).brandId?._id || (product as any).brandId || '',
         images: product.images || (product.image ? [product.image] : [])
       });
@@ -333,6 +339,24 @@ export default function ProductModal({
                    </div>
                 </div>
               </div>
+
+              {/* 👁️ TRẠNG THÁI HIỂN THỊ (QUAN TRỌNG ĐỂ ẨN SP) */}
+              <div className="pt-2">
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Trạng thái hiển thị</label>
+                <select 
+                  value={formData.status || 'active'} 
+                  onChange={(e) => setFormData({...formData, status: e.target.value as any})} 
+                  className={`w-full px-4 py-2.5 border rounded-lg outline-none focus:ring-1 transition cursor-pointer font-bold ${
+                    formData.status === 'inactive' ? 'bg-red-50 border-red-200 text-red-600 focus:border-red-500 focus:ring-red-500' : 
+                    'bg-green-50 border-green-200 text-green-600 focus:border-green-500 focus:ring-green-500'
+                  }`}
+                >
+                  <option value="active">Đang bán (Active)</option>
+                  <option value="inactive">Ngừng kinh doanh (Inactive - Ẩn)</option>
+                </select>
+                <p className="text-[10px] text-slate-400 mt-1 italic">* Dùng "Inactive" để ẩn sản phẩm đã có đơn hàng mà không cần xóa.</p>
+              </div>
+
             </div>
           </div>
 

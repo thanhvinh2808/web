@@ -196,8 +196,15 @@ export default function ProductsTab({
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
-      if (data.success) { showMessage('✅ Đã xóa'); onRefresh(); }
-    } catch (error) { showMessage('❌ Lỗi xóa'); }
+      if (data.success) { 
+        showMessage('✅ Đã xóa'); 
+        onRefresh(); 
+      } else {
+        showMessage(`❌ ${data.message || 'Lỗi khi xóa sản phẩm'}`);
+      }
+    } catch (error) { 
+      showMessage('❌ Lỗi kết nối server'); 
+    }
   };
 
   const renderProductInfo = (product: Product) => {

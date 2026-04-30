@@ -1,6 +1,7 @@
 import Product from '../models/Product.js';
 import Category from '../models/Category.js';
-import Review from '../models/Review.js'; // ✅ Thêm import Review
+import Review from '../models/Review.js'; 
+import Order from '../models/Order.js'; // ✅ Thêm import Order
 import { deleteFile, deleteMultipleFiles } from '../middleware/upload.js';
 import mongoose from 'mongoose';
 
@@ -243,6 +244,12 @@ export const updateProduct = async (req, res) => {
     const filter = isId ? { _id: id } : { slug: id };
 
     const updateData = { ...req.body };
+    
+    // 🛡️ SENIOR FIX: Xử lý status cũ 'out_of_stock' chuyển về 'active' để tránh lỗi Validation Enum
+    if (updateData.status === 'out_of_stock') {
+      updateData.status = 'active';
+    }
+
     if (!updateData.brandId || updateData.brandId === "" || updateData.brandId === "null") {
        delete updateData.brandId;
     }
@@ -294,6 +301,15 @@ export const deleteProduct = async (req, res) => {
       return res.status(404).json({ 
         success: false, 
         message: 'Sản phẩm không tồn tại hoặc đã bị xóa trước đó' 
+      });
+    }
+
+    // 🛡️ LOGIC SENIOR: Kiểm tra xem sản phẩm đã có trong đơn hàng nào chưa
+    const hasOrder = await Order.findOne({ "items.productId": product._id });
+    if (hasOrder) {
+      return res.status(400).json({
+        success: false,
+        message: 'Sản phẩm này đã có trong lịch sử đơn hàng. Để đảm bảo tính chính xác của dữ liệu đối soát, bạn không thể xóa sản phẩm này. Hãy chuyển trạng thái sang "Ngừng kinh doanh" (Inactive) để ẩn nó khỏi cửa hàng.'
       });
     }
 

@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, X, Send, Bot, User, Loader2, Minimize2, Maximize2 } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, User, Loader2, Minimize2, Maximize2, LogIn } from 'lucide-react';
 import { CLEAN_API_URL } from '@lib/shared/constants';
+import { useAuth } from '@app/contexts/AuthContext';
+import Link from 'next/link';
 
 interface Message {
   role: 'user' | 'model';
@@ -10,6 +12,7 @@ interface Message {
 }
 
 export default function ChatBot() {
+  const { token, isAuthenticated } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [input, setInput] = useState('');
@@ -142,6 +145,16 @@ export default function ChatBot() {
 
   const handleSendMessage = async (e: React.FormEvent | null, textOverride?: string) => {
     if (e) e.preventDefault();
+
+    // 🛡️ SENIOR FIX: Kiểm tra đăng nhập trước khi gửi
+    if (!isAuthenticated) {
+      setMessages(prev => [
+        ...prev,
+        { role: 'model', parts: [{ text: 'Dạ, để bảo mật thông tin và cá nhân hóa tư vấn, bạn vui lòng đăng nhập để chat với AI nhé! 🙏 \n\n 🔗 [Nhấn vào đây để đăng nhập](/login)' }] }
+      ]);
+      return;
+    }
+
     const messageToSend = textOverride || input.trim();
     if (!messageToSend || isLoading) return;
 
@@ -166,7 +179,10 @@ export default function ChatBot() {
       
       const res = await fetch(fetchUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` // ✅ Gửi token xác thực
+        },
         body: JSON.stringify({
           message: messageToSend,
           history: messages 
@@ -183,15 +199,65 @@ export default function ChatBot() {
       } else {
         throw new Error(data.message || `Lỗi Server (${res.status})`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Chat Error:', error);
+      // Xử lý lỗi 401 (Hết hạn token) hoặc yêu cầu đăng nhập
+      const isAuthError = error.message?.includes('401') || error.message?.toLowerCase().includes('đăng nhập');
+      const errorMessage = isAuthError
+        ? 'Phiên làm việc của bạn đã hết hạn hoặc bạn chưa đăng nhập. Vui lòng [đăng nhập lại](/login) để tiếp tục chat ạ.'
+        : 'Xin lỗi, hệ thống AI đang gặp chút trục trặc. Bạn vui lòng thử lại sau nhé!';
+
       setMessages([
         ...newMessages,
-        { role: 'model', parts: [{ text: 'Xin lỗi, hệ thống AI đang gặp chút trục trặc. Bạn vui lòng thử lại sau nhé!' }] }
+        { role: 'model', parts: [{ text: errorMessage }] }
       ]);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const renderMessageContent = (text: string) => {
+    // 🛡️ SENIOR: Regex cực mạnh để tách ảnh, text và link
+    const parts = text.split(/(!\[.*?\]\(.*?\))/g);
+    
+    return parts.map((part, index) => {
+      // 1. Kiểm tra nếu là tag hình ảnh Markdown: ![tên](url)
+      const imageMatch = part.match(/!\[(.*?)\]\((.*?)\)/);
+      if (imageMatch) {
+        const alt = imageMatch[1];
+        const url = imageMatch[2];
+        return (
+          <div key={index} className="my-3 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-md animate-in zoom-in-95 duration-300">
+            <img src={url} alt={alt} className="w-full aspect-video object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
+          </div>
+        );
+      }
+
+      // 2. Xử lý các link: [text](url)
+      const linkParts = part.split(/(\[.*?\]\(.*?\))/g);
+      return linkParts.map((linkPart, linkIndex) => {
+        const linkMatch = linkPart.match(/\[(.*?)\]\((.*?)\)/);
+        if (linkMatch) {
+          const linkText = linkMatch[1];
+          const linkUrl = linkMatch[2];
+          return (
+            <a 
+              key={`${index}-${linkIndex}`} 
+              href={linkUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 my-1 bg-blue-50 text-blue-600 font-black rounded-lg hover:bg-blue-100 transition-all border border-blue-100"
+            >
+              {linkText}
+            </a>
+          );
+        }
+        // 3. Text bình thường (Xử lý bôi đậm **)
+        return <span key={`${index}-${linkIndex}`} dangerouslySetInnerHTML={{ 
+          __html: linkPart.replace(/\*\*(.*?)\*\*/g, '<b class="text-black font-black">$1</b>') 
+        }} />;
+      });
+    });
   };
 
   if (!isOpen) {
@@ -249,7 +315,7 @@ export default function ChatBot() {
                   ? 'bg-black text-white rounded-tr-none' 
                   : 'bg-white text-gray-800 rounded-tl-none border border-gray-100'
                 }`}>
-                  {msg.parts[0].text}
+                  {renderMessageContent(msg.parts[0].text)}
                 </div>
               </div>
             ))}
