@@ -18,6 +18,7 @@ interface OrderItem {
 
 interface Order {
   _id: string;
+  orderNumber?: string;
   userId?: {
     _id: string;
     name: string;
@@ -31,7 +32,7 @@ interface Order {
   };
   items: OrderItem[];
   totalAmount: number;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'completed' | 'cancellation_requested' | 'refunded';
   paymentStatus?: 'paid' | 'unpaid';
   paymentMethod?: string;
   discountAmount?: number; 
@@ -42,7 +43,7 @@ interface Order {
 interface OrdersTabProps {
   orders: Order[];
   token: string;
-  onRefresh: () => void;
+  onRefresh: (search?: string) => void;
   showMessage: (msg: string) => void;
 }
 
@@ -216,6 +217,7 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
   // Filter orders
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
+      (order.orderNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       order._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.userId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.customerInfo?.fullName?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -417,7 +419,7 @@ export default function OrdersTab({ orders, token, onRefresh, showMessage }: Ord
                       <td className="px-6 py-5">
                         <div className="flex flex-col gap-1">
                           <span className="text-sm font-black font-mono text-black leading-none">
-                            #{order._id.slice(-8).toUpperCase()}
+                            #{order.orderNumber || order._id.slice(-8).toUpperCase()}
                           </span>
                           <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
                             <Clock size={10} />

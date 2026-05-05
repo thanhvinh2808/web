@@ -6,24 +6,26 @@ import { CLEAN_API_URL } from '@lib/shared/constants';
 const API_URL = CLEAN_API_URL;
 
 export default function DashboardTab({ stats, setActiveTab, token, refreshTrigger = 0 }: { stats: any, setActiveTab: (tab: string) => void, token?: string, refreshTrigger?: number }) {
+  const [mounted, setMounted] = useState(false);
   const [revenueStats, setRevenueStats] = useState({
     totalAllTime: 0,
     totalInRange: 0,
     chartData: []
   });
 
-  const [dateRange, setDateRange] = useState({
-    startDate: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Last 7 days
-    endDate: new Date().toISOString().split('T')[0]
-  });
-
-  const [isLoading, setIsLoading] = useState(false);
+  // ... (rest of states)
 
   useEffect(() => {
+    setMounted(true);
     if (token) {
       fetchRevenue();
     }
   }, [dateRange, refreshTrigger, token]);
+
+  // ✅ SENIOR FIX: Tránh lỗi Hydration bằng cách trả về null hoặc skeleton nếu chưa mount ở client
+  if (!mounted) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>;
+  }
 
   const fetchRevenue = async () => {
     if (!token) return;
@@ -254,7 +256,7 @@ export default function DashboardTab({ stats, setActiveTab, token, refreshTrigge
                   <p className="text-[10px] font-bold text-gray-400 uppercase">{new Date(order.createdAt).toLocaleDateString('vi-VN')}</p>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-black text-black">{formatCurrency(calculateOrderDetails(order).finalTotal)}</div>
+                  <div className="text-sm font-black text-black">{formatCurrency(order.totalAmount)}</div>
                   <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${
                     order.status === 'delivered' ? 'text-green-600 bg-green-50' :
                     order.status === 'cancelled' ? 'text-red-600 bg-red-50' :
@@ -278,7 +280,7 @@ export default function DashboardTab({ stats, setActiveTab, token, refreshTrigge
             ))}
           </div>
           <button 
-            onClick={() => window.location.hash = '#orders'}
+            onClick={() => setActiveTab('orders')}
             className="w-full mt-8 py-3 bg-gray-50 text-gray-500 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-black hover:text-white transition-all"
           >
              Tất cả giao dịch

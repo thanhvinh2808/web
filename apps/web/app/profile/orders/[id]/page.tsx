@@ -20,12 +20,15 @@ import {
   Copy,
   Receipt,
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  X
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
 import { getImageUrl } from "../../../../lib/imageHelper";
 import { CLEAN_API_URL } from '@lib/shared/constants';
+import QRCodePayment from "../../../../components/QRCodePayment";
+
 const API_URL = CLEAN_API_URL;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -74,6 +77,10 @@ export default function OrderDetailPage() {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [copied, setCopied] = useState(false);
+  
+  // ✅ NEW STATES FOR PAYMENT RESUME
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [isResumingPayment, setIsResumingPayment] = useState(false);
 
   useEffect(() => {
     const cachedOrder = getOrderById(orderId);
@@ -98,6 +105,11 @@ export default function OrderDetailPage() {
       if (data.orderId === orderId) {
         setOrder(prev => prev ? { ...prev, status: data.status, paymentStatus: data.paymentStatus } : null);
         updateOrderInContext(orderId, { status: data.status, paymentStatus: data.paymentStatus });
+        
+        // Nếu đang hiện modal thanh toán mà server báo đã pay thì đóng modal
+        if (data.paymentStatus === 'paid') {
+           setShowPaymentModal(false);
+        }
       }
     };
     socket.on('orderStatusUpdated', handleStatusUpdate);
@@ -108,6 +120,43 @@ export default function OrderDetailPage() {
     navigator.clipboard.writeText(order?.orderNumber || orderId);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  // ✅ NEW: HANDLE PAYMENT RESUME
+  const handlePaymentResume = async () => {
+    if (!order) return;
+    
+    if (order.paymentMethod === 'banking') {
+      setShowPaymentModal(true);
+      return;
+    }
+
+    if (order.paymentMethod === 'vnpay') {
+      setIsResumingPayment(true);
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/api/vnpay/create-payment`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` 
+          },
+          body: JSON.stringify({ orderId: order._id })
+        });
+        
+        const data = await res.json();
+        if (data.success && data.paymentUrl) {
+          window.location.href = data.paymentUrl;
+        } else {
+          alert(data.message || 'Không thể tạo liên kết thanh toán');
+        }
+      } catch (err) {
+        console.error('Payment resume error:', err);
+        alert('Lỗi kết nối server');
+      } finally {
+        setIsResumingPayment(false);
+      }
+    }
   };
 
   const handleCancelOrder = async () => {
@@ -357,6 +406,18 @@ export default function OrderDetailPage() {
                 </div>
                 
                 <div className="mt-6 space-y-3">
+                  {/* ✅ THANH TOÁN NGAY (RESUME PAYMENT) */}
+                  {order.paymentStatus === 'unpaid' && ['vnpay', 'banking'].includes(order.paymentMethod || '') && order.status !== 'cancelled' && (
+                    <button 
+                      onClick={handlePaymentResume}
+                      disabled={isResumingPayment}
+                      className="w-full bg-primary text-white font-black py-4 text-[10px] uppercase tracking-[0.2em] hover:bg-primary/90 transition-all active:scale-95 shadow-xl shadow-primary/20 flex items-center justify-center gap-2 border-2 border-primary"
+                    >
+                      {isResumingPayment ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />}
+                      Thanh toán ngay
+                    </button>
+                  )}
+
                   {order.status === 'completed' ? (
                      <div className="flex items-center gap-2 justify-center py-3 bg-green-50 border border-green-100 text-green-700">
                         <ShieldCheck size={16} />
@@ -378,6 +439,29 @@ export default function OrderDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* ✅ MODAL THANH TOÁN BANKING */}
+      {showPaymentModal && order && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+           <div className="relative w-full max-w-sm">
+              <button 
+                onClick={() => setShowPaymentModal(false)}
+                className="absolute -top-12 right-0 text-white hover:text-primary transition-colors flex items-center gap-2 font-black uppercase text-[10px] tracking-widest"
+              >
+                 Đóng <X size={20}/>
+              </button>
+              <QRCodePayment 
+                orderId={order._id} 
+                orderCode={order.orderNumber || order._id} 
+                amount={finalTotal}
+                onSuccess={() => {
+                   setShowPaymentModal(false);
+                   // OrderDetail sẽ tự update qua socket
+                }}
+              />
+           </div>
+        </div>
+      )}
 
       {showCancelConfirm && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">

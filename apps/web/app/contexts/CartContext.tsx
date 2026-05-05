@@ -94,16 +94,83 @@ export const CartProvider = ({
     try {
       const storageKey = getStorageKey();
       const savedCart = localStorage.getItem(storageKey);
+      let currentCart = [];
+
       if (savedCart) {
-        const parsedCart = JSON.parse(savedCart);
-        // Đảm bảo các item cũ cũng có trường selected
-        setCart(parsedCart.map((item: any) => ({
+        currentCart = JSON.parse(savedCart).map((item: any) => ({
           ...item,
           selected: item.selected !== undefined ? item.selected : true
-        })));
-      } else {
-        setCart([]);
+        }));
       }
+
+      // ✅ SENIOR SMART MERGE: Nếu vừa đăng nhập (có userId), gộp giỏ guest vào
+      if (userId) {
+        const guestKey = `${CART_STORAGE_PREFIX}guest`;
+        const guestCartStr = localStorage.getItem(guestKey);
+        
+        if (guestCartStr) {
+          try {
+            const guestCart = JSON.parse(guestCartStr);
+            if (Array.isArray(guestCart) && guestCart.length > 0) {
+              console.log('🔄 Đang gộp giỏ hàng khách vào tài khoản:', userId);
+              const mergedCart: CartItem[] = [...currentCart];
+              
+              guestCart.forEach((guestItem: any) => {
+                // Kiểm tra tính hợp lệ của item
+                if (!guestItem.product || (!guestItem.product._id && !guestItem.product.id)) return;
+
+                const guestId = String(guestItem.product._id || guestItem.product.id);
+                const guestVariantName = guestItem.selectedVariant?.name || null;
+                const guestColor = guestItem.selectedColor || null;
+
+                const existingIndex = mergedCart.findIndex((item: any) => {
+                  const itemId = String(item.product._id || item.product.id);
+                  const itemVariantName = item.selectedVariant?.name || null;
+                  const itemColor = item.selectedColor || null;
+                  return itemId === guestId && itemVariantName === guestVariantName && itemColor === guestColor;
+                });
+
+                if (existingIndex > -1) {
+                  // Nếu trùng: Cộng dồn số lượng, kiểm tra stock tối đa
+                  const currentItem = mergedCart[existingIndex];
+                  const maxStock = guestItem.selectedVariant ? guestItem.selectedVariant.stock : (guestItem.product.stock || 99);
+                  const newQty = Math.min(currentItem.quantity + guestItem.quantity, maxStock);
+                  
+                  console.log(`➕ Cộng dồn: ${guestItem.product.name} (${newQty})`);
+                  mergedCart[existingIndex] = {
+                    ...currentItem,
+                    quantity: newQty,
+                    selected: true // Ưu tiên chọn các món vừa gộp
+                  };
+                } else {
+                  // Nếu mới: Thêm vào đầu giỏ hàng
+                  console.log(`✨ Thêm mới từ Guest: ${guestItem.product.name}`);
+                  mergedCart.unshift({ ...guestItem, selected: true });
+                }
+              });
+
+              currentCart = mergedCart;
+              
+              // Xử lý Voucher từ Guest
+              const guestVoucherKey = `${guestKey}_voucher`;
+              const guestVoucherStr = localStorage.getItem(guestVoucherKey);
+              if (guestVoucherStr && !localStorage.getItem(getVoucherStorageKey())) {
+                console.log('🎟️ Giữ lại voucher từ phiên khách');
+                localStorage.setItem(getVoucherStorageKey(), guestVoucherStr);
+              }
+
+              // Xóa sạch dấu vết của Guest sau khi đã gộp thành công
+              localStorage.removeItem(guestKey);
+              localStorage.removeItem(guestVoucherKey);
+              console.log('✅ Gộp giỏ hàng thành công.');
+            }
+          } catch (mergeErr) {
+            console.error('❌ Lỗi xử lý gộp giỏ hàng:', mergeErr);
+          }
+        }
+      }
+
+      setCart(currentCart);
 
       const savedVoucher = localStorage.getItem(getVoucherStorageKey());
       if (savedVoucher) {
@@ -112,7 +179,7 @@ export const CartProvider = ({
          setSelectedVoucher(null);
       }
     } catch (error) {
-      console.error('Lỗi load cart:', error);
+      console.error('Lỗi load/merge cart:', error);
       setCart([]);
     } finally {
       setIsInitialized(true);

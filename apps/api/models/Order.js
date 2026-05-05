@@ -47,7 +47,7 @@ const OrderSchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      // Gỡ bỏ required để hỗ trợ đơn hàng đã ẩn danh (khi xóa User)
     },
     items: [OrderItemSchema],
     customerInfo: CustomerInfoSchema,

@@ -95,7 +95,7 @@ app.use('/api/trade-in', authenticateToken, tradeInRoutes);
 app.use('/api/user/addresses', authenticateToken, addressRoutes);
 app.use('/api/notifications', authenticateToken, notificationRoutes);
 app.use('/api/upload', authenticateToken, uploadRoutes);
-app.use('/api/vnpay', authenticateToken, vnpayRoutes);
+app.use('/api/vnpay', vnpayRoutes);
 
 // 3. ADMIN PROTECTED ROUTES - FIX 403
 // Đảm bảo bọc toàn bộ group route admin bằng middleware

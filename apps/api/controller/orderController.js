@@ -94,7 +94,8 @@ export const createOrder = async (req, res) => {
         });
       }
 
-      const finalTotal = grandTotal + (parseInt(shippingFee) || 0) - (parseInt(discountAmount) || 0);
+      const vatAmount = Math.round(grandTotal * 0.1);
+      const finalTotal = grandTotal + vatAmount + (parseInt(shippingFee) || 0) - (parseInt(discountAmount) || 0);
 
       // 2. TRỪ KHO ATOMIC
       for (const item of trustedItems) {

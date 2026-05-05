@@ -24,7 +24,7 @@ const SLIDES = [
     subtitle: "BỘ SƯU TẬP HÈ 2026",
     description: "Năng động, thoáng khí và đầy màu sắc. Thiết kế mới nhất từ Nike & Adidas Running.",
     buttonText: "Xem Bộ Sưu Tập",
-    link: "/products?category=nike",
+    link: "/products?category=giay-chay-bo",
     align: "center",
     theme: "dark"
   },

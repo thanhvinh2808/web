@@ -15,8 +15,33 @@ const ReactQuill = dynamic(async () => {
   return ({ forwardedRef, ...props }: any) => <RQ ref={forwardedRef} {...props} />;
 }, { 
   ssr: false,
-  loading: () => <div className="h-40 bg-gray-50 animate-pulse rounded-md flex items-center justify-center text-gray-400">Đang tải bộ soạn thảo...</div>
+  loading: () => <div className="h-64 bg-gray-50 animate-pulse rounded-xl flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-200">Đang khởi tạo trình soạn thảo cao cấp...</div>
 });
+
+const quillModules = {
+  toolbar: [
+    [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+    [{ 'font': [] }],
+    ['bold', 'italic', 'underline', 'strike'],
+    [{ 'color': [] }, { 'background': [] }],
+    [{ 'script': 'sub'}, { 'script': 'super' }],
+    ['blockquote', 'code-block'],
+    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+    [{ 'indent': '-1'}, { 'indent': '+1' }, { 'align': [] }],
+    ['link', 'image', 'video'],
+    ['clean']
+  ],
+  clipboard: {
+    matchVisual: false,
+  }
+};
+
+const quillFormats = [
+  'header', 'font', 'size',
+  'bold', 'italic', 'underline', 'strike', 'blockquote',
+  'list', 'bullet', 'indent',
+  'link', 'image', 'video', 'color', 'background', 'align', 'script', 'code-block'
+];
 
 const API_URL = CLEAN_API_URL;
 
@@ -182,17 +207,18 @@ export default function BlogForm({ blogId, onFormClose, token }: BlogFormProps) 
         </div>
 
         <div className="mb-6">
-          <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-1">Nội dung (Hỗ trợ HTML)</label>
-          <textarea 
-            id="content"
-            value={content} 
-            onChange={(e) => setContent(e.target.value)} 
-            rows={15}
-            className="w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono text-sm leading-relaxed"
-            placeholder="Nhập nội dung bài viết ở đây..."
-            required
-          ></textarea>
-          <p className="mt-1 text-[10px] text-gray-400 italic">* Hệ thống tạm thời sử dụng trình soạn thảo văn bản đơn giản để đảm bảo tính ổn định.</p>
+          <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">Nội dung bài viết</label>
+          <div className="prose prose-blue max-w-none">
+            <ReactQuill 
+              theme="snow"
+              value={content}
+              onChange={setContent}
+              placeholder="Nhập nội dung bài viết chuyên nghiệp tại đây..."
+              modules={quillModules}
+              formats={quillFormats}
+              className="h-80 mb-12"
+            />
+          </div>
         </div>
 
         <div className="mb-6">

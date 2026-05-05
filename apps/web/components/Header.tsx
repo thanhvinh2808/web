@@ -17,6 +17,7 @@ interface HeaderProps {
 }
 
 export const Header = ({ cartCount = 0 }: HeaderProps) => {
+  const [mounted, setMounted] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -34,6 +35,7 @@ export const Header = ({ cartCount = 0 }: HeaderProps) => {
   const wishlistCount = wishlist.length;
 
   useEffect(() => {
+    setMounted(true);
     const fetchSuggestions = async () => {
       if (searchQuery.trim().length < 2) {
         setSuggestions([]);
@@ -41,19 +43,16 @@ export const Header = ({ cartCount = 0 }: HeaderProps) => {
       }
 
       try {
-        const res = await fetch(`${API_URL}/api/products`);
+        // ✅ SENIOR FIX: Lọc trực tiếp tại Backend với limit thấp để đạt hiệu năng tối đa
+        const res = await fetch(`${API_URL}/api/products?search=${encodeURIComponent(searchQuery)}&limit=5`);
         const data = await res.json();
-        const allProducts = Array.isArray(data) ? data : data.data || [];
         
-        const filtered = allProducts.filter((p: any) => 
-          p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.brand?.toLowerCase().includes(searchQuery.toLowerCase())
-        ).slice(0, 5);
-
-        setSuggestions(filtered);
-        setShowSuggestions(true);
+        if (data.success && Array.isArray(data.data)) {
+          setSuggestions(data.data);
+          setShowSuggestions(true);
+        }
       } catch (error) {
-        console.error("Error:", error);
+        console.error("Search suggestion error:", error);
       }
     };
 
@@ -150,16 +149,16 @@ export const Header = ({ cartCount = 0 }: HeaderProps) => {
              <div className="flex items-center gap-2 md:gap-4 md:border-l md:pl-6 h-full">
                 <Link href="/profile/wishlist" className="relative group hidden md:block hover:bg-gray-100 p-2 rounded-none transition">
                     <Heart size={24} className="group-hover:text-red-500 transition"/>
-                    {wishlistCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center font-bold">{wishlistCount}</span>}
+                    {mounted && wishlistCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center font-bold">{wishlistCount}</span>}
                 </Link>
                 
                 <Link href="/cart" className="relative group hover:bg-gray-100 p-2 rounded-none transition">
                    <ShoppingCart size={24} className="group-hover:text-primary transition"/>
-                   {dynamicCartCount > 0 && <span className="absolute -top-1 -right-1 bg-primary text-white text-[10px] w-5 h-5 flex items-center justify-center font-bold">{dynamicCartCount}</span>}
+                   {mounted && dynamicCartCount > 0 && <span className="absolute -top-1 -right-1 bg-primary text-white text-[10px] w-5 h-5 flex items-center justify-center font-bold">{dynamicCartCount}</span>}
                 </Link>
 
                 <div className="hidden md:flex items-center gap-3 relative group h-full">
-                   {user ? (
+                   {user && mounted ? (
                      <>
                        <div className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 h-full px-3 transition" onClick={() => router.push('/profile')}>
                           <div className="w-8 h-8 bg-blue-100 text-primary flex items-center justify-center font-bold border border-blue-200 overflow-hidden">

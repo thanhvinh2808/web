@@ -113,7 +113,7 @@ const productSchema = new mongoose.Schema({
 
 // ===== INDEXES =====
 productSchema.index({ categorySlug: 1 });
-productSchema.index({ name: 'text', description: 'text' });
+productSchema.index({ name: 'text', description: 'text', brand: 'text' });
 productSchema.index({ "variants.options.sku": 1 }, { sparse: true }); // Tối ưu tìm kiếm theo SKU
 
 // ===== VIRTUALS =====

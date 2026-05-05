@@ -1,4 +1,4 @@
-﻿// app/admin/orders/[id]/page.tsx
+// app/admin/orders/[id]/page.tsx
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -28,6 +28,7 @@ interface CustomerInfo {
 
 interface Order {
   _id: string;
+  orderNumber?: string;
   userId?: {
     _id: string;
     name: string;
@@ -302,7 +303,7 @@ export default function OrderDetailPage() {
             </button>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold tracking-tight">
-                Đơn hàng <span className="text-gray-400">#{order._id.slice(-8).toUpperCase()}</span>
+                Đơn hàng <span className="text-gray-400">#{order.orderNumber || order._id.slice(-8).toUpperCase()}</span>
               </h1>
               <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                 order.status === 'delivered' ? 'bg-green-100 text-green-700' :
@@ -318,7 +319,7 @@ export default function OrderDetailPage() {
           <div className="flex items-center gap-3">
             <div className="text-right mr-4 border-r border-gray-200 pr-4 hidden sm:block">
               <p className="text-[10px] font-bold text-gray-400 uppercase">Tổng thanh toán</p>
-              <p className="text-xl font-bold text-blue-600">{formatPrice(orderDetails.finalTotal+orderDetails.vatAmount)}</p>
+              <p className="text-xl font-bold text-blue-600">{formatPrice(order.totalAmount)}</p>
             </div>
             {/* Action Buttons Logic */}
             <div className="flex gap-2">
@@ -431,7 +432,7 @@ export default function OrderDetailPage() {
                 )}
                 <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
                   <span className="font-bold text-gray-900">Tổng cộng</span>
-                  <span className="text-2xl font-bold text-blue-600">{formatPrice(orderDetails.finalTotal+orderDetails.vatAmount)}</span>
+                  <span className="text-2xl font-bold text-blue-600">{formatPrice(order.totalAmount)}</span>
                 </div>
               </div>
             </div>

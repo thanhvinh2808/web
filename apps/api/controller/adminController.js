@@ -93,7 +93,7 @@ export const getDashboardStats = async (req, res) => {
       User.countDocuments(),
       Order.countDocuments(),
       Order.aggregate([
-        { $match: { status: { $in: ['delivered', 'completed'] }, paymentStatus: 'paid' } },
+        { $match: { status: { $in: ['delivered', 'completed'] } } },
         { $group: { _id: null, total: { $sum: '$totalAmount' } } }
       ]),
       Order.find()
@@ -260,11 +260,27 @@ export const deleteUser = async (req, res) => {
 // 📦 Get All Orders
 export const getAllOrders = async (req, res) => {
   try {
-    const { status = '' } = req.query;
+    const { status = '', search = '' } = req.query;
     
-    const query = status ? { status } : {};
+    const query = {};
+    if (status && status !== 'all') query.status = status;
+    
+    // ✅ SENIOR: Hỗ trợ tìm kiếm ngay tại API cho Admin
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      query.$or = [
+        { orderNumber: { $regex: searchRegex } },
+        { 'customerInfo.fullName': { $regex: searchRegex } },
+        { 'customerInfo.phone': { $regex: searchRegex } },
+        { 'customerInfo.email': { $regex: searchRegex } }
+      ];
+      
+      // Nếu là ObjectId hợp lệ thì tìm theo _id luôn
+      if (mongoose.Types.ObjectId.isValid(search)) {
+        query.$or.push({ _id: search });
+      }
+    }
 
-    // ✅ TESTER AUDIT: Gỡ bỏ limit và skip để hiển thị TẤT CẢ đơn hàng theo yêu cầu
     const orders = await Order.find(query)
       .populate('userId', 'name email')
       .sort({ createdAt: -1 });
@@ -370,9 +386,10 @@ export const updateOrderStatus = async (req, res) => {
 
     await order.save();
 
-    // Realtime Socket emit thông báo cho User
-    if (global.io) {
-      global.io.to(`user:${order.userId}`).emit('orderStatusUpdated', {
+    // Realtime Socket emit thông báo cho User (Thêm check an toàn)
+    if (global.io && order.userId) {
+      const userIdStr = order.userId.toString();
+      global.io.to(`user:${userIdStr}`).emit('orderStatusUpdated', {
         orderId: order._id,
         status: order.status,
         paymentStatus: order.paymentStatus
@@ -385,9 +402,10 @@ export const updateOrderStatus = async (req, res) => {
       data: order
     });
   } catch (error) {
+    console.error('❌ Update Order Status Error:', error);
     res.status(500).json({
       success: false,
-      message: 'Lá»—i cáº­p nháº­t order: ' + error.message
+      message: 'Lỗi cập nhật order: ' + error.message
     });
   }
 };
@@ -453,10 +471,12 @@ export const globalSearch = async (req, res) => {
 
     const searchRegex = new RegExp(q, 'i');
     
-    // XÃ¢y dá»±ng query cho Order
+    // ✅ SENIOR: Tìm theo cả mã đơn hàng chuyên nghiệp, tên khách, và email
     const orderQuery = {
       $or: [
-        { 'customerInfo.fullName': { $regex: searchRegex } }
+        { orderNumber: { $regex: searchRegex } },
+        { 'customerInfo.fullName': { $regex: searchRegex } },
+        { 'customerInfo.email': { $regex: searchRegex } }
       ]
     };
 
@@ -518,8 +538,9 @@ export const getRevenueStats = async (req, res) => {
     end.setHours(23, 59, 59, 999);
 
     // 1. Calculate All-time Revenue (delivered OR completed)
+    // ✅ SENIOR: Doanh thu thực tế tính trên tất cả đơn đã giao thành công (Bao gồm cả COD đã giao)
     const totalRevenueResult = await Order.aggregate([
-      { $match: { status: { $in: ['delivered', 'completed'] }, paymentStatus: 'paid' } },
+      { $match: { status: { $in: ['delivered', 'completed'] } } },
       { $group: { _id: null, total: { $sum: '$totalAmount' } } }
     ]);
     const totalAllTime = totalRevenueResult[0]?.total || 0;
@@ -529,7 +550,6 @@ export const getRevenueStats = async (req, res) => {
       { 
         $match: { 
           status: { $in: ['delivered', 'completed'] }, 
-          paymentStatus: 'paid',
           createdAt: { $gte: start, $lte: end }
         } 
       },

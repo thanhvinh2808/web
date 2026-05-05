@@ -17,9 +17,11 @@ import {
   Truck,
   Receipt,
   Star,
+  X
 } from 'lucide-react';
 
 import ReviewModal from '../../../components/ReviewModal';
+import QRCodePayment from '../../../components/QRCodePayment';
 import { getImageUrl } from '../../../lib/imageHelper';
 import { CLEAN_API_URL } from '@lib/shared/constants';
 const API_URL = CLEAN_API_URL;
@@ -148,8 +150,8 @@ function PaymentFilterBar({ value, onChange, counts }: {
   );
 }
 
-function OrderCard({ order, reorderingId, onReorder, onReview }: {
-  order: any; reorderingId: string | null; onReorder: (o: any) => void; onReview: (p: any) => void;
+function OrderCard({ order, reorderingId, onReorder, onReview, onPaymentResume, isResuming }: {
+  order: any; reorderingId: string | null; onReorder: (o: any) => void; onReview: (p: any) => void; onPaymentResume: (o: any) => void; isResuming: boolean;
 }) {
   const [showBreakdown, setShowBreakdown] = useState(false);
   const isReordering = reorderingId === order._id;
@@ -259,12 +261,14 @@ function OrderCard({ order, reorderingId, onReorder, onReview }: {
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
           {unpaid && (
-            <Link
-              href={`/profile/orders/${order._id}`}
-              className="flex-1 sm:flex-none justify-center px-3 py-2.5 md:px-4 md:py-2 bg-orange-500 text-white text-[10px] md:text-xs font-black uppercase tracking-wider hover:bg-orange-600 active:scale-95 transition-all shadow-sm flex items-center gap-1.5"
+            <button
+              onClick={() => onPaymentResume(order)}
+              disabled={isResuming}
+              className="flex-1 sm:flex-none justify-center px-3 py-2.5 md:px-4 md:py-2 bg-orange-500 text-white text-[10px] md:text-xs font-black uppercase tracking-wider hover:bg-orange-600 active:scale-95 transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50"
             >
-              <CreditCard size={12} /> <span className="whitespace-nowrap">Thanh toán</span>
-            </Link>
+              {isResuming ? <Loader2 size={12} className="animate-spin" /> : <CreditCard size={12} />}
+              <span className="whitespace-nowrap">Thanh toán</span>
+            </button>
           )}
           <Link
             href={`/profile/orders/${order._id}`}
@@ -325,6 +329,11 @@ export default function OrdersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
+  // ✅ NEW STATES FOR PAYMENT RESUME
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [isResumingPayment, setIsResumingPayment] = useState(false);
+  const [resumingOrder, setResumingOrder] = useState<any>(null);
+
   useEffect(() => {
     const fetchOrders = async () => {
       if (!user) return;
@@ -356,6 +365,45 @@ export default function OrdersPage() {
     setFilteredOrders(result);
     setCurrentPage(1);
   }, [orders, activeTab, paymentFilter, searchTerm]);
+
+  // ✅ NEW: HANDLE PAYMENT RESUME
+  const handlePaymentResume = async (order: any) => {
+    if (!order) return;
+    
+    if (order.paymentMethod === 'banking') {
+      setResumingOrder(order);
+      setShowPaymentModal(true);
+      return;
+    }
+
+    if (order.paymentMethod === 'vnpay') {
+      setIsResumingPayment(true);
+      setResumingOrder(order);
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/api/vnpay/create-payment`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` 
+          },
+          body: JSON.stringify({ orderId: order._id })
+        });
+        
+        const data = await res.json();
+        if (data.success && data.paymentUrl) {
+          window.location.href = data.paymentUrl;
+        } else {
+          alert(data.message || 'Không thể tạo liên kết thanh toán');
+        }
+      } catch (err) {
+        console.error('Payment resume error:', err);
+        alert('Lỗi kết nối server');
+      } finally {
+        setIsResumingPayment(false);
+      }
+    }
+  };
 
   const handleReorder = async (order: any) => {
     setReorderingId(order._id);
@@ -392,11 +440,43 @@ export default function OrdersPage() {
       </div>
       <div className="space-y-4">
         {filteredOrders.slice((currentPage - 1) * ORDERS_PER_PAGE, currentPage * ORDERS_PER_PAGE).map(order => (
-          <OrderCard key={order._id} order={order} reorderingId={reorderingId} onReorder={handleReorder} onReview={setSelectedProduct} />
+          <OrderCard 
+            key={order._id} 
+            order={order} 
+            reorderingId={reorderingId} 
+            onReorder={handleReorder} 
+            onReview={setSelectedProduct}
+            onPaymentResume={handlePaymentResume}
+            isResuming={isResumingPayment && resumingOrder?._id === order._id}
+          />
         ))}
       </div>
       <Pagination currentPage={currentPage} totalPages={Math.ceil(filteredOrders.length / ORDERS_PER_PAGE)} totalItems={filteredOrders.length} perPage={ORDERS_PER_PAGE} onChange={setCurrentPage} />
       {selectedProduct && <ReviewModal isOpen={!!selectedProduct} onClose={() => setSelectedProduct(null)} product={selectedProduct} />}
+
+      {/* ✅ MODAL THANH TOÁN BANKING */}
+      {showPaymentModal && resumingOrder && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+           <div className="relative w-full max-w-sm">
+              <button 
+                onClick={() => setShowPaymentModal(false)}
+                className="absolute -top-12 right-0 text-white hover:text-primary transition-colors flex items-center gap-2 font-black uppercase text-[10px] tracking-widest"
+              >
+                 Đóng <X size={20}/>
+              </button>
+              <QRCodePayment 
+                orderId={resumingOrder._id} 
+                orderCode={resumingOrder.orderNumber || resumingOrder._id} 
+                amount={calcSummary(resumingOrder).finalTotal}
+                onSuccess={() => {
+                   setShowPaymentModal(false);
+                   // OrdersPage sẽ tự update qua useEffect hoặc socket nếu bạn muốn thêm
+                   window.location.reload(); // Cách nhanh nhất để refresh list
+                }}
+              />
+           </div>
+        </div>
+      )}
     </div>
   );
 }

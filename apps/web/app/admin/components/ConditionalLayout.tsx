@@ -1,6 +1,7 @@
 // app/components/ConditionalLayout.tsx
 'use client';
 
+import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { Header } from '../../../components/Header';
 import { Footer } from '../../../components/Footer';
@@ -14,6 +15,11 @@ export default function ConditionalLayout({
 }) {
   const pathname = usePathname();
   const isAdminPage = pathname?.startsWith('/admin');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   if (isAdminPage) {
     // ✅ Trang admin: KHÔNG có Header/Footer
@@ -26,8 +32,12 @@ export default function ConditionalLayout({
       <Header />
       {children}
       <Footer />
-      <ContactWidget />
-      <ChatBot />
+      {mounted && (
+        <>
+          <ContactWidget />
+          <ChatBot />
+        </>
+      )}
     </>
   );
 }
