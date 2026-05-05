@@ -19,14 +19,23 @@ export const addProductReview = async (req, res) => {
     const { rating, comment, isAnonymous } = req.body;
     const userId = req.user.id;
 
+    let targetProductId = productId;
+
+    // 🛡️ FIX: Xử lý trường hợp productId là SLUG
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      const p = await Product.findOne({ slug: productId }).session(session);
+      if (!p) return res.status(404).json({ success: false, message: 'Sản phẩm không tồn tại' });
+      targetProductId = p._id;
+    }
+
     // 1. Kiểm tra sản phẩm
-    const product = await Product.findById(productId);
+    const product = await Product.findById(targetProductId).session(session);
     if (!product) {
       return res.status(404).json({ success: false, message: 'Sản phẩm không tồn tại' });
     }
 
     // 2. CHẶN TRÙNG LẶP: Kiểm tra xem người dùng đã đánh giá sản phẩm này chưa
-    const existingReview = await Review.findOne({ productId, userId }).session(session);
+    const existingReview = await Review.findOne({ productId: targetProductId, userId }).session(session);
     if (existingReview) {
       return res.status(400).json({ 
         success: false, 
@@ -36,7 +45,7 @@ export const addProductReview = async (req, res) => {
 
     // 3. Tạo review mới
     const newReview = new Review({
-      productId,
+      productId: targetProductId,
       userId,
       rating: Number(rating),
       comment: comment.trim(),
@@ -47,12 +56,13 @@ export const addProductReview = async (req, res) => {
     await newReview.save({ session });
 
     // 4. Tính toán lại Rating trung bình cho sản phẩm
-    const allReviews = await Review.find({ productId, status: 'approved' }).session(session);
+    const allReviews = await Review.find({ productId: targetProductId, status: 'approved' }).session(session);
     const totalRating = allReviews.reduce((sum, r) => sum + r.rating, 0);
     const avgRating = allReviews.length > 0 ? (totalRating / allReviews.length).toFixed(1) : rating;
 
-    await Product.findByIdAndUpdate(productId, {
-      rating: Number(avgRating)
+    await Product.findByIdAndUpdate(targetProductId, {
+      rating: Number(avgRating),
+      reviewCount: allReviews.length
     }, { session });
 
     await session.commitTransaction();
@@ -381,12 +391,74 @@ export const getProductBySlug = async (req, res) => {
   }
 };
 
+/**
+ * KIỂM TRA QUYỀN ĐÁNH GIÁ (CUSTOMER)
+ */
+export const checkCanReview = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    let targetProductId = productId;
+
+    // 🛡️ FIX: Xử lý trường hợp productId là SLUG
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      const p = await Product.findOne({ slug: productId }).select('_id');
+      if (!p) return res.json({ success: true, canReview: false, message: 'Sản phẩm không tồn tại' });
+      targetProductId = p._id;
+    }
+
+    // 1. Kiểm tra xem đã đánh giá chưa
+    const existingReview = await Review.findOne({ productId: targetProductId, userId });
+    if (existingReview) {
+      return res.json({ success: true, canReview: false, message: 'Bạn đã đánh giá sản phẩm này rồi.' });
+    }
+
+    // ✅ ĐẶC QUYỀN ADMIN: Cho phép Admin đánh giá mà không cần mua hàng (để test)
+    if (userRole === 'admin') {
+      return res.json({ success: true, canReview: true });
+    }
+
+    // 2. Kiểm tra xem đã mua sản phẩm này chưa (Đơn hàng delivered hoặc completed)
+    const order = await Order.findOne({
+      userId,
+      status: { $in: ['delivered', 'completed'] },
+      'items.productId': targetProductId
+    });
+
+    if (!order) {
+      return res.json({ success: true, canReview: false, message: 'Bạn cần mua và nhận được sản phẩm này mới có thể đánh giá.' });
+    }
+
+    res.json({ success: true, canReview: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export const getProductReviews = async (req, res) => {
   try {
-    const Review = mongoose.model('Review');
-    const reviews = await Review.find({ productId: req.params.id, status: 'approved' }).populate('userId', 'name avatar').sort({ createdAt: -1 });
+    const { productId } = req.params;
+    
+    let filterId = productId;
+    
+    // Nếu productId không phải ObjectId hợp lệ, nó có thể là SLUG
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      const product = await Product.findOne({ slug: productId }).select('_id');
+      if (!product) {
+        return res.json({ success: true, reviews: [] });
+      }
+      filterId = product._id;
+    }
+
+    const reviews = await Review.find({ productId: filterId, status: 'approved' })
+      .populate('userId', 'name avatar')
+      .sort({ createdAt: -1 });
+      
     res.json({ success: true, reviews });
   } catch (error) {
+    console.error('❌ Lỗi lấy đánh giá:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

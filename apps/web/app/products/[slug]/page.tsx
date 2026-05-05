@@ -456,10 +456,21 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
               <div key={rev._id} className="bg-gray-50 p-8 border border-gray-100">
                 <div className="flex justify-between items-start mb-6">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-black text-white flex items-center justify-center font-black italic uppercase text-lg">{(rev.userId?.name || 'U').charAt(0)}</div>
-                    <div><p className="font-black uppercase italic tracking-tighter text-sm leading-none mb-1">{rev.userId?.name || 'Khách hàng'}</p><p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{new Date(rev.createdAt).toLocaleDateString('vi-VN')}</p></div>
+                    <div className="w-12 h-12 bg-black text-white flex items-center justify-center font-black italic uppercase text-lg">
+                      {rev.isAnonymous ? 'A' : (rev.userId?.name || 'U').charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-black uppercase italic tracking-tighter text-sm leading-none mb-1">
+                        {rev.isAnonymous ? 'Người dùng ẩn danh' : (rev.userId?.name || 'Khách hàng')}
+                      </p>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                        {new Date(rev.createdAt).toLocaleDateString('vi-VN')}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-0.5">{[1,2,3,4,5].map(s => <Star key={s} size={12} className={s <= rev.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'} />)}</div>
+                  <div className="flex items-center gap-0.5">
+                    {[1,2,3,4,5].map(s => <Star key={s} size={12} className={s <= rev.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'} />)}
+                  </div>
                 </div>
                 <p className="text-gray-600 text-sm italic font-medium leading-relaxed italic">"{rev.comment}"</p>
                 {rev.reply && (

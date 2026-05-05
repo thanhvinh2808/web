@@ -147,7 +147,7 @@ function VnpayReturnContent() {
                   <div className="space-y-1">
                     <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Số tiền thanh toán</p>
                     <p className="font-black text-lg text-primary italic leading-none">
-                      {result?.amount ? (result.amount / 100).toLocaleString('vi-VN') : 0}₫
+                      {result?.amount ? (result.amount).toLocaleString('vi-VN') : 0}₫
                     </p>
                   </div>
                   <div className="space-y-1">

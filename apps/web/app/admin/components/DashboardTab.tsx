@@ -13,19 +13,11 @@ export default function DashboardTab({ stats, setActiveTab, token, refreshTrigge
     chartData: []
   });
 
-  // ... (rest of states)
-
-  useEffect(() => {
-    setMounted(true);
-    if (token) {
-      fetchRevenue();
-    }
-  }, [dateRange, refreshTrigger, token]);
-
-  // ✅ SENIOR FIX: Tránh lỗi Hydration bằng cách trả về null hoặc skeleton nếu chưa mount ở client
-  if (!mounted) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>;
-  }
+  const [isLoading, setIsLoading] = useState(false);
+  const [dateRange, setDateRange] = useState({
+    startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0]
+  });
 
   const fetchRevenue = async () => {
     if (!token) return;
@@ -48,6 +40,13 @@ export default function DashboardTab({ stats, setActiveTab, token, refreshTrigge
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDateRange(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
+
+  useEffect(() => {
+    setMounted(true);
+    if (token) {
+      fetchRevenue();
+    }
+  }, [dateRange, refreshTrigger, token]);
 
   const StatCard = ({ title, value, icon: Icon, color, trend, isUp, subValue }: any) => (
     <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 hover:shadow-xl transition-all group overflow-hidden relative">

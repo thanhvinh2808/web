@@ -46,6 +46,11 @@ const reviewSchema = new mongoose.Schema({
   likesCount: {
     type: Number,
     default: 0
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'approved' // Mặc định là approved để hiện ngay, Admin có thể ẩn sau
   }
 }, {
   timestamps: true

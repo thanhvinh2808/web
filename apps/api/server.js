@@ -105,7 +105,15 @@ app.use('/api/admin', authenticateToken, isAdmin, adminRoutes);
 app.get('/api/vouchers', async (req, res) => {
   try {
     const vouchers = await Voucher.find({ isActive: true });
-    res.json(vouchers);
+    const now = new Date();
+    const sorted = [...vouchers].sort((a, b) => {
+      const isExpiredA = new Date(a.endDate) < now;
+      const isExpiredB = new Date(b.endDate) < now;
+      if (!isExpiredA && isExpiredB) return -1;
+      if (isExpiredA && !isExpiredB) return 1;
+      return new Date(a.endDate) - new Date(b.endDate);
+    });
+    res.json(sorted);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 

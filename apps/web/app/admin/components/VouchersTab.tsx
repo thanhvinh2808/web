@@ -188,55 +188,74 @@ export default function VouchersTab({ token, showMessage }: VouchersTabProps) {
         ) : vouchers.length === 0 ? (
           <div className="col-span-full py-20 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200 text-gray-400 font-bold uppercase tracking-widest">Không tìm thấy voucher</div>
         ) : (
-          vouchers.map(v => (
-            <div key={v._id} className="bg-white border border-gray-100 rounded-2xl overflow-hidden hover:shadow-xl transition-all group">
-               {/* Top Part: Coupon Style */}
-               <div className={`p-6 relative ${v.isActive ? 'bg-black text-white' : 'bg-gray-100 text-gray-400'}`}>
-                  <div className="absolute -right-4 -top-4 w-12 h-12 bg-white rounded-full group-hover:scale-110 transition-transform"></div>
-                  <div className="absolute -right-4 -bottom-4 w-12 h-12 bg-white rounded-full group-hover:scale-110 transition-transform"></div>
-                  
-                  <div className="flex justify-between items-start mb-4">
-                     <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-tighter ${v.isActive ? 'bg-blue-600 text-white' : 'bg-gray-300 text-white'}`}>
-                        {v.discountType === 'percent' ? 'Discount %' : 'Cash Off'}
-                     </span>
-                     <div className="flex gap-1">
-                        <button onClick={() => openEdit(v)} className="p-1.5 hover:bg-white/20 rounded-lg transition"><Edit2 size={14}/></button>
-                        <button onClick={() => handleDelete(v._id)} className="p-1.5 hover:bg-red-500/20 text-red-400 rounded-lg transition"><Trash2 size={14}/></button>
-                     </div>
-                  </div>
-                  
-                  <h3 className="text-3xl font-black italic tracking-tighter mb-1">{v.code}</h3>
-                  <p className={`text-xs font-medium ${v.isActive ? 'text-gray-400' : 'text-gray-400'}`}>{v.description}</p>
-               </div>
+          vouchers.map(v => {
+            const isExpired = new Date(v.endDate).getTime() < new Date().getTime();
+            const isInvalid = isExpired || !v.isActive;
 
-               {/* Bottom Part: Info */}
-               <div className="p-6 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                     <div>
-                        <span className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Giá trị</span>
-                        <span className="font-black text-black">
-                           {v.discountType === 'percent' ? `${v.discountValue}%` : formatCurrency(v.discountValue)}
-                        </span>
-                     </div>
-                     <div>
-                        <span className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Đơn tối thiểu</span>
-                        <span className="font-black text-black">{formatCurrency(v.minOrderValue || 0)}</span>
-                     </div>
-                  </div>
+            return (
+              <div 
+                key={v._id} 
+                className={`bg-white border rounded-2xl overflow-hidden hover:shadow-xl transition-all group relative ${
+                  isInvalid ? 'opacity-50 grayscale blur-[0.4px] border-gray-200' : 'border-gray-100'
+                }`}
+              >
+                 {/* Badge cho Voucher hết hạn */}
+                 {isExpired && (
+                    <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
+                       <span className="bg-red-600 text-white px-4 py-1.5 font-black italic uppercase tracking-widest text-[10px] border-2 border-white rotate-12 shadow-lg">
+                          Đã hết hạn
+                       </span>
+                    </div>
+                 )}
 
-                  <div className="border-t border-dashed border-gray-100 pt-4 flex justify-between items-center">
-                     <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-tighter">
-                        <Calendar size={14}/>
-                        Hết hạn: {new Date(v.endDate).toLocaleDateString('vi-VN')}
-                     </div>
-                     <div className="text-right">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase block">Đã dùng</span>
-                        <span className="font-black text-black text-sm">{v.usedCount} / {v.usageLimit}</span>
-                     </div>
-                  </div>
-               </div>
-            </div>
-          ))
+                 {/* Top Part: Coupon Style */}
+                 <div className={`p-6 relative ${v.isActive && !isExpired ? 'bg-black text-white' : 'bg-gray-100 text-gray-400'}`}>
+                    <div className="absolute -right-4 -top-4 w-12 h-12 bg-white rounded-full group-hover:scale-110 transition-transform"></div>
+                    <div className="absolute -right-4 -bottom-4 w-12 h-12 bg-white rounded-full group-hover:scale-110 transition-transform"></div>
+                    
+                    <div className="flex justify-between items-start mb-4">
+                       <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-tighter ${v.isActive && !isExpired ? 'bg-blue-600 text-white' : 'bg-gray-300 text-white'}`}>
+                          {v.discountType === 'percent' ? 'Discount %' : 'Cash Off'}
+                       </span>
+                       <div className="flex gap-1 relative z-40">
+                          <button onClick={() => openEdit(v)} className="p-1.5 hover:bg-white/20 rounded-lg transition"><Edit2 size={14}/></button>
+                          <button onClick={() => handleDelete(v._id)} className="p-1.5 hover:bg-red-500/20 text-red-400 rounded-lg transition"><Trash2 size={14}/></button>
+                       </div>
+                    </div>
+                    
+                    <h3 className="text-3xl font-black italic tracking-tighter mb-1">{v.code}</h3>
+                    <p className={`text-xs font-medium ${v.isActive ? 'text-gray-400' : 'text-gray-400'}`}>{v.description}</p>
+                 </div>
+
+                 {/* Bottom Part: Info */}
+                 <div className="p-6 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                       <div>
+                          <span className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Giá trị</span>
+                          <span className="font-black text-black">
+                             {v.discountType === 'percent' ? `${v.discountValue}%` : formatCurrency(v.discountValue)}
+                          </span>
+                       </div>
+                       <div>
+                          <span className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Đơn tối thiểu</span>
+                          <span className="font-black text-black">{formatCurrency(v.minOrderValue || 0)}</span>
+                       </div>
+                    </div>
+
+                    <div className="border-t border-dashed border-gray-100 pt-4 flex justify-between items-center">
+                       <div className={`flex items-center gap-2 text-xs font-bold uppercase tracking-tighter ${isExpired ? 'text-red-500' : 'text-gray-500'}`}>
+                          <Calendar size={14}/>
+                          Hết hạn: {new Date(v.endDate).toLocaleDateString('vi-VN')}
+                       </div>
+                       <div className="text-right">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase block">Đã dùng</span>
+                          <span className="font-black text-black text-sm">{v.usedCount} / {v.usageLimit}</span>
+                       </div>
+                    </div>
+                 </div>
+              </div>
+            );
+          })
         )}
       </div>
 

@@ -5,26 +5,38 @@ import Notification from '../models/Notification.js';
 // 📋 Lấy danh sách Voucher (Có phân trang & tìm kiếm)
 export const getAllVouchers = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '' } = req.query;
+    const { page = 1, limit = 100, search = '' } = req.query; // Tăng limit để sort thủ công chính xác
     
     const query = search ? {
       code: { $regex: search, $options: 'i' }
     } : {};
 
-    const vouchers = await Voucher.find(query)
-      .sort({ createdAt: -1 })
-      .limit(Number(limit))
-      .skip((Number(page) - 1) * Number(limit));
+    const allVouchers = await Voucher.find(query);
+    const now = new Date();
 
-    const total = await Voucher.countDocuments(query);
+    // ✅ SORT THỦ CÔNG: An toàn và chính xác 100%
+    const sortedVouchers = [...allVouchers].sort((a, b) => {
+      const isExpiredA = new Date(a.endDate) < now;
+      const isExpiredB = new Date(b.endDate) < now;
+
+      if (!isExpiredA && isExpiredB) return -1; // A còn hạn, B hết -> A lên đầu
+      if (isExpiredA && !isExpiredB) return 1;  // A hết hạn, B còn -> A xuống dưới
+      
+      // Nếu cùng còn hạn hoặc cùng hết hạn: Ưu tiên ngày hết hạn gần hơn lên trước
+      return new Date(a.endDate) - new Date(b.endDate);
+    });
+
+    // Phân trang sau khi sort
+    const startIndex = (Number(page) - 1) * Number(limit);
+    const paginatedVouchers = sortedVouchers.slice(startIndex, startIndex + Number(limit));
 
     res.json({
       success: true,
-      data: vouchers,
+      data: paginatedVouchers,
       pagination: {
-        total,
+        total: allVouchers.length,
         page: Number(page),
-        pages: Math.ceil(total / Number(limit))
+        pages: Math.ceil(allVouchers.length / Number(limit))
       }
     });
   } catch (error) {

@@ -56,7 +56,7 @@ export const createPaymentUrl = async (req, res) => {
     const txnRef = order._id.toString();
 
     const paymentUrl = vnpay.buildPaymentUrl({
-      vnp_Amount: order.totalAmount * 100, // ✅ VNPay yêu cầu nhân 100
+      vnp_Amount: order.totalAmount,
       vnp_IpAddr: clientIp,
       vnp_TxnRef: txnRef,
       vnp_OrderInfo: `Thanh toan don hang ${order.orderNumber}`,
