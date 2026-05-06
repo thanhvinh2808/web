@@ -14,6 +14,14 @@ const contactSchema = new mongoose.Schema({
     lowercase: true,
     match: [/^\S+@\S+\.\S+$/, 'Email không hợp lệ']
   },
+  phone: {
+    type: String,
+    trim: true
+  },
+  subject: {
+    type: String,
+    trim: true
+  },
   message: { 
     type: String, 
     required: [true, 'Vui lòng nhập nội dung'],
@@ -24,11 +32,13 @@ const contactSchema = new mongoose.Schema({
     enum: ['pending', 'replied', 'closed'],
     default: 'pending'
   },
-  createdAt: { 
-    type: Date, 
-    default: Date.now 
+  user_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   }
 }, {
   timestamps: true
 });
+
 export default mongoose.models.Contact || mongoose.model('Contact', contactSchema);

@@ -10,6 +10,7 @@ import {
 } from 'vnpay';
 import { getVnpay } from '../config/vnpay.js';
 import Order from '../models/Order.js';
+import mongoose from 'mongoose';
 import { createNotification } from './adminController.js';
 import { sendNewOrderEmail, sendUserOrderConfirmation } from '../services/emailService.js';
 

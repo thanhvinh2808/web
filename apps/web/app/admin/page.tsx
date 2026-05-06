@@ -120,12 +120,25 @@ function AdminDashboardContent() {
     if(Array.isArray(data)) setCategories(data as any);
   };
 
+  const fetchContacts = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/contacts`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) setContacts(data.data);
+    } catch (e) {
+      console.error("Error fetching contacts:", e);
+    }
+  };
+
   useEffect(() => {
     if (token) {
       if (activeTab === 'users') fetchUsers();
       if (activeTab === 'orders') fetchOrders();
       if (activeTab === 'products') { fetchProducts(); fetchCategories(); }
       if (activeTab === 'categories') fetchCategories();
+      if (activeTab === 'contacts') fetchContacts();
     }
   }, [activeTab, token]);
 
@@ -196,7 +209,7 @@ function AdminDashboardContent() {
           {activeTab === 'vouchers' && <VouchersTab token={token} showMessage={showMessage} />}
           {activeTab === 'blogs' && <BlogsTab token={token} showMessage={showMessage} />}
           {activeTab === 'trade-in' && <TradeInTab token={token} showMessage={showMessage} />}
-          {activeTab === 'contacts' && <ContactsTab contacts={contacts} token={token} onRefresh={()=>{}} showMessage={showMessage} />}
+          {activeTab === 'contacts' && <ContactsTab contacts={contacts} token={token} onRefresh={fetchContacts} showMessage={showMessage} />}
         </div>
       </main>
     </div>

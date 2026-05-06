@@ -6,6 +6,8 @@ import Address from '../models/Address.js';
 import Review from '../models/Review.js';
 import Wishlist from '../models/Wishlist.js';
 import TradeIn from '../models/TradeIn.js';
+import Contact from '../models/Contact.js';
+import { sendReplyEmail } from '../services/emailService.js';
 import bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
 
@@ -641,6 +643,77 @@ export const toggleUserLock = async (req, res) => {
       isLocked: user.isLocked 
     });
   } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// 📞 Contact Management
+export const getAllContacts = async (req, res) => {
+  try {
+    const contacts = await Contact.find().sort({ createdAt: -1 });
+    res.json({ success: true, data: contacts });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateContactStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    if (!['pending', 'replied', 'closed'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ' });
+    }
+
+    const contact = await Contact.findByIdAndUpdate(id, { status }, { new: true });
+    if (!contact) return res.status(404).json({ success: false, message: 'Không tìm thấy liên hệ' });
+
+    res.json({ success: true, data: contact });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteContact = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const contact = await Contact.findByIdAndDelete(id);
+    if (!contact) return res.status(404).json({ success: false, message: 'Không tìm thấy liên hệ' });
+    
+    res.json({ success: true, message: 'Xóa liên hệ thành công' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const replyToContact = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { message, replyMessage } = req.body;
+
+    // Chấp nhận cả message hoặc replyMessage từ Frontend
+    const actualMessage = message || replyMessage;
+
+    if (!actualMessage) {
+      return res.status(400).json({ success: false, message: 'Nội dung phản hồi không được để trống' });
+    }
+
+    const contact = await Contact.findById(id);
+    if (!contact) return res.status(404).json({ success: false, message: 'Không tìm thấy liên hệ' });
+
+    // ✅ Gửi Email thực tế qua emailService
+    const emailRes = await sendReplyEmail(contact.email, contact.fullname, actualMessage);
+    
+    if (emailRes.success) {
+      contact.status = 'replied';
+      await contact.save();
+      res.json({ success: true, message: 'Gửi phản hồi và email thành công!' });
+    } else {
+      throw new Error(emailRes.error || 'Lỗi gửi email');
+    }
+  } catch (error) {
+    console.error('❌ Reply Contact Error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

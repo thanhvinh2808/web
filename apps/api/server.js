@@ -33,6 +33,7 @@ import notificationRoutes from './routes/notifications.js';
 import productRoutes from './routes/products.js';
 import vnpayRoutes from './routes/vnpay.js';
 import chatRoutes from './routes/chat.js';
+import contactRoutes from './routes/contacts.js';
 
 import { createNotification } from './controller/adminController.js';
 import { trackOrder } from './controller/orderController.js';
@@ -117,14 +118,7 @@ app.get('/api/vouchers', async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-app.post('/api/contacts', async (req, res) => {
-  try {
-    const newContact = new Contact(req.body);
-    await newContact.save();
-    createNotification('contact', `Liên hệ mới từ ${newContact.fullname}`, newContact._id, 'Contact');
-    res.json({ success: true });
-  } catch (error) { res.status(500).json({ error: 'Server error' }); }
-});
+app.use('/api/contacts', contactRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -18,7 +18,11 @@ import {
   getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
-  toggleUserLock
+  toggleUserLock,
+  getAllContacts,
+  updateContactStatus,
+  deleteContact,
+  replyToContact
 } from '../controller/adminController.js';
 
 import {
@@ -126,5 +130,11 @@ router.post('/upload-single', uploadSingle, (req, res) => {
 router.get('/notifications', getNotifications);
 router.put('/notifications/read-all', markAllNotificationsRead);
 router.put('/notifications/:id/read', markNotificationRead);
+
+// 📞 Contact Management
+router.get('/contacts', getAllContacts);
+router.put('/contacts/:id/status', updateContactStatus);
+router.post('/contacts/:id/reply', replyToContact);
+router.delete('/contacts/:id', deleteContact);
 
 export default router;
