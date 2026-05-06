@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { CLEAN_API_URL as API_URL } from '@lib/shared/constants';
 
@@ -35,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
   const { data: session, status } = useSession();
 
   // 1. Initial Load from LocalStorage
@@ -56,6 +57,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   }, []);
+
+  // 1b. ✅ SENIOR SECURITY: Check auth on every route change
+  useEffect(() => {
+    if (token && !isLoggingOut) {
+      checkAuth(token);
+    }
+  }, [pathname]);
 
   // 2. ✅ SENIOR FIX: Handle NextAuth Session Sync
   // When Google Login is successful, we get an accessToken and userId
@@ -103,6 +111,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const cleanUser = sanitizeUser(data.user);
           setUser(cleanUser);
           localStorage.setItem('user', JSON.stringify(cleanUser));
+        }
+      } else if (res.status === 403) {
+        // 🔒 ACCOUNT LOCKED CASE
+        const data = await res.json();
+        if (data.isLocked) {
+          alert(data.message || 'Tài khoản của bạn đã bị khóa. Hệ thống sẽ đăng xuất.');
+          logout();
+        } else {
+          if (status !== 'loading') logout();
         }
       } else {
         // Token expired or invalid

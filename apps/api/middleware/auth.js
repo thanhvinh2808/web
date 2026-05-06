@@ -23,14 +23,22 @@ export const authenticateToken = (req, res, next) => {
     }
 
     try {
-      // 🛡️ SECURITY CHECK: Zombie User
-      // Kiểm tra xem User có thực sự tồn tại trong DB không
-      const user = await User.findById(decoded.id).select('_id role email name');
+      // 🛡️ SECURITY CHECK: Zombie User & Locked Account
+      // Kiểm tra xem User có thực sự tồn tại trong DB không và có bị khóa không
+      const user = await User.findById(decoded.id).select('_id role email name isLocked');
 
       if (!user) {
         return res.status(401).json({
           success: false,
           message: 'Tài khoản không tồn tại hoặc đã bị xóa. Vui lòng đăng nhập lại.'
+        });
+      }
+
+      if (user.isLocked) {
+        return res.status(403).json({
+          success: false,
+          isLocked: true,
+          message: 'Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ để được hỗ trợ.'
         });
       }
 
