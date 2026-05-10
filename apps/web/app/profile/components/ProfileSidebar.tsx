@@ -54,6 +54,18 @@ export default function ProfileSidebar({ isMobile = false }: ProfileSidebarProps
       href: '/profile/address'
     },
     {
+      id: 'notifications',
+      label: 'Thông báo',
+      icon: <Bell size={isMobile ? 16 : 20} />,
+      href: '/profile/notifications'
+    },
+    {
+      id: 'trade-in',
+      label: 'Lịch sử Trade-In',
+      icon: <CreditCard size={isMobile ? 16 : 20} />,
+      href: '/profile/trade-in'
+    },
+    {
       id: 'wishlist',
       label: 'Yêu thích',
       icon: <Heart size={isMobile ? 16 : 20} />,
@@ -143,6 +155,30 @@ export default function ProfileSidebar({ isMobile = false }: ProfileSidebarProps
                 <li><Link href="/profile/password" className={`block py-2 text-xs font-bold transition ${pathname === '/profile/password' ? 'text-primary uppercase tracking-wider' : 'text-gray-500 hover:text-black'}`}>Đổi mật khẩu</Link></li>
               </ul>
             )}
+          </li>
+
+          <li>
+            <Link 
+              href="/profile/notifications"
+              className={`flex items-center gap-3 py-3 px-2 font-bold transition group ${pathname.startsWith('/profile/notifications') ? 'text-primary' : 'text-gray-800 hover:text-primary'}`}
+            >
+              <span className={pathname.startsWith('/profile/notifications') ? 'text-primary' : 'text-gray-400 group-hover:text-primary transition'}>
+                <Bell size={20} />
+              </span>
+              <span className="uppercase text-sm tracking-wide">Thông báo</span>
+            </Link>
+          </li>
+
+          <li>
+            <Link 
+              href="/profile/trade-in"
+              className={`flex items-center gap-3 py-3 px-2 font-bold transition group ${pathname.startsWith('/profile/trade-in') ? 'text-primary' : 'text-gray-800 hover:text-primary'}`}
+            >
+              <span className={pathname.startsWith('/profile/trade-in') ? 'text-primary' : 'text-gray-400 group-hover:text-primary transition'}>
+                <CreditCard size={20} />
+              </span>
+              <span className="uppercase text-sm tracking-wide">Lịch sử Trade-In</span>
+            </Link>
           </li>
 
           <li>

@@ -158,7 +158,7 @@ export const deleteFile = async (filePath) => {
       const cleanPath = filePath.startsWith('/') ? filePath.slice(1) : filePath;
       const fullPath = nodePath.resolve(process.cwd(), cleanPath);
       if (fs.existsSync(fullPath)) {
-        fs.unlinkSync(fullPath);
+        await fs.promises.unlink(fullPath);
         console.log('✅ Deleted local file:', fullPath);
         return true;
       }

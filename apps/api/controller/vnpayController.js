@@ -141,7 +141,7 @@ export const handleIpn = async (req, res) => {
     order.paymentStatus = 'paid';
     order.isPaid = true;
     order.paidAt = new Date();
-    order.vnpayTransactionId = verify.vnp_TransactionNo?.toString() || orderId;
+    order.vnpayTransactionId = verify.vnp_TransactionNo?.toString() || txnRef;
 
     if (order.status === 'pending') {
       order.status = 'processing';

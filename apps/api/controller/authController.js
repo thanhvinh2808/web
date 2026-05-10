@@ -173,7 +173,7 @@ export const updateProfile = async (req, res) => {
         // 2. Remove old avatar if it exists
         if (user.avatar && user.avatar.includes('/uploads/profiles/')) {
           const oldPath = path.join(process.cwd(), user.avatar.replace(/^\//, ''));
-          if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+          if (fs.existsSync(oldPath)) await fs.promises.unlink(oldPath);
         }
 
         // 3. Process base64
@@ -182,7 +182,7 @@ export const updateProfile = async (req, res) => {
         const fileName = `avatar_${user._id}_${Date.now()}.${extension}`;
         const filePath = path.join(uploadDir, fileName);
 
-        fs.writeFileSync(filePath, base64Data, 'base64');
+        await fs.promises.writeFile(filePath, base64Data, 'base64');
         user.avatar = `/uploads/profiles/${fileName}`;
       } catch (uploadError) {
         console.error('❌ Lỗi lưu avatar:', uploadError);

@@ -87,6 +87,17 @@ router.post('/', uploadMultiple, async (req, res) => {
   }
 });
 
+// Lấy danh sách Trade-In của chính user hiện tại
+router.get('/my-requests', authenticateToken, async (req, res) => {
+    try {
+        const items = await TradeIn.find({ userId: req.user.id })
+            .sort({ createdAt: -1 });
+        res.json({ success: true, data: items });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 // Lấy danh sách Trade-In (Admin Only)
 router.get('/', authenticateToken, isAdmin, async (req, res) => {
     try {

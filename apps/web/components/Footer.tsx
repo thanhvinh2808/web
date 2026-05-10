@@ -62,6 +62,7 @@ export const Footer = () => {
               <h4 className="text-white font-bold uppercase mb-6 text-sm tracking-widest border-l-2 border-primary pl-3">Thông tin</h4>
               <ul className="space-y-4 text-[13px]">
                 <li><Link href="/about" className="hover:text-primary transition-all">Về FootMark</Link></li>
+                <li><Link href="/faq" className="hover:text-primary transition-all">Câu hỏi thường gặp (FAQ)</Link></li>
                 <li><Link href="/check-legit" className="hover:text-primary transition-all">Quy trình Check Legit</Link></li>
                 <li><Link href="/return-policy" className="hover:text-primary transition-all">Chính sách bảo hành</Link></li>
                 <li><Link href="/contact" className="hover:text-primary transition-all">Hệ thống cửa hàng</Link></li>

@@ -78,13 +78,18 @@ export const updateAddress = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Địa chỉ không tồn tại' });
     }
 
-    // Nếu dữ liệu gửi lên có 'address', map nó vào 'specificAddress' của model
+    // ✅ SENIOR SECURITY FIX: Chỉ cho phép cập nhật các trường cụ thể, tránh Mass Assignment
+    const allowedFields = ['name', 'phone', 'city', 'district', 'ward', 'type', 'isDefault'];
+    allowedFields.forEach(field => {
+      if (updateData[field] !== undefined) {
+        address[field] = updateData[field];
+      }
+    });
+
     if (updateData.address) {
-      updateData.specificAddress = updateData.address;
-      delete updateData.address;
+      address.specificAddress = updateData.address;
     }
 
-    Object.assign(address, updateData);
     await address.save();
 
     // Đồng bộ sang User model
