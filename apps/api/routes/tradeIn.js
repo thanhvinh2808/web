@@ -1,19 +1,22 @@
 import express from 'express';
 import TradeIn from '../models/TradeIn.js';
+import Voucher from '../models/Voucher.js';
+import User from '../models/User.js';
 import { uploadMultiple } from '../middleware/upload.js';
-import { sendTradeInUpdateEmail } from '../services/emailService.js';
+import { sendTradeInUpdateEmail, sendTradeInVoucherEmail } from '../services/emailService.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { isAdmin } from '../middleware/isAdmin.js';
 import { createAdminNotification } from '../utils/helpers.js';
+import crypto from 'crypto';
 
 const router = express.Router();
 
-// Tạo yêu cầu Trade-In mới
+// Tạo yêu cầu Trade-In mới (Có thể đặt khi chưa đăng nhập)
 router.post('/', uploadMultiple, async (req, res) => {
   try {
     const { 
       name, phone, productName, brand, 
-      condition, note, userId, expectedPrice
+      condition, note, expectedPrice
     } = req.body;
 
     // Validation cơ bản
@@ -34,12 +37,16 @@ router.post('/', uploadMultiple, async (req, res) => {
       );
     }
 
+    // Lấy userId từ token nếu user đã đăng nhập (không bắt buộc)
+    const userId = req.user?.id || null;
+
     const newTradeIn = new TradeIn({
-      userId: userId || null, 
+      userId,
       contactInfo: {
+        name,
         phone,
       },
-      description: `Khách hàng: ${name}. Ghi chú: ${note || ''}`,
+      description: `Ghi chú: ${note || ''}`,
       productName,
       brand,
       condition,
@@ -50,7 +57,7 @@ router.post('/', uploadMultiple, async (req, res) => {
 
     await newTradeIn.save();
 
-    // ✅ TESTER REAL-TIME AUDIT: Bắn socket cho Admin
+    // ✅ Bắn socket cho Admin
     if (global.io) {
       global.io.to('admin').emit('newTradeIn', {
         id: newTradeIn._id,
@@ -69,7 +76,7 @@ router.post('/', uploadMultiple, async (req, res) => {
       message: `Khách hàng ${name} muốn đổi giày ${productName}. Giá mong muốn: ${Number(expectedPrice).toLocaleString()}₫`,
       referenceId: newTradeIn._id,
       referenceModel: 'TradeIn',
-      userId: userId || null
+      userId: userId
     });
 
     res.status(201).json({
@@ -121,6 +128,8 @@ router.put('/:id/reply', authenticateToken, isAdmin, async (req, res) => {
             return res.status(404).json({ success: false, message: 'Không tìm thấy yêu cầu' });
         }
 
+        const previousStatus = tradeIn.status;
+
         // Cập nhật thông tin
         if (status) tradeIn.status = status;
         if (finalPrice !== undefined) tradeIn.finalPrice = finalPrice;
@@ -128,7 +137,7 @@ router.put('/:id/reply', authenticateToken, isAdmin, async (req, res) => {
 
         await tradeIn.save();
 
-        // ✅ TESTER REAL-TIME AUDIT: Thông báo ngay cho khách hàng qua Socket
+        // ✅ REAL-TIME: Thông báo ngay cho khách hàng qua Socket
         if (global.io && tradeIn.userId) {
           global.io.to(`user:${tradeIn.userId._id || tradeIn.userId}`).emit('tradeInStatusUpdated', {
             id: tradeIn._id,
@@ -139,7 +148,48 @@ router.put('/:id/reply', authenticateToken, isAdmin, async (req, res) => {
           });
         }
 
-        // Gửi email thông báo
+        // 🎟️ WOW FEATURE: TỰ ĐỘNG TẠO VOUCHER KHI TRADE-IN HOÀN TẤT
+        let generatedVoucher = null;
+        if (status === 'completed' && previousStatus !== 'completed' && tradeIn.finalPrice > 0) {
+          try {
+            const voucherCode = `FTM-TRADE-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+            const expiryDate = new Date();
+            expiryDate.setDate(expiryDate.getDate() + 90); // Hiệu lực 90 ngày
+
+            generatedVoucher = await Voucher.create({
+              code: voucherCode,
+              description: `Voucher Trade-In - Thu mua ${tradeIn.productName} (${tradeIn.brand})`,
+              discountType: 'fixed',
+              discountValue: tradeIn.finalPrice,
+              maxDiscount: 0,
+              minOrderValue: 0,
+              startDate: new Date(),
+              endDate: expiryDate,
+              usageLimit: 1,          // Chỉ dùng được 1 lần
+              usedCount: 0,
+              isActive: true
+            });
+
+            // Gửi email voucher cho khách hàng
+            if (tradeIn.userId?.email) {
+              await sendTradeInVoucherEmail({
+                toEmail: tradeIn.userId.email,
+                customerName: tradeIn.userId.name || tradeIn.contactInfo?.name || 'Quý khách',
+                voucherCode: generatedVoucher.code,
+                voucherValue: generatedVoucher.discountValue,
+                expiryDate: generatedVoucher.endDate,
+                productName: tradeIn.productName
+              });
+            }
+
+            console.log(`✅ [Trade-In] Tự động tạo Voucher ${voucherCode} (${tradeIn.finalPrice.toLocaleString()}đ) cho khách ${tradeIn.userId?.email}`);
+          } catch (voucherErr) {
+            console.error('⚠️ Lỗi tự động tạo voucher Trade-In:', voucherErr.message);
+            // Không làm sập luồng chính nếu tạo voucher lỗi
+          }
+        }
+
+        // Gửi email thông báo trạng thái thông thường
         try {
             if (tradeIn.userId && tradeIn.userId.email) {
                 await sendTradeInUpdateEmail(tradeIn, adminNote);
@@ -152,8 +202,15 @@ router.put('/:id/reply', authenticateToken, isAdmin, async (req, res) => {
 
         res.json({ 
             success: true, 
-            message: 'Đã cập nhật và gửi email cho khách', 
-            data: tradeIn 
+            message: status === 'completed' 
+              ? `Đã hoàn tất Trade-In${generatedVoucher ? ` và tự động tạo Voucher ${generatedVoucher.code} cho khách!` : ''}` 
+              : 'Đã cập nhật và gửi email cho khách',
+            data: tradeIn,
+            voucher: generatedVoucher ? {
+              code: generatedVoucher.code,
+              value: generatedVoucher.discountValue,
+              expiryDate: generatedVoucher.endDate
+            } : null
         });
 
     } catch (error) {

@@ -41,6 +41,14 @@ const CustomerInfoSchema = new mongoose.Schema({
   notes: { type: String },
 });
 
+// Schema cho Dòng thời gian trạng thái đơn hàng
+const StatusTimelineSchema = new mongoose.Schema({
+  status: { type: String, required: true },
+  title: { type: String, required: true },
+  description: { type: String, default: '' },
+  updatedAt: { type: Date, default: Date.now }
+}, { _id: false });
+
 // Schema chính cho Đơn hàng
 const OrderSchema = new mongoose.Schema(
   {
@@ -112,6 +120,11 @@ const OrderSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    // 🕐 Dòng thời gian trạng thái đơn hàng (Order Timeline)
+    statusTimeline: {
+      type: [StatusTimelineSchema],
+      default: []
+    },
   },
   {
     timestamps: true,
@@ -121,7 +134,6 @@ const OrderSchema = new mongoose.Schema(
 // ===== INDEXES =====
 OrderSchema.index({ userId: 1, createdAt: -1 });
 OrderSchema.index({ status: 1 });
-OrderSchema.index({ orderNumber: 1 });
 OrderSchema.index({ 'customerInfo.email': 1 });
 
 // ===== VIRTUALS =====
@@ -167,9 +179,6 @@ OrderSchema.pre('save', function (next) {
     if (!this.cancelledBy) this.cancelledBy = 'system';
   }
 
-  // ✅ TESTER AUDIT: Đã gỡ bỏ logic tự động gán paymentStatus = paid tại đây 
-  // để chuyển quyền xử lý cho AdminController (Quy trình nghiệp vụ thực tế)
-
   if (!this.orderNumber) {
     const date = new Date();
     const yy = date.getFullYear().toString().slice(-2);
@@ -177,6 +186,31 @@ OrderSchema.pre('save', function (next) {
     const dd = date.getDate().toString().padStart(2, '0');
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     this.orderNumber = `FM${yy}${mm}${dd}-${randomSuffix}`;
+  }
+
+  // 🕐 AUTO TIMELINE: Ghi lại lịch sử khi trạng thái thay đổi
+  const STATUS_LABELS = {
+    pending:                 { title: 'Đặt hàng thành công',        description: 'Đơn hàng của bạn đã được tiếp nhận và đang chờ xác nhận.' },
+    processing:              { title: 'Đang xử lý',                  description: 'Shop đã xác nhận đơn và đang chuẩn bị hàng cho bạn.' },
+    shipped:                 { title: 'Đang vận chuyển',             description: 'Đơn hàng đã được bàn giao cho đơn vị vận chuyển.' },
+    delivered:               { title: 'Đã giao hàng',               description: 'Đơn hàng đã được giao tới địa chỉ của bạn. Vui lòng kiểm tra và xác nhận.' },
+    completed:               { title: 'Hoàn thành',                  description: 'Giao dịch hoàn tất. Cảm ơn bạn đã mua sắm tại FootMark!' },
+    cancelled:               { title: 'Đã hủy đơn hàng',            description: 'Đơn hàng đã bị hủy.' },
+    cancellation_requested:  { title: 'Yêu cầu hủy đơn',            description: 'Yêu cầu hủy đơn của bạn đang chờ Admin xem xét.' },
+    refunded:                { title: 'Đã hoàn tiền',               description: 'Đơn hàng đã được hủy và tiền sẽ được hoàn lại trong 3-5 ngày làm việc.' },
+  };
+
+  if (this.isModified('status')) {
+    const label = STATUS_LABELS[this.status];
+    if (label) {
+      if (!Array.isArray(this.statusTimeline)) this.statusTimeline = [];
+      this.statusTimeline.push({
+        status: this.status,
+        title: label.title,
+        description: label.description,
+        updatedAt: new Date()
+      });
+    }
   }
 
   next();

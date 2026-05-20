@@ -94,8 +94,50 @@ export const createOrder = async (req, res) => {
         });
       }
 
+      let calculatedDiscount = 0;
+      let dbVoucher = null;
+
+      if (voucherCode) {
+        dbVoucher = await Voucher.findOne({
+          code: voucherCode.toUpperCase(),
+          isActive: true,
+          startDate: { $lte: new Date() },
+          endDate: { $gte: new Date() }
+        }).session(session);
+
+        if (!dbVoucher) {
+          throw new Error('Mã giảm giá không tồn tại, đã bị vô hiệu hóa hoặc chưa đến thời gian áp dụng.');
+        }
+
+        if (dbVoucher.usedCount >= dbVoucher.usageLimit) {
+          throw new Error('Mã giảm giá đã hết lượt sử dụng.');
+        }
+
+        if (grandTotal < dbVoucher.minOrderValue) {
+          throw new Error(`Giá trị đơn hàng tối thiểu phải từ ${dbVoucher.minOrderValue.toLocaleString('vi-VN')}₫ để áp dụng mã giảm giá.`);
+        }
+
+        if (dbVoucher.discountType === 'fixed') {
+          calculatedDiscount = dbVoucher.discountValue;
+        } else if (dbVoucher.discountType === 'percentage') {
+          calculatedDiscount = Math.round((grandTotal * dbVoucher.discountValue) / 100);
+          if (dbVoucher.maxDiscount > 0 && calculatedDiscount > dbVoucher.maxDiscount) {
+            calculatedDiscount = dbVoucher.maxDiscount;
+          }
+        }
+
+        // Chặn đứng hành vi gian lận sửa đổi số tiền giảm giá từ client
+        if (Math.abs(calculatedDiscount - (parseInt(discountAmount) || 0)) > 5) {
+          throw new Error('Số tiền giảm giá của voucher không khớp với hệ thống.');
+        }
+      } else {
+        if (parseInt(discountAmount) > 0) {
+          throw new Error('Đơn hàng không áp dụng voucher nhưng lại có số tiền giảm giá.');
+        }
+      }
+
       const vatAmount = Math.round(grandTotal * 0.1);
-      const finalTotal = grandTotal + vatAmount + (parseInt(shippingFee) || 0) - (parseInt(discountAmount) || 0);
+      const finalTotal = grandTotal + vatAmount + (parseInt(shippingFee) || 0) - calculatedDiscount;
 
       // 2. TRỪ KHO ATOMIC
       for (const item of trustedItems) {
@@ -152,8 +194,8 @@ export const createOrder = async (req, res) => {
         customerInfo,
         paymentMethod,
         shippingFee,
-        discountAmount,
-        voucherCode,
+        discountAmount: calculatedDiscount,
+        voucherCode: voucherCode ? voucherCode.toUpperCase() : undefined,
         note,
         userId: req.user ? req.user.id : null,
         items: trustedItems.map(({ variantGroupName, ...rest }) => rest),
@@ -165,14 +207,11 @@ export const createOrder = async (req, res) => {
       const [savedOrder] = await Order.create([finalOrderData], { session });
 
       // 4. CẬP NHẬT LƯỢT DÙNG VOUCHER (NẾU CÓ)
-      if (voucherCode) {
-        // ✅ TESTER AUDIT: Thêm kiểm tra startDate và chặn Atomic usedCount ngay trong Query
+      if (voucherCode && dbVoucher) {
+        // Tăng atomic usedCount và kiểm tra lại giới hạn
         const updatedVoucher = await Voucher.findOneAndUpdate(
           { 
-            code: voucherCode.toUpperCase(),
-            isActive: true,
-            startDate: { $lte: new Date() },
-            endDate: { $gte: new Date() },
+            _id: dbVoucher._id,
             $expr: { $lt: ["$usedCount", "$usageLimit"] }
           },
           { $inc: { usedCount: 1 } },
@@ -180,7 +219,7 @@ export const createOrder = async (req, res) => {
         );
 
         if (!updatedVoucher) {
-          throw new Error('Mã giảm giá không hợp lệ, đã hết hạn hoặc đã hết lượt sử dụng.');
+          throw new Error('Mã giảm giá đã hết lượt sử dụng trong lúc xử lý đơn hàng.');
         }
       }
 
@@ -207,7 +246,7 @@ export const createOrder = async (req, res) => {
       // VNPay Integration
       const vnpayInstance = getVnpay();
       if (savedOrder.paymentMethod === 'vnpay' && vnpayInstance) {
-        const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || '127.0.0.1';
+        const clientIp = req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || '127.0.0.1';
         const paymentUrl = vnpayInstance.buildPaymentUrl({
           vnp_Amount: savedOrder.totalAmount,
           vnp_IpAddr: clientIp,
@@ -223,8 +262,12 @@ export const createOrder = async (req, res) => {
       return res.status(201).json({ success: true, message: 'Đặt hàng thành công', order: savedOrder });
 
     } catch (error) {
-      await session.abortTransaction();
-      session.endSession();
+      if (session && session.inTransaction()) {
+        await session.abortTransaction();
+      }
+      if (session) {
+        session.endSession();
+      }
 
       const isTransientError = 
         error.hasErrorLabel && 
@@ -248,58 +291,123 @@ export const createOrder = async (req, res) => {
  * CẬP NHẬT TRẠNG THÁI ĐƠN HÀNG (ADMIN)
  */
 export const updateOrderStatus = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    const { status, paymentStatus } = req.body;
+    const { status, paymentStatus, reason } = req.body;
 
-    // ✅ FOOTMARK: Admin không được phép hủy đơn hàng của khách
-    if (status === 'cancelled' && req.user?.role === 'admin') {
-       return res.status(403).json({ 
-          success: false, 
-          message: 'Admin không được phép hủy đơn hàng của khách.' 
-       });
+    const order = await Order.findById(req.params.id).session(session);
+    if (!order) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
     }
-
-    const order = await Order.findById(req.params.id);
-    if (!order) return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
 
     const oldStatus = order.status;
-    order.status = status || order.status;
 
-    // Tự động cập nhật paymentStatus khi giao hàng thành công (COD)
-    if (status === 'delivered' && order.paymentStatus === 'unpaid') {
-      // ✅ Tester Audit: delivered chỉ là shipper đã giao, chưa chắc đã nhận được tiền. 
-      // Giữ nguyên unpaid để Admin xác nhận thủ công sau.
-    }
+    // ✅ FOOTMARK: Cho phép Admin hủy đơn hàng và tự động hoàn kho + hoàn voucher
+    if (status === 'cancelled') {
+      const nonCancellable = ['completed', 'cancelled', 'refunded'];
+      if (nonCancellable.includes(oldStatus)) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({ success: false, message: 'Đơn hàng đã hoàn thành hoặc đã được hủy trước đó.' });
+      }
 
-    // ✅ FOOTMARK: Khi đơn chuyển sang trạng thái Hoàn thành (completed), 
-    // chắc chắn tiền đã về túi chủ shop (với COD) hoặc đã nhận hàng thành công.
-    if (status === 'completed') {
-      order.paymentStatus = 'paid';
-      order.isPaid = true;
-      order.paidAt = order.paidAt || new Date();
-    }
+      // 1. HOÀN KHO ATOMIC
+      if (order.items && order.items.length > 0) {
+        for (const item of order.items) {
+          let filter, update, arrayFilters = [];
 
-    if (paymentStatus) {
-      order.paymentStatus = paymentStatus;
-      if (paymentStatus === 'paid') {
+          if (item.variant && item.variant.name) {
+            filter = { _id: item.productId };
+            update = {
+              $inc: {
+                'variants.$[var].options.$[opt].stock': item.quantity,
+                'variants.$[var].options.$[opt].soldCount': -item.quantity,
+                'soldCount': -item.quantity // Hoàn lại lượt bán tổng của sản phẩm
+              }
+            };
+            arrayFilters = [
+              { 'var.options.name': item.variant.name },
+              { 'opt.name': item.variant.name }
+            ];
+          } else {
+            filter = { _id: item.productId };
+            update = {
+              $inc: { stock: item.quantity, soldCount: -item.quantity }
+            };
+          }
+
+          await Product.updateOne(filter, update, { arrayFilters, session });
+        }
+      }
+
+      // 2. HOÀN LẠI LƯỢT DÙNG VOUCHER (NẾU CÓ)
+      if (order.voucherCode) {
+        await Voucher.findOneAndUpdate(
+          { code: order.voucherCode.toUpperCase() },
+          { $inc: { usedCount: -1 } },
+          { session }
+        );
+      }
+
+      // 3. Logic Trạng thái khi Hủy
+      if (order.isPaid || order.paymentStatus === 'paid') {
+        order.status = 'refunded';
+      } else {
+        order.status = 'cancelled';
+      }
+
+      order.cancelledAt = new Date();
+      order.cancelledBy = 'admin';
+      order.cancelReason = reason || 'Admin chủ động hủy đơn hàng';
+
+    } else {
+      if (status) order.status = status;
+
+      // Tự động cập nhật paymentStatus khi giao hàng thành công (COD)
+      if (status === 'delivered' && order.paymentStatus === 'unpaid') {
+        // ✅ Tester Audit: Keep unpaid for Admin manual check
+      }
+
+      // ✅ FOOTMARK: Khi đơn chuyển sang trạng thái Hoàn thành (completed), 
+      // chắc chắn tiền đã về túi chủ shop (với COD) hoặc đã nhận hàng thành công.
+      if (status === 'completed') {
+        order.paymentStatus = 'paid';
         order.isPaid = true;
         order.paidAt = order.paidAt || new Date();
       }
+
+      if (paymentStatus) {
+        order.paymentStatus = paymentStatus;
+        if (paymentStatus === 'paid') {
+          order.isPaid = true;
+          order.paidAt = order.paidAt || new Date();
+        }
+      }
     }
 
-    await order.save();
+    await order.save({ session });
+    await session.commitTransaction();
+    session.endSession();
 
-    // Thông báo cho người dùng qua Socket
+    // Thông báo cho người dùng qua Socket (Ngoài Transaction)
     if (global.io) {
-      global.io.to(`user:${order.userId}`).emit('orderStatusUpdated', {
+      const updateData = {
         orderId: order._id,
         status: order.status,
         paymentStatus: order.paymentStatus
-      });
+      };
+      global.io.to(`user:${order.userId}`).emit('orderStatusUpdated', updateData);
+      global.io.to('admin').emit('orderStatusUpdated', updateData);
     }
 
     return res.json({ success: true, message: 'Cập nhật trạng thái thành công', order });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     return res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -598,7 +706,7 @@ export const markOrderAsPaid = async (req, res) => {
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
 
-    if (order.userId.toString() !== req.user.id && req.user.role !== 'admin') {
+    if ((!order.userId || order.userId.toString() !== req.user.id) && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'Không có quyền thực hiện' });
     }
 

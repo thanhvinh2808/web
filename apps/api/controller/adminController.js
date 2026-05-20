@@ -10,6 +10,7 @@ import Contact from '../models/Contact.js';
 import { sendReplyEmail } from '../services/emailService.js';
 import bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
+import { escapeRegex } from '../utils/helpers.js';
 
 // ðŸ”” Create Notification (Helper for internal use)
 const NOTIFICATION_TITLE_MAP = {
@@ -134,8 +135,8 @@ export const getAllUsers = async (req, res) => {
     
     const query = search ? {
       $or: [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
+        { name: { $regex: escapeRegex(search), $options: 'i' } },
+        { email: { $regex: escapeRegex(search), $options: 'i' } }
       ]
     } : {};
 
@@ -262,14 +263,14 @@ export const deleteUser = async (req, res) => {
 // 📦 Get All Orders
 export const getAllOrders = async (req, res) => {
   try {
-    const { status = '', search = '' } = req.query;
+    const { status = '', search = '', page = 1, limit = 20 } = req.query;
     
     const query = {};
     if (status && status !== 'all') query.status = status;
     
-    // ✅ SENIOR: Hỗ trợ tìm kiếm ngay tại API cho Admin
+    // ✅ Hỗ trợ tìm kiếm ngay tại API cho Admin
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
+      const searchRegex = new RegExp(escapeRegex(search), 'i');
       query.$or = [
         { orderNumber: { $regex: searchRegex } },
         { 'customerInfo.fullName': { $regex: searchRegex } },
@@ -283,19 +284,22 @@ export const getAllOrders = async (req, res) => {
       }
     }
 
+    const skip = (Number(page) - 1) * Number(limit);
+    const total = await Order.countDocuments(query);
+
     const orders = await Order.find(query)
       .populate('userId', 'name email')
-      .sort({ createdAt: -1 });
-
-    const total = orders.length;
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit));
 
     res.json({
       success: true,
       data: orders,
       pagination: {
         total,
-        page: 1,
-        pages: 1
+        page: Number(page),
+        pages: Math.ceil(total / Number(limit))
       }
     });
   } catch (error) {
@@ -471,7 +475,7 @@ export const globalSearch = async (req, res) => {
       });
     }
 
-    const searchRegex = new RegExp(q, 'i');
+    const searchRegex = new RegExp(escapeRegex(q), 'i');
     
     // ✅ SENIOR: Tìm theo cả mã đơn hàng chuyên nghiệp, tên khách, và email
     const orderQuery = {

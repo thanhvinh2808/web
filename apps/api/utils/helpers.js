@@ -12,6 +12,10 @@ export function createSlug(text) {
     .replace(/-+/g, '-');
 }
 
+export function escapeRegex(string) {
+  return string.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+}
+
 /**
  * Tạo thông báo cho Admin và phát qua Socket.io
  */

@@ -1,4 +1,5 @@
 import Brand from '../models/Brand.js';
+import { escapeRegex } from '../utils/helpers.js';
 
 /**
  * Lấy danh sách thương hiệu
@@ -56,7 +57,7 @@ export const createBrand = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Tên thương hiệu là bắt buộc' });
     }
 
-    const existing = await Brand.findOne({ name: { $regex: new RegExp(`^${name}$`, 'i') } });
+    const existing = await Brand.findOne({ name: { $regex: new RegExp(`^${escapeRegex(name)}$`, 'i') } });
     if (existing) {
       return res.status(400).json({ success: false, message: 'Thương hiệu này đã tồn tại' });
     }

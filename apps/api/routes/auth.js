@@ -8,7 +8,9 @@ import {
   changePassword, 
   forgotPassword, 
   resetPassword,
-  googleLogin
+  googleLogin,
+  addBankAccount,
+  deleteBankAccount
 } from '../controller/authController.js';
 import * as addressController from '../controller/addressController.js';
 import * as orderController from '../controller/orderController.js';
@@ -40,32 +42,11 @@ router.put('/user/change-password', authenticateToken, changePassword);
 router.get('/user/orders', authenticateToken, orderController.getUserOrders);
 
 // ============================
-// USER BANK ROUTES (Inline Logic tạm thời hoặc chuyển vào controller)
+// USER BANK ROUTES
 // ============================
 // Frontend: /api/user/banks
-router.post('/user/banks', authenticateToken, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    const newBank = req.body;
-    if (user.bankAccounts.length === 0) newBank.isDefault = true;
-    user.bankAccounts.push(newBank);
-    await user.save();
-    res.json({ success: true, message: 'Thêm ngân hàng thành công', bankAccounts: user.bankAccounts });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-router.delete('/user/banks/:bankId', authenticateToken, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    user.bankAccounts.pull(req.params.bankId);
-    await user.save();
-    res.json({ success: true, message: 'Đã xóa tài khoản ngân hàng', bankAccounts: user.bankAccounts });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+router.post('/user/banks', authenticateToken, addBankAccount);
+router.delete('/user/banks/:bankId', authenticateToken, deleteBankAccount);
 
 
 // Verify token (Legacy support)

@@ -1,8 +1,9 @@
 import Product from '../models/Product.js';
 import Category from '../models/Category.js';
 import Review from '../models/Review.js'; 
-import Order from '../models/Order.js'; // ✅ Thêm import Order
+import Order from '../models/Order.js';
 import { deleteFile, deleteMultipleFiles } from '../middleware/upload.js';
+import { escapeRegex } from '../utils/helpers.js';
 import mongoose from 'mongoose';
 
 // ... (existing code)
@@ -116,10 +117,11 @@ export const getProducts = async (req, res) => {
     }
 
     if (search) {
+      const cleanSearch = escapeRegex(search.trim());
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { brand: { $regex: search, $options: 'i' } }
+        { name: { $regex: cleanSearch, $options: 'i' } },
+        { description: { $regex: cleanSearch, $options: 'i' } },
+        { brand: { $regex: cleanSearch, $options: 'i' } }
       ];
     }
 

@@ -456,5 +456,82 @@ export default {
   sendNewContactEmail, 
   sendReplyEmail,
   sendTradeInUpdateEmail,
-  sendOTPEmail
+  sendOTPEmail,
+  sendTradeInVoucherEmail
+};
+
+// 🎟️ Gửi email Voucher độc quyền sau khi Trade-In hoàn tất
+export const sendTradeInVoucherEmail = async ({ toEmail, customerName, voucherCode, voucherValue, expiryDate, productName }) => {
+  try {
+    const transporter = getTransporter();
+    const formattedValue = Number(voucherValue).toLocaleString('vi-VN');
+    const formattedExpiry = new Date(expiryDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    const emailContent = `
+      <div style="font-family: 'Segoe UI', Roboto, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #fff; border: 1px solid #eee; border-radius: 15px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.08);">
+        
+        <div style="background: linear-gradient(135deg, #000 0%, #1a1a2e 100%); padding: 40px 30px; text-align: center;">
+          <h1 style="color: #fff; margin: 0; letter-spacing: 8px; font-style: italic; font-weight: 900; font-size: 26px;">FOOTMARK.</h1>
+          <p style="color: #00e5ff; margin: 10px 0 0 0; text-transform: uppercase; font-size: 10px; letter-spacing: 3px; font-weight: bold;">Trade-In Thành Công 🎉</p>
+        </div>
+
+        <div style="padding: 35px 30px;">
+          <h2 style="color: #333; font-size: 22px; margin-top: 0;">Xin chào ${customerName},</h2>
+          <p style="color: #555; line-height: 1.7; font-size: 15px;">
+            Yêu cầu thu mua giày <strong>${productName}</strong> của bạn đã được <strong style="color: #28a745;">hoàn tất thành công</strong>!
+            <br>Để cảm ơn sự tin tưởng của bạn, FootMark gửi tặng bạn một mã voucher giảm giá độc quyền có giá trị tương đương số tiền thu mua:
+          </p>
+
+          <!-- VOUCHER CARD -->
+          <div style="background: linear-gradient(135deg, #0070f3 0%, #00c6ff 100%); border-radius: 15px; padding: 30px; text-align: center; margin: 30px 0; position: relative; overflow: hidden;">
+            <div style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+            <div style="position: absolute; bottom: -30px; left: -30px; width: 120px; height: 120px; background: rgba(255,255,255,0.08); border-radius: 50%;"></div>
+            <p style="color: rgba(255,255,255,0.8); margin: 0 0 8px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 2px;">Mã Voucher Độc Quyền</p>
+            <div style="background: rgba(255,255,255,0.15); border: 2px dashed rgba(255,255,255,0.5); border-radius: 10px; padding: 15px 20px; margin: 10px 0;">
+              <span style="font-family: 'Courier New', monospace; font-size: 32px; font-weight: 900; color: #fff; letter-spacing: 4px;">${voucherCode}</span>
+            </div>
+            <p style="color: #fff; font-size: 28px; font-weight: 900; margin: 15px 0 5px 0;">-${formattedValue}đ</p>
+            <p style="color: rgba(255,255,255,0.85); font-size: 13px; margin: 0;">Áp dụng cho đơn hàng tiếp theo tại FootMark</p>
+            <p style="color: rgba(255,255,255,0.7); font-size: 12px; margin: 8px 0 0 0;">⏰ Hết hạn: ${formattedExpiry}</p>
+          </div>
+
+          <!-- HƯỚNG DẪN -->
+          <div style="background: #f8f9fa; border-radius: 10px; padding: 20px; margin-bottom: 25px;">
+            <h3 style="margin: 0 0 12px 0; font-size: 15px; color: #333;">📋 Cách sử dụng:</h3>
+            <ol style="margin: 0; padding-left: 20px; color: #555; font-size: 14px; line-height: 2;">
+              <li>Truy cập <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" style="color: #0070f3;">footmark.vn</a> và chọn sản phẩm yêu thích</li>
+              <li>Thêm vào giỏ hàng và tiến hành thanh toán</li>
+              <li>Nhập mã <strong>${voucherCode}</strong> vào ô "Mã giảm giá" tại trang thanh toán</li>
+              <li>Hưởng ngay ưu đãi <strong style="color: #0070f3;">${formattedValue}đ</strong>!</li>
+            </ol>
+          </div>
+
+          <div style="text-align: center;">
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/products" 
+               style="display: inline-block; background: linear-gradient(135deg, #000 0%, #333 100%); color: #fff; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px; letter-spacing: 1px;">
+              🛍️ MUA NGAY THÔI!
+            </a>
+          </div>
+        </div>
+
+        <div style="background-color: #fafafa; padding: 25px; text-align: center; color: #999; font-size: 12px; border-top: 1px solid #eee;">
+          <p style="margin: 0 0 5px 0;">Voucher chỉ áp dụng 1 lần và không thể chuyển nhượng.</p>
+          <p style="margin: 0;">© ${new Date().getFullYear()} FootMark. Authentic Sneakers & Streetwear.</p>
+        </div>
+      </div>
+    `;
+
+    await transporter.sendMail({
+      from: `"FootMark Trade-In" <${process.env.ADMIN_EMAIL}>`,
+      to: toEmail,
+      subject: `🎟️ Voucher ${formattedValue}đ độc quyền của bạn từ FootMark Trade-In`,
+      html: emailContent,
+    });
+
+    console.log(`✅ Trade-In Voucher email sent to ${toEmail}`);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Lỗi gửi email Trade-In Voucher:', error);
+    return { success: false, error: error.message };
+  }
 };

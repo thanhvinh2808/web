@@ -1,4 +1,5 @@
 import Product from '../models/Product.js';
+import { escapeRegex } from '../utils/helpers.js';
 
 export const chatWithAI = async (req, res) => {
   try {
@@ -47,7 +48,8 @@ export const chatWithAI = async (req, res) => {
         const cleanMessage = message.toLowerCase().replace(/size\s?\d{2}/i, '').trim();
         const keywords = cleanMessage.split(' ').filter(word => word.length > 2 && !['giày', 'mẫu', 'cho', 'mình', 'xem', 'có', 'không', 'tư', 'vấn'].includes(word));
         if (keywords.length > 0) {
-          const searchRegex = new RegExp(keywords.join('|'), 'i');
+          const escapedKeywords = keywords.map(escapeRegex);
+          const searchRegex = new RegExp(escapedKeywords.join('|'), 'i');
           query.$or = [{ name: { $regex: searchRegex } }, { brand: { $regex: searchRegex } }];
         }
       }

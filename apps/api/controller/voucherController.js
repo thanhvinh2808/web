@@ -2,41 +2,50 @@ import Voucher from '../models/Voucher.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 
-// 📋 Lấy danh sách Voucher (Có phân trang & tìm kiếm)
+// 📋 Lấy danh sách Voucher (Có phân trang & tìm kiếm bằng Aggregation)
 export const getAllVouchers = async (req, res) => {
   try {
-    const { page = 1, limit = 100, search = '' } = req.query; // Tăng limit để sort thủ công chính xác
+    const { page = 1, limit = 20, search = '' } = req.query;
     
-    const query = search ? {
-      code: { $regex: search, $options: 'i' }
+    const matchQuery = search ? {
+      code: { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' }
     } : {};
 
-    const allVouchers = await Voucher.find(query);
     const now = new Date();
 
-    // ✅ SORT THỦ CÔNG: An toàn và chính xác 100%
-    const sortedVouchers = [...allVouchers].sort((a, b) => {
-      const isExpiredA = new Date(a.endDate) < now;
-      const isExpiredB = new Date(b.endDate) < now;
+    const [result] = await Voucher.aggregate([
+      { $match: matchQuery },
+      {
+        $addFields: {
+          isExpired: { $lt: ['$endDate', now] }
+        }
+      },
+      {
+        $sort: {
+          isExpired: 1,   // Còn hạn lên đầu (false=0 < true=1)
+          endDate: 1      // Sắp hết hạn trước
+        }
+      },
+      {
+        $facet: {
+          data: [
+            { $skip: (Number(page) - 1) * Number(limit) },
+            { $limit: Number(limit) }
+          ],
+          total: [{ $count: 'count' }]
+        }
+      }
+    ]);
 
-      if (!isExpiredA && isExpiredB) return -1; // A còn hạn, B hết -> A lên đầu
-      if (isExpiredA && !isExpiredB) return 1;  // A hết hạn, B còn -> A xuống dưới
-      
-      // Nếu cùng còn hạn hoặc cùng hết hạn: Ưu tiên ngày hết hạn gần hơn lên trước
-      return new Date(a.endDate) - new Date(b.endDate);
-    });
-
-    // Phân trang sau khi sort
-    const startIndex = (Number(page) - 1) * Number(limit);
-    const paginatedVouchers = sortedVouchers.slice(startIndex, startIndex + Number(limit));
+    const total = result?.total?.[0]?.count || 0;
 
     res.json({
       success: true,
-      data: paginatedVouchers,
+      data: result?.data || [],
       pagination: {
-        total: allVouchers.length,
+        total,
         page: Number(page),
-        pages: Math.ceil(allVouchers.length / Number(limit))
+        pages: Math.ceil(total / Number(limit))
       }
     });
   } catch (error) {

@@ -207,14 +207,39 @@ export const handleReturn = async (req, res) => {
       });
     }
 
-    const orderId = verify.vnp_TxnRef;
-    const order = await Order.findById(orderId);
+    const txnRef = verify.vnp_TxnRef;
+    let order = null;
+
+    // Thử tìm bằng ID trực tiếp
+    if (mongoose.Types.ObjectId.isValid(txnRef)) {
+      order = await Order.findById(txnRef);
+    } 
+    
+    // Nếu không thấy hoặc ID không hợp lệ, thử tìm bằng orderNumber
+    if (!order) {
+      const parts = txnRef.split('-');
+      let orderNumber = txnRef;
+      if (parts.length > 2) {
+        // Dạng orderNumber-timestamp (Ví dụ: FM260520-6308-1716300000)
+        // Ta loại bỏ phần tử cuối cùng (timestamp) và ghép lại phần còn lại
+        if (!isNaN(parts[parts.length - 1])) {
+          orderNumber = parts.slice(0, -1).join('-');
+        }
+      } else if (parts.length === 2) {
+        // Dạng orderNumber gốc (FM260520-6308) hoặc ID-timestamp (nếu ID không chứa gạch ngang)
+        // Nếu phần thứ 2 là timestamp số, ta cắt lấy phần 1, ngược lại giữ nguyên cả chuỗi
+        if (!isNaN(parts[1])) {
+          orderNumber = parts[0];
+        }
+      }
+      order = await Order.findOne({ orderNumber: orderNumber });
+    }
 
     if (order && verify.isSuccess && order.paymentStatus !== 'paid') {
       order.paymentStatus = 'paid';
       order.isPaid = true;
       order.paidAt = new Date();
-      order.vnpayTransactionId = verify.vnp_TransactionNo?.toString() || orderId;
+      order.vnpayTransactionId = verify.vnp_TransactionNo?.toString() || order._id.toString();
       if (order.status === 'pending') order.status = 'processing';
       await order.save();
 
@@ -229,7 +254,7 @@ export const handleReturn = async (req, res) => {
         ).catch(err => console.error('Lỗi thông báo:', err));
       }
       sendNewOrderEmail(order).catch(err => console.error('Lỗi gửi email:', err));
-    sendUserOrderConfirmation(order).catch(err => console.error('Lỗi gửi email khách:', err));
+      sendUserOrderConfirmation(order).catch(err => console.error('Lỗi gửi email khách:', err));
       if (global.io) {
         const updateData = { orderId: order._id, status: order.status, paymentStatus: 'paid', isPaid: true };
         global.io.to(`user:${order.userId}`).emit('orderStatusUpdated', updateData);

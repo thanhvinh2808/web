@@ -5,6 +5,10 @@ import { isAdmin as requireAdmin } from '../middleware/isAdmin.js';
 
 const router = express.Router();
 
+// 🦶 Public: Gợi ý size giày thông minh theo số đo bàn chân
+// GET /api/size-guides/suggest?footLengthCm=25&brand=Nike&gender=Men
+router.get('/suggest', sizeGuideController.suggestSize);
+
 // Public: Lấy bảng size của brand
 router.get('/:brandId', sizeGuideController.getSizeGuide);
 

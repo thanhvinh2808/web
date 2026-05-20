@@ -5,6 +5,8 @@ import { getJwtSecret } from '../config/secrets.js';
 import { createNotification } from './adminController.js';
 import { sendOTPEmail } from '../services/emailService.js';
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 
 const JWT_SECRET = getJwtSecret();
 
@@ -161,9 +163,19 @@ export const updateProfile = async (req, res) => {
     if (ward !== undefined) user.ward = String(ward).trim();
     if (avatar !== undefined && avatar.startsWith('data:')) {
       try {
-        const fs = await import('fs');
-        const path = await import('path');
-        
+        // Validate MIME type và kích thước file
+        const mimeType = avatar.match(/[^:]\w+\/[\w\-+\.]+(?=;)/)[0];
+        if (!['image/jpeg', 'image/png', 'image/webp', 'image/jpg'].includes(mimeType)) {
+          return res.status(400).json({ success: false, message: 'Định dạng ảnh không hợp lệ. Chỉ chấp nhận jpg, jpeg, png, webp' });
+        }
+
+        // Tính kích thước từ chuỗi base64
+        const stringLength = avatar.length - avatar.indexOf(',') - 1;
+        const sizeInBytes = Math.ceil(stringLength * 0.75);
+        if (sizeInBytes > 5 * 1024 * 1024) { // 5MB limit
+          return res.status(400).json({ success: false, message: 'Dung lượng ảnh vượt quá giới hạn (Tối đa 5MB)' });
+        }
+
         // 1. Prepare directory
         const uploadDir = path.join(process.cwd(), 'uploads', 'profiles');
         if (!fs.existsSync(uploadDir)) {
@@ -262,6 +274,11 @@ export const forgotPassword = async (req, res) => {
 export const resetPassword = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
+    
+    if (!otp || String(otp).trim() === '') {
+      return res.status(400).json({ success: false, message: 'Mã OTP là bắt buộc' });
+    }
+
     const user = await User.findOne({
       email: email.trim().toLowerCase(),
       resetPasswordToken: otp,
@@ -337,5 +354,68 @@ export const googleLogin = async (req, res) => {
   } catch (error) {
     console.error('❌ Google Login error:', error);
     return res.status(500).json({ success: false, message: 'Lỗi đồng bộ Google' });
+  }
+};
+
+// ✅ USER BANK METHODS
+export const addBankAccount = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const { bankName, accountNumber, accountHolder, isDefault } = req.body;
+    
+    if (!bankName || !accountNumber || !accountHolder) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp đầy đủ thông tin tài khoản ngân hàng' });
+    }
+
+    const cleanBank = {
+      bankName: String(bankName).trim(),
+      accountNumber: String(accountNumber).trim(),
+      accountHolder: String(accountHolder).trim(),
+      isDefault: isDefault !== undefined ? !!isDefault : false
+    };
+
+    if (user.bankAccounts.length === 0) {
+      cleanBank.isDefault = true;
+    } else if (cleanBank.isDefault) {
+      user.bankAccounts.forEach(bank => bank.isDefault = false);
+    }
+
+    user.bankAccounts.push(cleanBank);
+    await user.save();
+
+    return res.json({ 
+      success: true, 
+      message: 'Thêm tài khoản ngân hàng thành công', 
+      bankAccounts: user.bankAccounts 
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteBankAccount = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const { bankId } = req.params;
+    
+    user.bankAccounts.pull(bankId);
+    
+    if (user.bankAccounts.length > 0 && !user.bankAccounts.some(b => b.isDefault)) {
+      user.bankAccounts[user.bankAccounts.length - 1].isDefault = true;
+    }
+
+    await user.save();
+
+    return res.json({ 
+      success: true, 
+      message: 'Đã xóa tài khoản ngân hàng', 
+      bankAccounts: user.bankAccounts 
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

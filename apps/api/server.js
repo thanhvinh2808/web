@@ -32,8 +32,9 @@ import orderRoutes from './routes/orders.js';
 import notificationRoutes from './routes/notifications.js';
 import productRoutes from './routes/products.js';
 import vnpayRoutes from './routes/vnpay.js';
-import chatRoutes from './routes/chat.js';
 import contactRoutes from './routes/contacts.js';
+import chatRoutes from './routes/chat.js';
+import { startCleanupJob } from './services/cronService.js';
 
 import { createNotification } from './controller/adminController.js';
 import { trackOrder } from './controller/orderController.js';
@@ -105,16 +106,13 @@ app.use('/api/admin', authenticateToken, isAdmin, adminRoutes);
 // 4. OTHER
 app.get('/api/vouchers', async (req, res) => {
   try {
-    const vouchers = await Voucher.find({ isActive: true });
     const now = new Date();
-    const sorted = [...vouchers].sort((a, b) => {
-      const isExpiredA = new Date(a.endDate) < now;
-      const isExpiredB = new Date(b.endDate) < now;
-      if (!isExpiredA && isExpiredB) return -1;
-      if (isExpiredA && !isExpiredB) return 1;
-      return new Date(a.endDate) - new Date(b.endDate);
-    });
-    res.json(sorted);
+    const vouchers = await Voucher.aggregate([
+      { $match: { isActive: true } },
+      { $addFields: { isExpired: { $lt: ['$endDate', now] } } },
+      { $sort: { isExpired: 1, endDate: 1 } }
+    ]);
+    res.json(vouchers);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
@@ -126,6 +124,7 @@ app.use(errorHandler);
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   getVnpay();
+  startCleanupJob();
 });
 
 export default app;
